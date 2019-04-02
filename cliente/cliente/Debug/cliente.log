@@ -1,0 +1,3 @@
+﻿  cliente.c
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(19): warning C4101: 'threadId': unreferenced local variable
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\cliente\Debug\cliente.exe
