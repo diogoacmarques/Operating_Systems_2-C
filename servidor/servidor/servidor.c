@@ -9,28 +9,22 @@
 
 //includes dos exercícios anteriores
 #define MAX 256
-HANDLE hMutex, fraseEvento, hFile;
+HANDLE hMutex, hEvent;
 #define MName TEXT("testeMutex")
 #define EName TEXT("testeEvent")
-#define FILE_PATH TEXT("C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\testes")
+#define FILE_PATH TEXT("../../sharedFile.txt")
 
 int _tmain(int argc, LPTSTR argv[]) {
 	BOOL bErrorFlag = FALSE;
 	TCHAR resp;
-	DWORD threadId;
-	HANDLE hThreadProd;
+	DWORD threadId,res,n;
+	HANDLE hThreadProd, hFile;
 	hMutex = CreateMutex(NULL, FALSE, MName);
-	fraseEvento = CreateEvent(NULL, TRUE, FALSE, EName);
+	hEvent = CreateEvent(NULL, TRUE, FALSE, EName);
 
-	hFile = CreateFile(TEXT("hey"),	// name of the write
-		GENERIC_WRITE,				// open for writing
-		TRUE,							// do not share
-		NULL,						// default security
-		CREATE_NEW,					// create new file only
-		FILE_ATTRIBUTE_NORMAL,		// normal file
-		NULL);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		_tprintf(TEXT("Erro ao criar ficheiro"));
+	hFile = CreateFile(FILE_PATH, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == NULL || hMutex == NULL || hEvent== NULL) {
+		_tprintf(TEXT("Erro a criar recursos de comunicação e/ou sincronização."));
 		return -1;
 	}
 	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.
@@ -43,7 +37,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_tscanf_s(TEXT("%c"), &resp, 1);
 	if (resp == 'S' || resp == 's') {
 		TCHAR strLocal[MAX];
-		DWORD dwBytesToWrite = (DWORD)strlen(strLocal), dwBytesWritten;
 		_tprintf(TEXT("[Produtor]Prima\'fim\' para terminar...\n"), GetCurrentThreadId());
 		Sleep(100);
 		do {
@@ -51,23 +44,21 @@ int _tmain(int argc, LPTSTR argv[]) {
 			fflush(stdin);
 			WaitForSingleObject(hMutex, INFINITE);
 			//writes to file
-			bErrorFlag = WriteFile(
-				hFile,           // open file handle
-				strLocal,      // start of data to write
-				dwBytesToWrite,  // number of bytes to write
-				&dwBytesWritten, // number of bytes that were written
-				NULL);
+			res = WriteFile(hFile, strLocal, (_tcslen(strLocal) + 1) * sizeof(TCHAR), &n, NULL);
 			ReleaseMutex(hMutex);
-			if (bErrorFlag == FALSE) {
+			/*if (res == FALSE) {
 				_tprintf(TEXT("Erro ao escrever"));
 				return -1;
-			}
+			}*/
 
-			SetEvent(fraseEvento);
-			ResetEvent(fraseEvento);
+			SetEvent(hEvent);
+			ResetEvent(hEvent);
 		} while (_tcsncmp(strLocal, TEXT("fim"), 3));
 		
 	}
+	CloseHandle(hMutex);
+	CloseHandle(hEvent);
+	CloseHandle(hFile);
 	_tprintf(TEXT("[Thread Principal %d]Finalmente vou terminar..."), GetCurrentThreadId());
 	return 0;
 }

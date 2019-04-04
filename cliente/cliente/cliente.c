@@ -9,16 +9,24 @@
 
 //includes dos exercícios anteriores
 #define MAX 256
-HANDLE hMutex,fraseEvento;
-TCHAR frase[MAX];
+HANDLE hMutex,hEvent;
 #define MName TEXT("testeMutex")
 #define EName TEXT("testeEvent")
+#define FILE_PATH TEXT("../../sharedFile.txt")
+
 								
 int _tmain(int argc, LPTSTR argv[]) {
 	TCHAR resp;
-	DWORD threadId;
+	DWORD threadId,res,n;
+	HANDLE hFile;
+	TCHAR frase[MAX];
 	hMutex = CreateMutex(NULL, FALSE, MName);
-	fraseEvento = CreateEvent(NULL,TRUE, FALSE, EName);
+	hEvent = CreateEvent(NULL,TRUE, FALSE, EName);
+	hFile = CreateFile(FILE_PATH, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == NULL || hMutex == NULL || hEvent == NULL) {
+		_tprintf(TEXT("Erro a criar recursos de comunicação e/ou sincronização."));
+		return -1;
+	}
 	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.
 	//A maneira mais fácil para ter esta funcionalidade é chamar _setmode:
 #ifdef UNICODE
@@ -32,16 +40,20 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("[Consumidor(%d)]Listening...\n"), GetCurrentThreadId());
 		Sleep(100);
 		do {
-			WaitForSingleObject(fraseEvento, INFINITE);
+			WaitForSingleObject(hEvent, INFINITE);
 			WaitForSingleObject(hMutex, INFINITE);
-			//read from file
-			_tprintf(TEXT("[Consumidor(%d)]:I got an event\n"), GetCurrentThreadId());
+			res = ReadFile(hFile, frase, MAX * sizeof(TCHAR), &n, NULL);
 			ReleaseMutex(hMutex);
+			_tprintf(TEXT("[Consumidor(%d)]: %s"), GetCurrentThreadId(),frase);
+			
 			//_tprintf(TEXT("[Consumidor(%d)]:%s"), GetCurrentThreadId(), strLocal);
-		} while (_tcsncmp(strLocal, TEXT("fim"), 3));
-		SetEvent(fraseEvento);
+		} while (_tcsncmp(frase, TEXT("fim"), 3) && n > 0 && res != 0);
+		SetEvent(hEvent);
 	
 	}
+	CloseHandle(hMutex);
+	CloseHandle(hEvent);
+	CloseHandle(hFile);
 	_tprintf(TEXT("[Thread Principal %d]Finalmente vou terminar..."),GetCurrentThreadId());
 	return 0;
 }

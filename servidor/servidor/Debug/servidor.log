@@ -1,7 +1,6 @@
 ﻿  servidor.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(46): warning C4133: 'function': incompatible types - from 'TCHAR [256]' to 'const char *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(47): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(47): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(21): warning C4101: 'hThreadProd': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(20): warning C4101: 'threadId': unreferenced local variable
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(40): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(40): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(21): warning C4101: 'hThreadProd': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(20): warning C4101: 'threadId': unreferenced local variable
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\servidor.exe
