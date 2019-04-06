@@ -1,4 +1,6 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(20): warning C4101: 'threadId': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(39): warning C4101: 'strLocal': unreferenced local variable
-  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\cliente\Debug\cliente.exe
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(35): warning C4013: '_getch' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(17): warning C4101: 'sizex': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(17): warning C4101: 'sizey': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(76): warning C4013: 'time' undefined; assuming extern returning int
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\cliente\Debug\cliente.exe

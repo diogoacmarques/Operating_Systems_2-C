@@ -46,11 +46,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 			//writes to file
 			res = WriteFile(hFile, strLocal, (_tcslen(strLocal) + 1) * sizeof(TCHAR), &n, NULL);
 			ReleaseMutex(hMutex);
-			/*if (res == FALSE) {
-				_tprintf(TEXT("Erro ao escrever"));
-				return -1;
-			}*/
-
 			SetEvent(hEvent);
 			ResetEvent(hEvent);
 		} while (_tcsncmp(strLocal, TEXT("fim"), 3));
