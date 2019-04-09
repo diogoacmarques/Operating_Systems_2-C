@@ -1,6 +1,12 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(35): warning C4013: '_getch' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(17): warning C4101: 'sizex': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(17): warning C4101: 'sizey': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(76): warning C4013: 'time' undefined; assuming extern returning int
-  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\cliente\Debug\cliente.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(27): warning C4101: 'hTBola': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(26): warning C4101: 'KeyPress': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(64): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(73): warning C4013: '_getch' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(108): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(122): warning C4047: 'function': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(122): warning C4024: 'ExitThread': different types for formal and actual parameter 1
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(130): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(185): warning C4047: 'function': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(185): warning C4024: 'ExitThread': different types for formal and actual parameter 1
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\cliente\Debug\cliente.exe
