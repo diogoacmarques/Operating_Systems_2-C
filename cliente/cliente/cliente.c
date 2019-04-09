@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "DLL.h"
 #define MAX 256
 
 void gotoxy(int x, int y);
@@ -22,6 +23,9 @@ typedef struct gameInfo {
 }data,*pdata;
 			
 int _tmain(int argc, LPTSTR argv[]) {
+	//DLL_tprintf(TEXT("Resultado da função da UmaString DLL: %d"), UmaString());
+	
+
 	DWORD threadId;
 	HANDLE hTBarreira;
 	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.

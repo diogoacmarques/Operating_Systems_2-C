@@ -7,9 +7,11 @@
 #include "DLL.h"
 
 int _tmain(int argc, TCHAR *argv[]) {
-	//Usar a variável da Dll
-	_tprintf(TEXT("Valor da variável da DLL: %d\n"), nDLL);
-	//Chamar a funcao da Dll
-	_tprintf(TEXT("Resultado da função da UmaString DLL: %d"), UmaString());
+	DWORD num = 0;
+	TCHAR str[TAM];
+	_tprintf(TEXT("Utilizador:"));
+	_tscanf_s(TEXT("%s"), str,TAM);
+	//sendMessage();
+	Login(str);
 	return 0;
 }
