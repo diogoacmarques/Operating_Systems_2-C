@@ -11,6 +11,9 @@
 
 void hidecursor();
 void gotoxy(int x, int y);
+DWORD WINAPI readGameThread(LPVOID param);
+
+HANDLE hTreadGame, canRead, canWrite;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -18,19 +21,25 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//envia ao servidor;
 	//recebe confirmação / rejeição; 
 	//entra em ciclo a receber novas posições da bola até uma tecla ser premida pelo utilizador).
-
-	createSharedMemory();
 	TCHAR str[MAX_NAME_LENGTH];
 	TCHAR KeyPress;
 	BOOLEAN res;
 	msg newMsg;
+	DWORD threadId;
+
+	canRead = CreateSemaphore(NULL, 0,1, SEMAPHORE_MEMORY_READ);
+	canWrite = CreateSemaphore(NULL, 1, 1, SEMAPHORE_MEMORY_WRITE);
+
+
+	createSharedMemory();
 
 	do {
 		_tprintf(TEXT("--Welcome to Client[%d]--\n"),GetCurrentThreadId());
 		_tprintf(TEXT("1:Login\n"));
 		_tprintf(TEXT("2:Send Message\n"));
-		_tprintf(TEXT("3:Other\n"));
-		_tprintf(TEXT("4:Exit\n"));
+		_tprintf(TEXT("3:See game\n"));
+		_tprintf(TEXT("4:Check var gData\n"));
+		_tprintf(TEXT("5:Exit\n"));
 
 		fflush(stdin);
 		KeyPress = _gettch();
@@ -52,16 +61,22 @@ int _tmain(int argc, LPTSTR argv[]) {
 			sendMessage(newMsg);
 			break;
 		case '3':
-			_tprintf(TEXT("3 is empty...\n"));
+			hTreadGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readGameThread, NULL, 0, &threadId);
+			if (hTreadGame == NULL) {
+				_tprintf(TEXT("Erro ao criar thread readGameThread!"));
+				return -1;
+			}
+			break;
+		case '4':
+			checkVar();
 			break;
 		}
-	} while (KeyPress != '4');
+	} while (KeyPress != '5');
 
 
 
 	closeSharedMemory();
 	return 0;
-
 
 	//createSharedMemory();
 	//msg content;
@@ -98,6 +113,31 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//_tprintf(TEXT("[Thread Principal %d] Vou terminar..."),GetCurrentThreadId());
 	//return 0;
 }
+
+DWORD WINAPI readGameThread(LPVOID param) {
+	int oposx = 0, oposy = 0, posx = 0 , posy = 0;
+	gameData game;
+	do{
+		oposx = posx;
+		oposy = posy;		
+		gotoxy(oposx, oposy);
+		WaitForSingleObject(canRead, INFINITE);
+		receiveGame();
+		_tprintf(TEXT(" "));
+		game = *gData;
+		posx = game.posx;
+		posy = game.posy;
+		gotoxy(posx,posy);
+		_tprintf(TEXT("B"));
+		//_tprintf(TEXT("pos(%d,%d)\n"), game.posx, game.posy);
+		ReleaseSemaphore(canWrite, 1, NULL);
+		gotoxy(0, 0);
+		_tprintf(TEXT("Codigo:%d"),game.status);
+	} while (game.status);
+	
+	return 0;
+}
+
 
 //DWORD WINAPI Barreira(LPVOID param) {
 //	pdata gameInfo = ((pdata)param);

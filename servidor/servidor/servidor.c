@@ -29,8 +29,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_setmode(_fileno(stdin), _O_WTEXT);
 	_setmode(_fileno(stdout), _O_WTEXT);
 #endif
-	canWrite = CreateSemaphore(NULL, 10, 10, SEMAPHORE_MEMORY_WRITE);
-	canRead = CreateSemaphore(NULL, 0, 10, SEMAPHORE_MEMORY_READ);
+	canWrite = CreateSemaphore(NULL, 1, 1, SEMAPHORE_MEMORY_WRITE);
+	canRead = CreateSemaphore(NULL, 0, 1, SEMAPHORE_MEMORY_READ);
 
 	receiveMessageEvent = CreateEvent(NULL, FALSE, FALSE, SENDMESSAGEEVENT);
 
@@ -40,17 +40,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("Erro ao criar thread ReceiveMessage!"));
 		return -1;
 	}
-
-	pdata game = (pdata)malloc(sizeof(data));
-	if (!game) {
-		printf("Erro ao reserver memoria para o tabuleiro\n");
-		return -1;
-	}
-
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-	game->limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-	game->limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 
 	do{
 		_tprintf(TEXT("--Welcome to Server--\n"));
@@ -66,14 +55,15 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 		switch (KeyPress) {
 		case '1':
-			hTBola = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Bola, (LPVOID)game, 0, &threadId);
+			hTBola = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Bola, NULL, 0, &threadId);
 			if (hTBola == NULL) {
 				_tprintf(TEXT("Erro ao criar thread Bola!"));
 				return -1;
 			}
 			break;
 		case '2':
-			_tprintf(TEXT("2 is empty\n"));			break;
+			_tprintf(TEXT("2 is empty\n"));
+			break;
 		case '3':
 			_tprintf(TEXT("3 is empty...\n"));
 			break;
@@ -85,7 +75,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 	SetEvent(receiveMessageEvent);
 	WaitForSingleObject(hTReceiveMessage, INFINITE);
 	closeSharedMemory();
-	free(game);
 	_tprintf(TEXT("[Thread Principal %d] Vou terminar..."), GetCurrentThreadId());
 	return 0;
 }
@@ -104,76 +93,88 @@ DWORD WINAPI receiveMessageThread(LPVOID param) {
 }
 
 DWORD WINAPI Bola(LPVOID param) {
-	//pdata gameInfo = ((pdata)param);
-	//srand((int)time(NULL));
-	//msg content;
-	////_tcscpy_s(content.namePlayer, LOCALE_NAME_MAX_LENGTH, "diogo");
-	//boolean goingUp = 1, goingRight = (rand() % 2);
-	//DWORD posx = gameInfo->limx / 2, posy = gameInfo->limy / 2, oposx, oposy;
-	//while (1) {
-	//	//Sleep(30);
-	//	Sleep(1000);
-	//	oposx = posx;
-	//	oposy = posy;
-	//	if (goingRight) {
-	//		if (posx < gameInfo->limx - 1) {
-	//			posx++;
-	//		}
-	//		else {
-	//			posx--;
-	//			goingRight = 0;
-	//		}
-	//	}
-	//	else {
-	//		if (posx > 0) {
-	//			posx--;
-	//		}
-	//		else {
-	//			posx++;
-	//			goingRight = 1;
-	//		}
-	//	}
+	srand((int)time(NULL));
+	gameData game;
+	game.status = 0;
+	DWORD posx, posy , oposx, oposy;
+	boolean goingUp = 1, goingRight = (rand() % 2);
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	game.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+	game.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+	game.posx = 0;
+	game.posy = 0;
+	posx = game.limx / 2;
+	posy = game.limy / 2;
 
-	//	if (goingUp) {
-	//		if (posy > 0) {
-	//			posy--;
-	//		}
-	//		else {
-	//			posy++;
-	//			goingUp = 0;
-	//		}
-	//	}
-	//	else {
-	//		if (posy < gameInfo->limy - 1) {// se nao atinge o limite do mapa
-	//			if (posy == gameInfo->baPosy - 1 && (posx >= gameInfo->baPosx && posx <= (gameInfo->baPosx + gameInfo->baTam))) {//atinge a barreira
-	//				posy--;
-	//				goingUp = 1;
-	//			}
-	//			else
-	//				posy++;
-	//		}
-	//		else {//se atinge o fim do mapa
-	//			content.codigoMsg = 0;
-	//			content.posx = 0;
-	//			content.posy = 0;
-	//			writeToSharedMemory(content);
-	//			ReleaseSemaphore(canRead, 1, NULL);
-	//			_tprintf(TEXT("Game Over!\n"));
-	//			ExitThread(NULL);
-	//			posy--;
-	//			goingUp = 1;
-	//		}
-	//	}
-	//	
-	//	content.posx = posx;
-	//	content.posy = posy;
-	//	content.codigoMsg = 1;
+	//_tcscpy_s(content.namePlayer, LOCALE_NAME_MAX_LENGTH, "diogo");
+	int num = 0;
+	
+	while (1) {
+		//Sleep(30);
+		Sleep(1000);
+		oposx = posx;
+		oposy = posy;
+		if (goingRight) {
+			if (posx < game.limx - 1) {
+				posx++;
+			}
+			else {
+				posx--;
+				goingRight = 0;
+			}
+		}
+		else {
+			if (posx > 0) {
+				posx--;
+			}
+			else {
+				posx++;
+				goingRight = 1;
+			}
+		}
 
-	//	//_tprintf(TEXT("[%d]waiting-"),num++);
-	//	WaitForSingleObject(canWrite, INFINITE);
-	//	writeToSharedMemory(content);
-	//	ReleaseSemaphore(canRead, 1, NULL);
-	//	//_tprintf(TEXT("escrevi\n"));
-	//}
+		if (goingUp) {
+			if (posy > 0) {
+				posy--;
+			}
+			else {
+				posy++;
+				goingUp = 0;
+			}
+		}
+		else {
+			if (posy < game.limy - 1) {// se nao atinge o limite do mapa
+				//if (posy == game->baPosy - 1 && (posx >= gameInfo->baPosx && posx <= (gameInfo->baPosx + gameInfo->baTam))) {//atinge a barreira
+				//	posy--;
+				//	goingUp = 1;
+				//}
+				//else
+				//	posy++;
+			}
+			else {//se atinge o fim do mapa
+				game.status = -1;
+				game.posx = 0;
+				game.posy = 0;
+				sendGame(game);
+				ReleaseSemaphore(canRead, 1, NULL);
+				_tprintf(TEXT("Game Over!\n"));
+				ExitThread(NULL);
+				posy--;
+				goingUp = 1;
+			}
+		}
+		
+		game.posx = posx;
+		game.posy = posy;
+		game.status = 1;
+
+		//_tprintf(TEXT("[%d]waiting-"),num++);
+		WaitForSingleObject(canWrite, INFINITE);
+		_tprintf(TEXT("[%d]wrote"), num++);
+		gData = &game;
+		ReleaseSemaphore(canRead, 1, NULL);
+		//_tprintf(TEXT("escrevi\n"));
+	}
 	return 0;
 }

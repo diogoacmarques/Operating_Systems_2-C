@@ -28,8 +28,11 @@ typedef struct memoryMessage {
 } mMsg;
 
 typedef struct gameInfo {
-	DWORD posy, posx; //map info
+	DWORD posy, posx,limx,limy,status; //map info
 }gameData;
+
+gameData *gData;
+mMsg *msgFromMemory;
 
 #include <windows.h>
 #include <tchar.h>
@@ -59,10 +62,12 @@ extern "C"
 	//game memory
 	DLL_IMP_API void createSharedMemoryGame(void);
 	DLL_IMP_API void mapViewOfFileGame(void);
-	DLL_IMP_API void sendGame(msg newMsg);
+	DLL_IMP_API void sendGame(gameData newMsg);
 	DLL_IMP_API gameData receiveGame(void);
 	DLL_IMP_API void closeSharedMemoryGame(void);
 	//functions
+	
+	DLL_IMP_API void checkVar(void);
 	DLL_IMP_API void createSharedMemory(void);
 	DLL_IMP_API void closeSharedMemory(void);
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
