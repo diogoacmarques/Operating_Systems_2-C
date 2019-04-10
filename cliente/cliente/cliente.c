@@ -8,214 +8,169 @@
 #include <ctype.h>
 
 #include "DLL.h"
-#define MAX 256
 
-void gotoxy(int x, int y);
-DWORD WINAPI Bola(LPVOID param);
-DWORD WINAPI Barreira(LPVOID param);
 void hidecursor();
+void gotoxy(int x, int y);
 
-HANDLE stdoutMutex;
-
-typedef struct gameInfo {
-	DWORD limx, limy; //map info
-	DWORD baPosx, baPosy,baTam;//barreira info
-}data,*pdata;
-			
 int _tmain(int argc, LPTSTR argv[]) {
-	//DLL_tprintf(TEXT("Resultado da função da UmaString DLL: %d"), UmaString());
-	
+	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
+	//exemplo: cliente consola pede o username ao utilizador;
+	//envia ao servidor;
+	//recebe confirmação / rejeição; 
+	//entra em ciclo a receber novas posições da bola até uma tecla ser premida pelo utilizador).
 
-	DWORD threadId;
-	HANDLE hTBarreira;
-	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.
-	//A maneira mais fácil para ter esta funcionalidade é chamar _setmode:
-#ifdef UNICODE
-	_setmode(_fileno(stdin), _O_WTEXT);
-	_setmode(_fileno(stdout), _O_WTEXT);
-#endif
-	pdata game = (pdata)malloc(sizeof(data));
-	if (!game) {
-		printf("Erro ao reserver memoria estrutura\n");
-		return -1;
-	}
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-	game->limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-	game->limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-	stdoutMutex = CreateMutex(NULL, FALSE, NULL);
-	hidecursor();
-	hTBarreira = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Barreira, (LPVOID)game, 0, &threadId);
-	if (hTBarreira == NULL) {
-		_tprintf(TEXT("Erro ao criar thread Barreira"));
-		return -1;
-	}
-	WaitForSingleObject(hTBarreira, INFINITE);
-	free(game);
-	CloseHandle(stdoutMutex);
-	_tprintf(TEXT("[Thread Principal %d] Vou terminar..."),GetCurrentThreadId());
-	return 0;
-}
-
-DWORD WINAPI Barreira(LPVOID param) {
-	pdata gameInfo = ((pdata)param);
-	gameInfo->baTam = 15;
-	gameInfo->baPosx = gameInfo->limx / 2, gameInfo->baPosy = gameInfo->limy - 2;
-
-	WaitForSingleObject(stdoutMutex, INFINITE);
-	gotoxy(gameInfo->baPosx, gameInfo->baPosy);
-	for (int i = 0; i < gameInfo->baTam; i++) {
-		_tprintf(TEXT("O"));
-	}
-	ReleaseMutex(stdoutMutex);
-
+	createSharedMemory();
+	TCHAR str[MAX_NAME_LENGTH];
 	TCHAR KeyPress;
-	HANDLE hTBola;
-	DWORD threadId;
-	while (1) {
-		KeyPress = _getch();
-		
-		//_putch(KeyPress);
+	BOOLEAN res;
+	msg newMsg;
+
+	do {
+		_tprintf(TEXT("--Welcome to Client[%d]--\n"),GetCurrentThreadId());
+		_tprintf(TEXT("1:Login\n"));
+		_tprintf(TEXT("2:Send Message\n"));
+		_tprintf(TEXT("3:Other\n"));
+		_tprintf(TEXT("4:Exit\n"));
+
+		fflush(stdin);
+		KeyPress = _gettch();
+		_puttchar(KeyPress);
+		system("cls");
+
 		switch (KeyPress) {
-		case 'a':
-		case 'A':
-		case 'K'://left arrow
-			if (gameInfo->baPosx <= 0)
-				break;
-			WaitForSingleObject(stdoutMutex,INFINITE);
-			gotoxy(gameInfo->baPosx + gameInfo->baTam - 1, gameInfo->baPosy);
-			_tprintf(TEXT(" "));
-			gameInfo->baPosx--;
-			gotoxy(gameInfo->baPosx, gameInfo->baPosy);
-			_tprintf(TEXT("O"));
-			ReleaseMutex(stdoutMutex);
+		case '1':
+			_tprintf(TEXT("Nome do User:"), GetCurrentThreadId());
+			_tscanf_s(TEXT("%s"), str, MAX_NAME_LENGTH);
+			res = Login(str);
+			if (res) {_tprintf(TEXT("Sucesso no login\n"));}
+			else { _tprintf(TEXT("Erro no login\n")); }
 			break;
-
-		case 'd':
-		case 'D':
-		case 'M':
-		//right arrow
-			if (gameInfo->baPosx + gameInfo->baTam >= gameInfo->limx)
-				break;
-			WaitForSingleObject(stdoutMutex, INFINITE);
-			gotoxy(gameInfo->baPosx, gameInfo->baPosy);
-			_tprintf(TEXT(" "));
-			gameInfo->baPosx++;
-			gotoxy(gameInfo->baPosx + gameInfo->baTam-1, gameInfo->baPosy);
-			_tprintf(TEXT("O"));
-			ReleaseMutex(stdoutMutex);
+		case '2':
+			_tprintf(TEXT("Mensagem:"));
+			_tscanf_s(TEXT("%s"), newMsg.messageInfo, TAM);
+			newMsg.codigoMsg = 0;
+			sendMessage(newMsg);
 			break;
-		case 32:
-			WaitForSingleObject(stdoutMutex, INFINITE);
-			gotoxy(0, gameInfo->limy / 2);
-			for (int i = 0; i < gameInfo->limx; i++) {
-				_tprintf(TEXT(" "));
-			}
-			ReleaseMutex(stdoutMutex);
-			hTBola = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Bola, (LPVOID)gameInfo, 0, &threadId);
-			if (hTBola == NULL) {
-				_tprintf(TEXT("Erro ao criar thread Bola!"));
-				return -1;
-			}
-			break;
-
-		case 27://ESC
-			gotoxy(0, 1);
-			_tprintf(TEXT("EXITING"));
-			ExitThread(NULL);
+		case '3':
+			_tprintf(TEXT("3 is empty...\n"));
 			break;
 		}
-	}
+	} while (KeyPress != '4');
+
+
+
+	closeSharedMemory();
+	return 0;
+
+
+	//createSharedMemory();
+	//msg content;
+	//HANDLE canRead,canWrite;
+	//canRead = CreateSemaphore(NULL, 0,10, SEMAPHORE_MEMORY_READ);
+	//canWrite = CreateSemaphore(NULL, 10, 10, SEMAPHORE_MEMORY_WRITE);
+
+	//TCHAR str[TAM];
+	//_tprintf(TEXT("Cliente(%d)-Utilizador:"), GetCurrentThreadId());
+	//_tscanf_s(TEXT("%s"), str, TAM);
+	//boolean res = Login(str);
+	//if (res) {
+	//	_tprintf(TEXT("Sucesso no login!\n"));
+	//}
+	//int oposx = 0, oposy = 0, posx = 0 , posy = 0;
+	//system("cls");
+	//do{
+	//	oposx = posx;
+	//	oposy = posy;		
+	//	gotoxy(oposx, oposy);
+	//	WaitForSingleObject(canRead, INFINITE);
+	//	_tprintf(TEXT(" "));
+	//	content = readFromSharedMemory();
+	//	posx = content.posx;
+	//	posy = content.posy;
+	//	gotoxy(posx,posy);
+	//	_tprintf(TEXT("B"));
+	//	//_tprintf(TEXT("pos(%d,%d)\n"), content.posx, content.posy);
+	//	ReleaseSemaphore(canWrite, 1, NULL);
+	//	gotoxy(0, 0);
+	//	_tprintf(TEXT("Codigo:%d"),content.codigoMsg);
+	//} while (content.codigoMsg);
+	//
+	//_tprintf(TEXT("[Thread Principal %d] Vou terminar..."),GetCurrentThreadId());
+	//return 0;
 }
 
-DWORD WINAPI Bola(LPVOID param) {
-	pdata gameInfo = ((pdata)param);
-	srand((int)time(NULL));
-	boolean goingUp = 1, goingRight = 1;
-	DWORD posx = gameInfo->limx/2, posy = gameInfo->limy/2, oposx, oposy;
-	//goingUp = (rand() % 2);
-	goingRight = (rand() % 2);
-	WaitForSingleObject(stdoutMutex, INFINITE);
-	gotoxy(posx, posy);
-	_tprintf(TEXT("B"));
-	ReleaseMutex(stdoutMutex);
-	while (1) {
-		//Sleep(30);
-		Sleep(100);
-		oposx = posx;
-		oposy = posy;
-		if (goingRight){
-			if (posx < gameInfo->limx-1) {
-				posx++;
-			}
-			else {
-				posx--;
-				goingRight = 0;
-			}
-		}
-		else {
-			if (posx > 0) {
-				posx--;
-			}
-			else {
-				posx++;
-				goingRight = 1;
-			}
-		}
+//DWORD WINAPI Barreira(LPVOID param) {
+//	pdata gameInfo = ((pdata)param);
+//	gameInfo->baTam = 15;
+//	gameInfo->baPosx = gameInfo->limx / 2, gameInfo->baPosy = gameInfo->limy - 2;
+//
+//	hidecursor();
+//	WaitForSingleObject(stdoutMutex, INFINITE);
+//	gotoxy(gameInfo->baPosx, gameInfo->baPosy);
+//	for (int i = 0; i < gameInfo->baTam; i++) {
+//		_tprintf(TEXT("O"));
+//	}
+//	ReleaseMutex(stdoutMutex);
+//
+//	TCHAR KeyPress;
+//	HANDLE hTBola;
+//	DWORD threadId;
+//	while (1) {
+//		KeyPress = _getch();
+//
+//		//_putch(KeyPress);
+//		switch (KeyPress) {
+//		case 'a':
+//		case 'A':
+//		case 'K'://left arrow
+//			if (gameInfo->baPosx <= 0)
+//				break;
+//			WaitForSingleObject(stdoutMutex, INFINITE);
+//			gotoxy(gameInfo->baPosx + gameInfo->baTam - 1, gameInfo->baPosy);
+//			_tprintf(TEXT(" "));
+//			gameInfo->baPosx--;
+//			gotoxy(gameInfo->baPosx, gameInfo->baPosy);
+//			_tprintf(TEXT("O"));
+//			ReleaseMutex(stdoutMutex);
+//			break;
+//
+//		case 'd':
+//		case 'D':
+//		case 'M':
+//			//right arrow
+//			if (gameInfo->baPosx + gameInfo->baTam >= gameInfo->limx)
+//				break;
+//			WaitForSingleObject(stdoutMutex, INFINITE);
+//			gotoxy(gameInfo->baPosx, gameInfo->baPosy);
+//			_tprintf(TEXT(" "));
+//			gameInfo->baPosx++;
+//			gotoxy(gameInfo->baPosx + gameInfo->baTam - 1, gameInfo->baPosy);
+//			_tprintf(TEXT("O"));
+//			ReleaseMutex(stdoutMutex);
+//			break;
+//		case 32:
+//			WaitForSingleObject(stdoutMutex, INFINITE);
+//			gotoxy(0, gameInfo->limy / 2);
+//			for (int i = 0; i < gameInfo->limx; i++) {
+//				_tprintf(TEXT(" "));
+//			}
+//			ReleaseMutex(stdoutMutex);
+//			hTBola = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Bola, (LPVOID)gameInfo, 0, &threadId);
+//			if (hTBola == NULL) {
+//				_tprintf(TEXT("Erro ao criar thread Bola!"));
+//				return -1;
+//			}
+//			break;
+//
+//		case 27://ESC
+//			gotoxy(0, 1);
+//			_tprintf(TEXT("EXITING"));
+//			ExitThread(NULL);
+//			break;
+//		}
+//	}
+//}
 
-		if (goingUp) {
-			if (posy > 0) {
-				posy--;
-			}
-			else {
-				posy++;
-				goingUp = 0;
-			}
-		}
-		else {
-			if (posy < gameInfo->limy - 1) {// se nao atinge o limite do mapa
-				if (posy == gameInfo->baPosy - 1 && (posx >= gameInfo->baPosx && posx <= (gameInfo->baPosx + gameInfo->baTam))) {//atinge a barreira
-					posy--;
-					goingUp = 1;
-				}else
-					posy++;
-			}
-			else {//se atinge o fim do mapa
-				WaitForSingleObject(stdoutMutex, INFINITE);
-				gotoxy(gameInfo->limx/3, gameInfo->limy/2);
-				_tprintf(TEXT("Game Over! Press Space for another ball!\n"));
-				ReleaseMutex(stdoutMutex);
-				ExitThread(NULL);
-				posy--;
-				goingUp = 1;
-			}
-		}
-
-
-
-		/*gotoxy(5, 4);
-		_tprintf(TEXT("Barreira entre:(%d,%d) at %d\n"),gameInfo->baPosx,gameInfo->baPosx + gameInfo->baTam,gameInfo->baPosy);
-		gotoxy(5, 5);
-		_tprintf(TEXT("Right:%d\n"), goingRight);
-		gotoxy(5,5);
-		_tprintf(TEXT("Right:%d\n"),goingRight);
-		gotoxy(5, 6);
-		_tprintf(TEXT("Up:%d\n"), goingUp);
-		gotoxy(5, 7);
-		_tprintf(TEXT("posx:%d\n"), posx);
-		gotoxy(5, 8);
-		_tprintf(TEXT("posy:%d\n"), posy);*/
-
-		WaitForSingleObject(stdoutMutex, INFINITE);
-		gotoxy(oposx, oposy);
-		_tprintf(TEXT(" "));
-		gotoxy(posx, posy);
-		_tprintf(TEXT("B"));
-		ReleaseMutex(stdoutMutex);
-
-	}
-	
-}
 
 void hidecursor()
 {

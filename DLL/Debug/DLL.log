@@ -1,2 +1,2 @@
 ﻿  DLL.cpp
-  DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\DLL.dll
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\dll\dll.cpp(96): error C4700: uninitialized local variable 'newGame' used

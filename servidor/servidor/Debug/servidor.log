@@ -1,2 +1,3 @@
 ﻿  servidor.c
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(104): warning C4716: 'receiveMessageThread': must return a value
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\servidor.exe

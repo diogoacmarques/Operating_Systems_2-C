@@ -1,1 +1,4 @@
-﻿  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\cliente.exe
+﻿  cliente.c
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(42): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(42): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\cliente.exe
