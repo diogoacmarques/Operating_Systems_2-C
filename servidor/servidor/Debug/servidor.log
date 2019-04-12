@@ -1,6 +1,9 @@
 ﻿  servidor.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(96): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(162): warning C4047: 'function': 'DWORD' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(162): warning C4024: 'ExitThread': different types for formal and actual parameter 1
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(93): warning C4716: 'receiveMessageThread': must return a value
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(30): warning C4101: 'hTGame': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(200): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(209): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(237): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(187): warning C4715: 'startGame': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(144): warning C4716: 'receiveMessageThread': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(340): warning C4716: 'regestry_user': must return a value
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\servidor.exe

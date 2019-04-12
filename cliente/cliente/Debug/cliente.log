@@ -1,4 +1,4 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(51): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(51): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
-  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\cliente.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(29): warning C4101: 'userLogged': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(152): warning C4716: 'UserThread': must return a value
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\cliente.exe
