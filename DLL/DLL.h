@@ -16,18 +16,21 @@
 #define MAX_MSG 50
 #define MAX_USERS 20
 #define MAX_BALLS 20
-#define MSG_SHARED_MEMORY_NAME TEXT("MSG_SHARED_MEMORY")
-#define GAME_SHARED_MEMORY_NAME TEXT("GAME_SHARED_MEMORY")
+#define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
+#define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
+#define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
 #define SEMAPHORE_MEMORY_READ TEXT("../../memory_semaphore_read")
 #define SEMAPHORE_MEMORY_WRITE TEXT("../../memory_semaphore_write")
 #define SENDMESSAGEEVENT TEXT("../../sendMessageEvent")
 #define GAME_EVENT_NNAME TEXT("../../gameEvent")
-#define BALL_EVENT_NNAME TEXT("../../ballEvent")
+#define BALL_EVENT_NAME TEXT("../../ballEvent")
+#define USER_EVENT_NAME TEXT("../../userEvent")
+#
 
 typedef struct Message {
-	int codigoMsg;
+	int codigoMsg,user_id;
 	TCHAR messageInfo[TAM];
-} msg;
+} msg,*pmsg;
 
 typedef struct memoryMessage {
 	msg nMsg[MAX_MSG];
@@ -68,7 +71,9 @@ typedef struct {
 }game,*pgame;
 
 mMsg *msgFromMemory;
-HANDLE canRead, canWrite, gameEvent, updateBalls;
+HANDLE canMove, canWrite, gameEvent, updateBalls;
+
+
 //Definir uma constante para facilitar a leitura do protótipo da função
 //Este .h deve ser incluído no projeto que o vai usar (modo implícito)
 //Esta macro é definida pelo sistema caso estejamos na DLL (<DLL_IMP>_EXPORTS definida)
@@ -93,11 +98,10 @@ extern "C"
 	DLL_IMP_API msg receiveMessage(void);
 	DLL_IMP_API void closeSharedMemoryMsg(void);
 	//game memory
-	DLL_IMP_API game * createSharedMemoryGame(void);
+	DLL_IMP_API pgame createSharedMemoryGame(void);
 	DLL_IMP_API void closeSharedMemoryGame(void);
+
 	//functions
-	
-	DLL_IMP_API void startEvents(void);
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
 
 #ifdef __cplusplus
