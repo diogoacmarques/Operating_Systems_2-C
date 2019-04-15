@@ -21,14 +21,14 @@
 #define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
 #define SEMAPHORE_MEMORY_READ TEXT("../../memory_semaphore_read")
 #define SEMAPHORE_MEMORY_WRITE TEXT("../../memory_semaphore_write")
-#define SENDMESSAGEEVENT TEXT("../../sendMessageEvent")
+#define MESSAGE_EVENT TEXT("../../messageEvent")
 #define GAME_EVENT_NNAME TEXT("../../gameEvent")
 #define BALL_EVENT_NAME TEXT("../../ballEvent")
 #define USER_EVENT_NAME TEXT("../../userEvent")
-#
+
 
 typedef struct Message {
-	int codigoMsg,user_id;
+	int codigoMsg, number,from,to;
 	TCHAR messageInfo[TAM];
 } msg,*pmsg;
 
@@ -71,7 +71,9 @@ typedef struct {
 }game,*pgame;
 
 mMsg *msgFromMemory;
-HANDLE canMove, canWrite, gameEvent, updateBalls;
+HANDLE canMove, gameEvent, updateBalls, messageEvent;
+
+DWORD sessionId;
 
 
 //Definir uma constante para facilitar a leitura do protótipo da função

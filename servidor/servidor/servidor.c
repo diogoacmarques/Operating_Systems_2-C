@@ -18,7 +18,7 @@ int regestry_user();
 int startVars(pgame gameData);
 int moveUser(DWORD id, TCHAR side[TAM]);
 
-HANDLE receiveMessageEvent,moveBalls;
+HANDLE moveBalls;
 HANDLE hTBola[MAX_BALLS];
 
 BOOLEAN continua = 1;
@@ -37,8 +37,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_setmode(_fileno(stdin), _O_WTEXT);
 	_setmode(_fileno(stdout), _O_WTEXT);
 #endif
-
-	receiveMessageEvent = CreateEvent(NULL, FALSE, FALSE, SENDMESSAGEEVENT);
+	messageEvent = CreateEvent(NULL, TRUE, FALSE, MESSAGE_EVENT);
 	gameEvent = CreateEvent(NULL,TRUE,FALSE, GAME_EVENT_NNAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	canMove = CreateEvent(NULL, FALSE, FALSE, USER_EVENT_NAME);
@@ -76,6 +75,10 @@ int _tmain(int argc, LPTSTR argv[]) {
 		switch (KeyPress) {
 		case '1':
 			gameInfo->gameStatus = 0;
+			msg tmpMsg;
+			tmpMsg.codigoMsg = 100;//new game
+			_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("new game created"));
+			sendMessage(tmpMsg);
 			break;
 		case '2':
 			if (gameInfo->gameStatus == -1) {
@@ -102,7 +105,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	continua = 0;
 	//WaitForSingleObject(hTBola, INFINITE);
-	SetEvent(receiveMessageEvent);
 	WaitForSingleObject(hTReceiveMessage, INFINITE);
 	closeSharedMemoryMsg();
 	closeSharedMemoryGame();
@@ -118,31 +120,37 @@ DWORD WINAPI receiveMessageThread() {
 	
 	do{
 		flag = 1;
-		WaitForSingleObject(receiveMessageEvent,INFINITE);
+		WaitForSingleObject(messageEvent,INFINITE);
 		newMsg = receiveMessage();
+		_tprintf(TEXT("INBOUD\n-to:%d\n-from:%d\n"), newMsg.to, newMsg.from);
 		quant++;
-		_tprintf(TEXT("[%d]NewMsg(%d):%s\n"),quant, newMsg.codigoMsg, newMsg.messageInfo);
-		if (newMsg.codigoMsg==1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
-			_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
-			for (int i = 0; i < gameInfo->numUsers;i++) {
-				if (_tcscmp(gameInfo->nUsers[i].name, newMsg.messageInfo) == 0) {
-					flag = 0;
-					break;
-				}		
+		if (newMsg.to == 0) {
+			_tprintf(TEXT("[%d]NewMsg(%d):%s\n"), quant, newMsg.codigoMsg, newMsg.messageInfo);
+			if (newMsg.codigoMsg == 1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
+				_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
+				for (int i = 0; i < gameInfo->numUsers; i++) {
+					if (_tcscmp(gameInfo->nUsers[i].name, newMsg.messageInfo) == 0) {
+						flag = 0;
+						break;
+					}
+				}
+				if (flag) {
+					_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, newMsg.messageInfo);
+					gameInfo->nUsers[gameInfo->numUsers].user_id = newMsg.from;
+					//_tprintf(TEXT("\nAdicionei (%s) na pos %d\n\n"),usersLogged->names[usersLogged->tam], usersLogged->tam);
+					newMsg.codigoMsg = 2;
+					newMsg.number = gameInfo->numUsers++;;
+					sendMessage(newMsg);
+				}
 			}
-			if (flag) {
-				_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name,MAX_NAME_LENGTH,newMsg.messageInfo);
-				gameInfo->nUsers[gameInfo->numUsers].user_id = gameInfo->numUsers;
-				//_tprintf(TEXT("\nAdicionei (%s) na pos %d\n\n"),usersLogged->names[usersLogged->tam], usersLogged->tam);
-				gameInfo->numUsers++;
-			}
-		} else if(newMsg.codigoMsg == 200){//user trying to move
-			moveUser(newMsg.user_id,newMsg.messageInfo);
-			SetEvent(canMove);
+			else if (newMsg.codigoMsg == 200) {//user trying to move
+				moveUser(newMsg.number, newMsg.messageInfo);
+				SetEvent(canMove);
 
-			//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
-			//_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
-		}
+				//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
+				//_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
+			}
+		}		
 
 	} while (continua);
 }
@@ -338,6 +346,10 @@ int startVars(pgame gameData) {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
 	int i;
+	//Status
+	gameData->gameStatus = -1;
+	//sessionId = (GetCurrentThreadId() + GetTickCount());
+	sessionId = 0;
 	//Config
 	gameData->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 	gameData->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
@@ -360,8 +372,6 @@ int startVars(pgame gameData) {
 		gameData->nBalls[i].status = 0;
 		hTBola[i] = NULL;
 	}
-
-	gameData->gameStatus = -1;
 
 	return 0;
 }

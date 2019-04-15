@@ -11,13 +11,16 @@
 
 void hidecursor();
 void gotoxy(int x, int y);
-DWORD WINAPI readGameThread(LPVOID param);
+void readGame();
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
+DWORD WINAPI receiveMessageThread(LPVOID param);
 
-HANDLE hTreadGame,hTBola[MAX_BALLS],hTUsers[MAX_USERS], canRead, canWrite,hStdoutMutex;
+
+HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage;
 
 pgame gameInfo;
+DWORD user_id;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -32,12 +35,13 @@ int _tmain(int argc, LPTSTR argv[]) {
 	msg newMsg;
 	DWORD threadId;
 
-	canRead = CreateSemaphore(NULL, 0, 1, SEMAPHORE_MEMORY_READ);
-	canWrite = CreateSemaphore(NULL, 1, 1, SEMAPHORE_MEMORY_WRITE);
+	messageEvent = CreateEvent(NULL, TRUE, FALSE, MESSAGE_EVENT);
 	gameEvent = CreateEvent(NULL, TRUE, FALSE, GAME_EVENT_NNAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, STDOUT_CLIENT_MUTEX_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	canMove = CreateEvent(NULL, FALSE, FALSE, USER_EVENT_NAME);
+
+	sessionId = (GetCurrentThreadId() + GetTickCount());
 
 	//Message
 	createSharedMemoryMsg();
@@ -45,6 +49,11 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//gameInfo = (game *)malloc(sizeof(game));
 	gameInfo = createSharedMemoryGame();
 
+	hTreceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, &threadId);
+	if (hTreceiveMessage == NULL) {
+		_tprintf(TEXT("Erro ao criar thread para receber mensagens!\n"));
+		return -1;
+	}
 
 	//system("cls");
 
@@ -68,12 +77,13 @@ int _tmain(int argc, LPTSTR argv[]) {
 			res = Login(str);
 			if (res) {_tprintf(TEXT("Sucesso no login\n"));}
 			else { _tprintf(TEXT("Erro no login\n")); }
-			hTreadGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readGameThread, NULL, 0, &threadId);
+			//readGame();
+			/*hTreadGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readGameThread, NULL, 0, &threadId);
 			if (hTreadGame == NULL) {
 				_tprintf(TEXT("Erro ao criar thread readGameThread!"));
 				return -1;
 			}
-			WaitForSingleObject(hTreadGame, INFINITE);
+			WaitForSingleObject(hTreadGame, INFINITE);*/
 			break;
 		case '2':
 			_tprintf(TEXT("Mensagem:"));
@@ -85,15 +95,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 			//newMsg.codigoMsg = 10;//new game
 			//_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, userLogged);
 			//sendMessage(newMsg);
-			hTreadGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readGameThread, NULL, 0, &threadId);
-			if (hTreadGame == NULL) {
-				_tprintf(TEXT("Erro ao criar thread readGameThread!"));
-				return -1;
-			}
-			WaitForSingleObject(hTreadGame, INFINITE);
 			break;
 		case '4':
-			ReleaseSemaphore(canWrite, 1, NULL);
 			break;
 		}
 	} while (KeyPress != '5');
@@ -102,33 +105,52 @@ int _tmain(int argc, LPTSTR argv[]) {
 	closeSharedMemoryMsg();
 	closeSharedMemoryGame();
 	return 0;
-
 }
 
-DWORD WINAPI readGameThread(LPVOID param) {
+DWORD WINAPI receiveMessageThread(LPVOID param) {
+	msg newMsg;
+	int quant = 0;
+	do {
+		WaitForSingleObject(messageEvent, INFINITE);
+		_tprintf(TEXT("INBOUD\n"));
+		newMsg = receiveMessage();
+		if (newMsg.to == sessionId || newMsg.to == 255) {//255 = broadcast
+			_tprintf(TEXT("[%d]NewMsg(%d):%s\n"), quant++, newMsg.codigoMsg, newMsg.messageInfo);
+			if (newMsg.codigoMsg == 2) {//login with success
+				_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso, waiting for game to be created\n"), newMsg.messageInfo);
+				user_id = newMsg.number;
+			}
+			else if (newMsg.codigoMsg == 100) {//new game
+				readGame();
+			}
+		}
+	} while (1);
+}
+
+void readGame() {
 	DWORD threadId;
 	_tprintf(TEXT("Waiting for game to start...\n"));
 	WaitForSingleObject(gameEvent, INFINITE);
 	system("cls");
 	hidecursor();
-	for (int i = 0; i < gameInfo->numBalls; i++) {
-		hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
-		if (hTBola[i] == NULL) {
-			_tprintf(TEXT("Erro ao criar thread para bola numero:%d!"),i);
-			return -1;
-		}
+
+	hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, &threadId);
+	if (hTUserInput == NULL) {
+		_tprintf(TEXT("Erro ao criar thread para o utilizador!\n"));
+		return -1;
 	}
 
-	for (int i = 0; i < gameInfo->numUsers; i++) {
-		hTUsers[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, (LPVOID)i, 0, &threadId);
-		if (hTUsers[i] == NULL) {
-			_tprintf(TEXT("Erro ao criar thread para bola numero:%d!"), i);
-			return -1;
+	do {
+		for (int i = 0; i < gameInfo->numBalls; i++) {
+			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
+			if (hTBola[i] == NULL) {
+				_tprintf(TEXT("Erro ao criar thread para bola numero:%d!"), i);
+				return -1;
+			}
 		}
-	}
 
-	WaitForMultipleObjects(gameInfo->numBalls, hTBola, TRUE, INFINITE);
-	WaitForMultipleObjects(gameInfo->numUsers, hTUsers, TRUE, INFINITE);
+		WaitForMultipleObjects(gameInfo->numBalls, hTBola, TRUE, INFINITE);
+	} while (gameInfo->nUsers[user_id].lifes);
 	//system("cls");
 	_tprintf(TEXT("end of game!!\n"));
 	return 0;
@@ -136,24 +158,23 @@ DWORD WINAPI readGameThread(LPVOID param) {
 
 
 DWORD WINAPI UserThread(LPVOID param){
-	DWORD id = ((DWORD)param);
-	user userInfo = gameInfo->nUsers[id];
+	user userInfo = gameInfo->nUsers[user_id];
 	WaitForSingleObject(hStdoutMutex, INFINITE);
 	gotoxy(userInfo.posx, userInfo.posy);
 	for (int i = 0; i < userInfo.size; i++) {
-		_tprintf(TEXT("%d"),id);
+		_tprintf(TEXT("%d"), user_id);
 	}
 	ReleaseMutex(hStdoutMutex);
 
 	TCHAR KeyPress;
 	msg gameMsg;
 	BOOLEAN flag;
-	gameMsg.user_id = id;
+	gameMsg.number = user_id;
 	gameMsg.codigoMsg = 200;
-	while(gameInfo->nUsers[0].lifes >= 0) {
+	while(gameInfo->nUsers[user_id].lifes >= 0) {
 		WaitForSingleObject(hStdoutMutex, INFINITE);
 		gotoxy(0, 0);
-		_tprintf(TEXT("LIFES:%d"),gameInfo->nUsers[0].lifes);
+		_tprintf(TEXT("LIFES:%d"),gameInfo->nUsers[user_id].lifes);
 		ReleaseMutex(hStdoutMutex);
 		flag = 0;
 		fflush(stdin);
@@ -196,14 +217,14 @@ DWORD WINAPI UserThread(LPVOID param){
 				}
 
 		WaitForSingleObject(canMove, INFINITE);
-		userInfo = gameInfo->nUsers[id];
+		userInfo = gameInfo->nUsers[user_id];
 		if (flag) {
 			if (_tcscmp(gameMsg.messageInfo, TEXT("left")) == 0) {
 				WaitForSingleObject(hStdoutMutex, INFINITE);
 				gotoxy(userInfo.posx + userInfo.size, userInfo.posy);
 				_tprintf(TEXT(" "));
 				gotoxy(userInfo.posx, userInfo.posy);
-				_tprintf(TEXT("%d"), id);
+				_tprintf(TEXT("%d"), user_id);
 				ReleaseMutex(hStdoutMutex);
 			}
 			else if (_tcscmp(gameMsg.messageInfo, TEXT("right")) == 0) {
@@ -211,7 +232,7 @@ DWORD WINAPI UserThread(LPVOID param){
 				gotoxy(userInfo.posx - 1, userInfo.posy);
 				_tprintf(TEXT(" "));
 				gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
-				_tprintf(TEXT("%d"), id);
+				_tprintf(TEXT("%d"), user_id);
 				ReleaseMutex(hStdoutMutex);
 			}
 			else if(_tcscmp(gameMsg.messageInfo, TEXT("space")) == 0) {
