@@ -1,17 +1,18 @@
 ﻿  servidor.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(30): warning C4101: 'hTGame': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(205): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(210): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(213): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(218): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(229): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(257): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(261): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(261): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(263): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(263): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(146): warning C4716: 'receiveMessageThread': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(187): warning C4715: 'startGame': not all control paths return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(214): warning C4716: 'moveUser': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(375): warning C4716: 'regestry_user': must return a value
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(32): warning C4101: 'hTGame': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(199): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(204): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(207): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(219): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(237): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(248): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(276): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(280): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(280): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(282): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(282): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(181): warning C4715: 'startGame': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(148): warning C4716: 'receiveMessageThread': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(208): warning C4716: 'moveUser': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(406): warning C4716: 'regestry_user': must return a value
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\servidor.exe

@@ -147,45 +147,31 @@ DWORD WINAPI UserThread(LPVOID param){
 
 	TCHAR KeyPress;
 	msg gameMsg;
+	BOOLEAN flag;
 	gameMsg.user_id = id;
 	gameMsg.codigoMsg = 200;
-	while (1) {
+	while(gameInfo->nUsers[0].lifes >= 0) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(0, 0);
+		_tprintf(TEXT("LIFES:%d"),gameInfo->nUsers[0].lifes);
+		ReleaseMutex(hStdoutMutex);
+		flag = 0;
 		fflush(stdin);
 		KeyPress = _gettch();
 		//_putch(keypress);
 		switch (KeyPress) {
 			case 'a':
 			case 'A':
-			case 'k'://left arrow
+				flag = 1;
 				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
 				sendMessage(gameMsg);
-
-				/*if (userInfo.posx <= 0)
-					break;
-				WaitForSingleObject(hStdoutMutex, INFINITE);
-				gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
-				_tprintf(text(" "));
-				gameInfo->nUsers[id].posx--;
-				gotoxy(userInfo.posx, userInfo.posy);
-				_tprintf(text("o"));
-				ReleaseMutex(hStdoutMutex);*/
 				break;
 		
 				case 'd':
-				case 'D':
-				case 'm':		
-					//right arrow
+				case 'D':	
+					flag = 1;
 					_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
 					sendMessage(gameMsg);
-					/*if (userInfo.posx + userInfo.size >= gameInfo->myconfig.limx)
-						break;
-					WaitForSingleObject(hStdoutMutex, INFINITE);
-					gotoxy(userInfo.posx, userInfo.posy);
-					_tprintf(text(" "));
-					gameInfo->nUsers[id].posx++;
-					gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
-					_tprintf(text("o"));
-					ReleaseMutex(hStdoutMutex);*/
 					break;
 
 				case 32://sends ball
@@ -211,21 +197,26 @@ DWORD WINAPI UserThread(LPVOID param){
 
 		WaitForSingleObject(canMove, INFINITE);
 		userInfo = gameInfo->nUsers[id];
-		if (_tcscmp(gameMsg.messageInfo, TEXT("left")) == 0) {
-			WaitForSingleObject(hStdoutMutex, INFINITE);
-			gotoxy(userInfo.posx + userInfo.size, userInfo.posy);
-			_tprintf(TEXT(" "));
-			gotoxy(userInfo.posx, userInfo.posy);
-			_tprintf(TEXT("%d"), id);
-			ReleaseMutex(hStdoutMutex);
-		}
-		else if(_tcscmp(gameMsg.messageInfo, TEXT("right")) == 0) {
-			WaitForSingleObject(hStdoutMutex, INFINITE);
-			gotoxy(userInfo.posx - 1, userInfo.posy);
-			_tprintf(TEXT(" "));
-			gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
-			_tprintf(TEXT("%d"), id);
-			ReleaseMutex(hStdoutMutex);
+		if (flag) {
+			if (_tcscmp(gameMsg.messageInfo, TEXT("left")) == 0) {
+				WaitForSingleObject(hStdoutMutex, INFINITE);
+				gotoxy(userInfo.posx + userInfo.size, userInfo.posy);
+				_tprintf(TEXT(" "));
+				gotoxy(userInfo.posx, userInfo.posy);
+				_tprintf(TEXT("%d"), id);
+				ReleaseMutex(hStdoutMutex);
+			}
+			else if (_tcscmp(gameMsg.messageInfo, TEXT("right")) == 0) {
+				WaitForSingleObject(hStdoutMutex, INFINITE);
+				gotoxy(userInfo.posx - 1, userInfo.posy);
+				_tprintf(TEXT(" "));
+				gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
+				_tprintf(TEXT("%d"), id);
+				ReleaseMutex(hStdoutMutex);
+			}
+			else if(_tcscmp(gameMsg.messageInfo, TEXT("space")) == 0) {
+				//do something
+			}
 		}
 	}
 
@@ -266,7 +257,11 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		//_tprintf(TEXT("Bola[%d]-(%d,%d)\n"), id, ballInfo.posx, ballInfo.posy);
 		ReleaseMutex(hStdoutMutex);
 	} while (ballInfo.status);
-	_tprintf(TEXT("Bola[%d]-Deleted\n"), id);
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(posx, posy);
+	_tprintf(TEXT(" "));
+	ReleaseMutex(hStdoutMutex);
+	//_tprintf(TEXT("Bola[%d]-Deleted\n"), id);
 	return 0;
 }
 

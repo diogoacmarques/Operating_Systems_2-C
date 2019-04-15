@@ -13,11 +13,13 @@ DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI userThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
 int startGame();
+void createBalls(DWORD num);
 int regestry_user();
 int startVars(pgame gameData);
 int moveUser(DWORD id, TCHAR side[TAM]);
 
 HANDLE receiveMessageEvent,moveBalls;
+HANDLE hTBola[MAX_BALLS];
 
 BOOLEAN continua = 1;
 
@@ -93,7 +95,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 				_tprintf(TEXT("User[%d]=(%s)\n"), i, gameInfo->nUsers[i].name);
 			break;
 		case '4':
-
+			_tprintf(TEXT("Still in the works\n"));
 			break;
 		}
 	} while (KeyPress != '5');
@@ -146,7 +148,7 @@ DWORD WINAPI receiveMessageThread() {
 }
 
 int startGame() {
-	HANDLE hTBola[MAX_BALLS], hTUser[MAX_USERS];
+	HANDLE hTUser[MAX_USERS];
 	DWORD threadId;
 	int i;
 
@@ -169,18 +171,10 @@ int startGame() {
 		}
 	}
 
-	for (i = 0; i < gameInfo->numBalls; i++) {
-		hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
-		//Sleep(1000);
-		if (hTBola[i] == NULL) {
-			_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
-			return -1;
-		}
-		else {
-			_tprintf(TEXT("Created Ball number:%d!\n"), i);
-		}
 
-	}
+	Sleep(3000);
+
+	createBalls(1);
 	SetEvent(gameEvent);
 	ResetEvent(gameEvent);
 	WaitForMultipleObjects(gameInfo->numBalls, hTBola, TRUE, INFINITE);
@@ -194,7 +188,7 @@ DWORD WINAPI userThread(LPVOID param) {
 	gameInfo->nUsers[id].posx = gameInfo->myconfig.limx / 2;
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 2;
 	gameInfo->nUsers[id].lifes = 3;
-
+	Sleep(5000);
 	return 0;
 }
 
@@ -210,6 +204,31 @@ int moveUser(DWORD id, TCHAR side[TAM]) {
 			return;
 		gameInfo->nUsers[id].posx--;
 	}
+	return;
+}
+
+void createBalls(DWORD num){
+	//create num balls
+	DWORD count = 0;
+	DWORD threadId;
+	for (int i = 0; i < MAX_BALLS; i++) {
+		if (hTBola[i] == NULL) {//se handle is available
+			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
+			if (hTBola[i] == NULL) {
+				_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
+				return -1;
+			}
+			else {
+				_tprintf(TEXT("Created Ball number:%d!\n"), i);
+				gameInfo->numBalls++;
+				count++;
+			}
+		}
+
+		if (num >= count)
+			break;
+	}
+
 	return;
 }
 
@@ -257,7 +276,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			if (posy < gameInfo->myconfig.limy - 1) {// se nao atinge o limite do mapa
 
 				for (int i = 0; i < gameInfo->numUsers; i++) {
-					_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
+					//_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
 					if (posy == gameInfo->nUsers[i].posy - 1 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size))) {//atinge a barreira
 						flag = 1;
 						_tprintf(TEXT("HIT!!\n"), id);	
@@ -277,6 +296,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 				gameInfo->nBalls[id].status = -1;//end of ball
 				gameInfo->nBalls[id].posx = 0;
 				gameInfo->nBalls[id].posy = 0;
+				gameInfo->numBalls--;
 				_tprintf(TEXT("End of Ball %d!\n"),id);
 			}
 		}
@@ -289,16 +309,26 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		else
 			gameInfo->nBalls[id].status = 1;
 
-		ReleaseSemaphore(moveBalls, 1, &num);
+		//ReleaseSemaphore(moveBalls, 1, &num);
 		//_tprintf(TEXT("ball[%d];num=%d!\n"),id,num);
 		//_tprintf(TEXT("Ball[%d]!\n"),id);
-		if (num == gameInfo->numBalls - 1) {
+		//if (num == gameInfo->numBalls - 1) {
 			//_tprintf(TEXT("Balls moved(%d,%d)\n"),posx,posy);
 			SetEvent(updateBalls);
 			ResetEvent(updateBalls);
-		}
+		//}
 	} while (gameInfo->nBalls[id].status);
 	
+	CloseHandle(hTBola[id]);
+	hTBola[id] = NULL;
+
+	if (gameInfo->numBalls == 0) {
+		if (gameInfo->nUsers[0].lifes) {
+			gameInfo->nUsers[0].lifes--;
+			createBalls(1);
+		}
+			
+	}
 	return 0;
 }
 
@@ -323,11 +353,12 @@ int startVars(pgame gameData) {
 		gameData->nUsers[i].posy = 0;
 	}
 	//Balls
-	gameData->numBalls = 1;
+	gameData->numBalls = 0;
 	for (i = 0; i < MAX_BALLS; i++) {
 		gameData->nBalls[i].posx = 0;
 		gameData->nBalls[i].posy = 0;
 		gameData->nBalls[i].status = 0;
+		hTBola[i] = NULL;
 	}
 
 	gameData->gameStatus = -1;
