@@ -1,7 +1,12 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(34): warning C4101: 'userLogged': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(155): warning C4098: 'readGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(163): warning C4098: 'readGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(173): warning C4098: 'readGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(257): warning C4716: 'UserThread': must return a value
-  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\cliente.exe
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(59): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(38): warning C4101: 'res': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(39): warning C4101: 'newMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(36): warning C4101: 'userLogged': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(37): warning C4101: 'KeyPress': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(40): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(177): warning C4098: 'readGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(180): warning C4098: 'readGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(192): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\cliente\cliente\cliente.c(166): warning C4715: 'receiveBroadcast': not all control paths return a value
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\cliente.exe
