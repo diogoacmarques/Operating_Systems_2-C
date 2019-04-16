@@ -21,14 +21,15 @@
 #define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
 #define SEMAPHORE_MEMORY_READ TEXT("../../memory_semaphore_read")
 #define SEMAPHORE_MEMORY_WRITE TEXT("../../memory_semaphore_write")
-#define MESSAGE_EVENT TEXT("../../messageEvent")
+#define MESSAGE_EVENT_NAME TEXT("../../messageEventServer")
+#define MESSAGE_BROADCAST_EVENT_NAME TEXT("../../messageEventBroadcast")
 #define GAME_EVENT_NNAME TEXT("../../gameEvent")
 #define BALL_EVENT_NAME TEXT("../../ballEvent")
-#define USER_EVENT_NAME TEXT("../../userEvent")
+#define USER_MOVE_EVENT_NAME TEXT("../../userMoveEvent")
 
 
 typedef struct Message {
-	int codigoMsg, number,from,to;
+	DWORD codigoMsg, number,from,to;
 	TCHAR messageInfo[TAM];
 } msg,*pmsg;
 
@@ -71,9 +72,8 @@ typedef struct {
 }game,*pgame;
 
 mMsg *msgFromMemory;
-HANDLE canMove, gameEvent, updateBalls, messageEvent;
-
-DWORD sessionId;
+HANDLE canMove, gameEvent, updateBalls;
+HANDLE messageEventClient[MAX_USERS];
 
 
 //Definir uma constante para facilitar a leitura do protótipo da função
@@ -105,6 +105,7 @@ extern "C"
 
 	//functions
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
+	DLL_IMP_API void createHandles(void);
 
 #ifdef __cplusplus
 }
