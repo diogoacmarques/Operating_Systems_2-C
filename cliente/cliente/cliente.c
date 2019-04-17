@@ -13,6 +13,7 @@ void hidecursor();
 void gotoxy(int x, int y);
 void readGame();
 void createBalls(DWORD num);
+void drawHelp(BOOLEAN num);
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI receiveMessageThread(LPVOID param);
@@ -154,17 +155,17 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 			
 		WaitForSingleObject(hStdoutMutex, INFINITE);
 		gotoxy(0, 1);
-		_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
+		//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
 		ReleaseMutex(hStdoutMutex);
 		
 		if (inMsg.codigoMsg == 1) {//successful login
 			_tcscpy_s(str, TAM, TEXT("messageEventClient"));
 			_itot_s(inMsg.number, tmp, TAM, 10);
 			_tcscat_s(str, TAM, tmp);
-			_tprintf(TEXT("(Client) HANDLE = (%s)\n"), str);
+			//_tprintf(TEXT("(Client) HANDLE = (%s)\n"), str);
 			messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
 			user_id = inMsg.number;
-			_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\n"), inMsg.messageInfo);
+			_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\nWaiting for server to start"), inMsg.messageInfo);
 
 			hTreceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, NULL);
 			if (hTreceiveMessage == NULL) {
@@ -187,7 +188,6 @@ void readGame() {
 	DWORD threadId;
 	WaitForSingleObject(gameEvent, INFINITE);
 	hidecursor();
-	system("cls");
 
 	hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, &threadId);
 	if (hTUserInput == NULL) {
@@ -224,6 +224,8 @@ void createBalls(DWORD num) {
 
 DWORD WINAPI UserThread(LPVOID param){
 	user userInfo = gameInfo->nUsers[user_id];
+	system("cls");
+	drawHelp(1);
 	WaitForSingleObject(hStdoutMutex, INFINITE);
 	gotoxy(userInfo.posx, userInfo.posy);
 	for (int i = 0; i < userInfo.size; i++) {
@@ -257,7 +259,8 @@ DWORD WINAPI UserThread(LPVOID param){
 					sendMessage(gameMsg);
 					break;
 
-				case 32://sends ball				
+				case 32://sends ball	
+					drawHelp(0);
 					SetEvent(gameEvent);
 					ResetEvent(gameEvent);
 					break;
@@ -328,7 +331,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		gotoxy(posx, posy);
 		_tprintf(TEXT("%d"),id);
 		gotoxy(0, 0);
-		_tprintf(TEXT("LIFES:%d|SCORE%d"), gameInfo->nUsers[user_id].lifes,gameInfo->nUsers[user_id].score);
+		_tprintf(TEXT("LIFES:%d|SCORE:%d"), gameInfo->nUsers[user_id].lifes,gameInfo->nUsers[user_id].score);
 		//_tprintf(TEXT("Bola[%d]-(%d,%d)\n"), id, ballInfo.posx, ballInfo.posy);
 		ReleaseMutex(hStdoutMutex);
 	} while (ballInfo.status);
@@ -358,4 +361,19 @@ void gotoxy(int x, int y) {
 	if (!hStdout)
 		hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleCursorPosition(hStdout, coord);
+}
+
+void drawHelp(BOOLEAN num) {
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	if (num) {
+		_tprintf(TEXT("A/D - Move\n"));
+		_tprintf(TEXT("SPACE - New Ball\n"));
+		_tprintf(TEXT("ESC - EXIT\n"));
+	}
+	else {
+		gotoxy(0, 0);
+		_tprintf(TEXT("                        \n                      \n\                      "));
+	}
+	ReleaseMutex(hStdoutMutex);
+	return;
 }

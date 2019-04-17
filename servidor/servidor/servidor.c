@@ -79,7 +79,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		fflush(stdin);
 		KeyPress = _gettch();
 		_puttchar(KeyPress);
-		system("cls");
+		//system("cls");
 
 		switch (KeyPress) {
 		case '1':
@@ -97,6 +97,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 			else if (gameInfo->numUsers >= 0) {
 				_tprintf(TEXT("Game is starting!\n"));
 				startGame();
+				system("cls");				
 			}
 			else {
 				_tprintf(TEXT("No users playing have joined in.\n"));
@@ -134,7 +135,7 @@ DWORD WINAPI receiveMessageThread() {
 		WaitForSingleObject(messageEvent,INFINITE);
 		newMsg = receiveMessage();
 		quant++;
-		_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
+		//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
 			_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
 			for (int i = 0; i < gameInfo->numUsers; i++) {
@@ -162,6 +163,9 @@ DWORD WINAPI receiveMessageThread() {
 			else {
 				_tprintf(TEXT("not enough for top 10!\n"));
 			}
+			SetEvent(gameEvent);//releases user that is waiting for input?
+			ResetEvent(gameEvent);
+			Sleep(250);
 			resetUser(newMsg.from);
 			gameInfo->numUsers--;
 			newMsg.to = newMsg.from;
@@ -208,27 +212,30 @@ int startGame() {
 	}
 	
 	SetEvent(gameEvent);
-	ResetEvent(gameEvent);
+	ResetEvent(gameEvent);//lets users know that the game started
 
-	WaitForMultipleObjects(gameInfo->numBalls, hTBola, TRUE, INFINITE);
+	WaitForMultipleObjects(gameInfo->numUsers, hTUser, TRUE, INFINITE);
+	_tprintf(TEXT("out of start game!\n"));
 }
 
 DWORD WINAPI userThread(LPVOID param) {
 	DWORD id = ((DWORD)param);
 	user userData;
 	userData = gameInfo->nUsers[id];
-	_tprintf(TEXT("(THREAD)User:%s-id[%d]\n"),userData.name,id);
+	//_tprintf(TEXT("(THREAD)User:%s-id[%d]\n"),userData.name,id);
 	gameInfo->nUsers[id].posx = gameInfo->myconfig.limx / 2;
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 2;
 	gameInfo->nUsers[id].lifes = 3;
 	
-	_tprintf(TEXT("Waiting for a user to let us know that we can start\n"));
+	//_tprintf(TEXT("Waiting for a user to let us know that we can start\n"));
+	Sleep(250);
 	while (gameInfo->nUsers[id].lifes > 0){
+		//_tprintf(TEXT("User[%d] waiting for input %d lifes\n"), id, gameInfo->nUsers[id].lifes);
 		WaitForSingleObject(gameEvent, INFINITE);
 		if(gameInfo->nUsers[id].lifes > 0 && gameInfo->numBalls == 0)
 			createBalls(1);
 	}
-	_tprintf(TEXT("fim de jogo para o User. Score final de: %d\n"), gameInfo->nUsers[0].score);
+	_tprintf(TEXT("fim de jogo para o User. Score final de: %d\n"), gameInfo->nUsers[id].score);
 	return 0;
 }
 
@@ -467,23 +474,24 @@ int registry(user userData) {
 	else if (regOutput == REG_OPENED_EXISTING_KEY) {//if there are scores
 		//_tprintf(TEXT("Chave: (HKEY_CURRENT_USER\\Software\\SO2_TP) - Aberta\n"));
 		for (int i = 0; i < 10; i++) {
-			flag = 0;
 			flag_2 = 0;
 			_tcscpy_s(name, TAM, TEXT("HighScore"));
 			_itot_s(i, info, TAM, 10);
 			_tcscat_s(name, TAM, info);
 			RegQueryValueEx(chave,name, NULL, NULL, (LPBYTE)info, &tam);
 			//_tprintf(TEXT("Lido from(%s) = %s\n"),name,info);
-			while(info[flag]!=':'){//copy name
+			for(flag = 0;flag<MAX_NAME_LENGTH;flag++){
+			//while(info[flag]!=':'){//copy name
+				if (info[flag] == ':')
+					break;
 				user_name[flag] = info[flag];
-				flag++;
 			}
 			user_name[flag] = '\0';//end of user_name
 			flag++;
-			while (info[flag] != '\0') {//copy score
+			for (; flag < MAX_NAME_LENGTH; flag++) {
+			//while (info[flag] != '\0') {//copy score
 				tmp[flag_2] = info[flag];
 				flag_2++;
-				flag++;
 			}
 			tmp[flag_2] = '\0';//end of score
 			score = _tstoi(tmp);//tranlate
