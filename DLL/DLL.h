@@ -56,7 +56,7 @@ typedef struct Player {
 	TCHAR name[MAX_NAME_LENGTH];
 	int user_id;
 	int lifes;
-	int score;
+	DWORD score;
 	int size;
 	int posx, posy;
 	

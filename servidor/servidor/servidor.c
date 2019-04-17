@@ -14,8 +14,9 @@ DWORD WINAPI userThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
 int startGame();
 void createBalls(DWORD num);
-int regestry_user();
-int startVars(pgame gameData);
+int startVars();
+void resetUser(DWORD id);
+int registry(user userData);
 int moveUser(DWORD id, TCHAR side[TAM]);
 
 HANDLE moveBalls;
@@ -51,7 +52,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//Message
 	createSharedMemoryMsg();
 
-	BOOLEAN res = startVars(gameInfo);
+	BOOLEAN res = startVars();
 	if (res) {
 		_tprintf(TEXT("Erro ao iniciar as variaveis!"));
 	}
@@ -62,6 +63,11 @@ int _tmain(int argc, LPTSTR argv[]) {
 		return -1;
 	}
 
+	msg tmpMsg;
+	user tmp_user;
+	tmp_user.score = 0;
+	_tcscpy_s(tmp_user.name, MAX_NAME_LENGTH, TEXT("just checking"));
+	registry(tmp_user); //Creates/Checks TOP 10
 	do{
 		_tprintf(TEXT("--Welcome to Server--\n"));
 		_tprintf(TEXT("1:Create Game\n"));
@@ -78,7 +84,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 		switch (KeyPress) {
 		case '1':
 			gameInfo->gameStatus = 0;
-			msg tmpMsg;
 			tmpMsg.codigoMsg = 100;//new game
 			tmpMsg.from = server_id;
 			tmpMsg.to = 255; //broadcast
@@ -103,8 +108,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 				_tprintf(TEXT("User[%d]=(%s)\n"), i, gameInfo->nUsers[i].name);
 			break;
 		case '4':
-			_tprintf(TEXT("Still in the works\n"));
-			createBalls(1);
+			registry(tmp_user);
 			break;
 		}
 	} while (KeyPress != '5');
@@ -143,12 +147,27 @@ DWORD WINAPI receiveMessageThread() {
 				_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, newMsg.messageInfo);
 				gameInfo->nUsers[gameInfo->numUsers].user_id = newMsg.from;
 				//_tprintf(TEXT("\nAdicionei (%s) na pos %d\n\n"),usersLogged->names[usersLogged->tam], usersLogged->tam);
-				newMsg.codigoMsg = 2;//sucesso
+				newMsg.codigoMsg = 1;//sucesso
 				newMsg.number = gameInfo->numUsers++;;
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
 				sendMessage(newMsg);
 			}
+		}
+		else if (newMsg.codigoMsg == 2) {//end of user
+			int res = registry(gameInfo->nUsers[newMsg.from]);
+			if (res) {
+				_tprintf(TEXT("new high score saved!\n"));
+			}
+			else {
+				_tprintf(TEXT("not enough for top 10!\n"));
+			}
+			resetUser(newMsg.from);
+			gameInfo->numUsers--;
+			newMsg.to = newMsg.from;
+			newMsg.from = server_id;
+			newMsg.codigoMsg = 2;
+			sendMessage(newMsg);
 		}
 		else if (newMsg.codigoMsg == 200) {//user trying to move
 			moveUser(newMsg.from, newMsg.messageInfo);
@@ -204,10 +223,12 @@ DWORD WINAPI userThread(LPVOID param) {
 	gameInfo->nUsers[id].lifes = 3;
 	
 	_tprintf(TEXT("Waiting for a user to let us know that we can start\n"));
-	do {	
+	while (gameInfo->nUsers[id].lifes > 0){
 		WaitForSingleObject(gameEvent, INFINITE);
-	createBalls(1);
-	} while (gameInfo->nUsers[id].lifes > 0);
+		if(gameInfo->nUsers[id].lifes > 0 && gameInfo->numBalls == 0)
+			createBalls(1);
+	}
+	_tprintf(TEXT("fim de jogo para o User. Score final de: %d\n"), gameInfo->nUsers[0].score);
 	return 0;
 }
 
@@ -232,7 +253,6 @@ void createBalls(DWORD num){
 	DWORD threadId;
 	int i;
 	for (i = 0; i < MAX_BALLS; i++) {
-		_tprintf(TEXT("for(%d)\n"),i);
 		if (hTBola[i] == NULL) {//se handle is available
 			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
 			if (hTBola[i] == NULL) {
@@ -265,11 +285,11 @@ void createBalls(DWORD num){
 DWORD WINAPI BolaThread(LPVOID param) {
 	DWORD id = ((DWORD)param);
 	srand((int)time(NULL));
-	DWORD posx = gameInfo->myconfig.limx/2, posy = gameInfo->myconfig.limy / 2, oposx, oposy,num=0;
+	DWORD posx = gameInfo->myconfig.limx/2, posy = gameInfo->myconfig.limy / 2, oposx, oposy,num=0,ballScore = 0;
 	boolean goingUp = 1, goingRight = (rand() % 2), flag;
-	goingRight = 0;
 	gameInfo->nBalls[id].status = 1;
 	do{
+		ballScore = GetTickCount();
 		flag = 0;
 		Sleep(250);
 		//Sleep(1000);
@@ -344,13 +364,19 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			//_tprintf(TEXT("Balls moved(%d,%d)\n"),posx,posy);
 			SetEvent(updateBalls);
 			ResetEvent(updateBalls);
+
+		
+		for (int i = 0; i < gameInfo->numUsers; i++) {
+			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
+		}
 		//}
 	} while (gameInfo->nBalls[id].status);
 	
-	
 	if(gameInfo->numBalls == 0)
-		for(int i = 0;i<gameInfo->numUsers;i++)
+		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].lifes--;
+		}
+			
 	hTBola[id] = NULL;
 	_tprintf(TEXT("End of Ball %d!\n"), id);
 
@@ -366,75 +392,117 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 
 
-int startVars(pgame gameData) {
+int startVars() {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
 	int i;
 	//Status
-	gameData->gameStatus = -1;
+	gameInfo->gameStatus = -1;
 	//sessionId = (GetCurrentThreadId() + GetTickCount());
 	server_id = 254;
 	//Config
-	gameData->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-	gameData->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+	gameInfo->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+	gameInfo->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	//Users
-	gameData->numUsers = 0;
+	gameInfo->numUsers = 0;
 	for (i = 0; i < MAX_USERS; i++) {
-		_stprintf_s(gameInfo->nUsers[i].name, MAX_NAME_LENGTH, TEXT("empty"));
-		gameData->nUsers[i].user_id = -1;
-		gameData->nUsers[i].lifes = 3;
-		gameData->nUsers[i].score = 0;
-		gameData->nUsers[i].size = 10;
-		gameData->nUsers[i].posx = 0;
-		gameData->nUsers[i].posy = 0;
+		resetUser(i);
 	}
 	//Balls
-	gameData->numBalls = 0;
+	gameInfo->numBalls = 0;
 	for (i = 0; i < MAX_BALLS; i++) {
-		gameData->nBalls[i].posx = 0;
-		gameData->nBalls[i].posy = 0;
-		gameData->nBalls[i].status = 0;
+		gameInfo->nBalls[i].posx = 0;
+		gameInfo->nBalls[i].posy = 0;
+		gameInfo->nBalls[i].status = 0;
 		hTBola[i] = NULL;
 	}
 
 	return 0;
 }
 
-int regestry_user() {
+void resetUser(DWORD id) {
+	//_tprintf(TEXT("Reseting user %d\n"), id);
+	_stprintf_s(gameInfo->nUsers[id].name, MAX_NAME_LENGTH, TEXT("empty"));
+	gameInfo->nUsers[id].user_id = -1;
+	gameInfo->nUsers[id].lifes = 3;
+	gameInfo->nUsers[id].score = 0;
+	gameInfo->nUsers[id].size = 10;
+	gameInfo->nUsers[id].posx = 0;
+	gameInfo->nUsers[id].posy = 0;
+}
 
-	//HKEY chave;
-	//DWORD regOutput, regVersion, regSize;
+int registry(user userData) {
+	//_tprintf(TEXT("Saving user %s with the score of %d\n"), userData.name, userData.score);
+	HKEY chave;
+	DWORD regOutput, regVersion, regSize;
+	TCHAR info[TAM];
+	TCHAR name[TAM];
+	TCHAR tmp[TAM];
+	TCHAR user_name[TAM];
+	TCHAR tmp_2[TAM];
+	DWORD score = 0, tam = TAM, user_score;
+	int flag, flag_2;
+	BOOLEAN value = 0;
 
-	//if (RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("Software\\SO2_TP"), 0, NULL,
-	//	REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &chave, &regOutput) != ERROR_SUCCESS) {
-	//	_tprintf(TEXT("Erro ao criar/abrir chave (%d)\n"), GetLastError());
-	//	return -1;
-	//}
-
-	//if (regOutput == REG_CREATED_NEW_KEY) {
-	//	_tprintf(TEXT("Chave: (HKEY_CURRENT_USER\\Software\\SO2_TP) - Criada\n"));
-	//	regVersion = 1;
-	//	DWORD score;
-	//	RegSetValueEx(chave, TEXT("Versao"), 0, REG_DWORD, (LPBYTE)&regVersion, sizeof(DWORD));
-	//	for (int i = 0; i < usersLogged->tam; i++)
-	//		if (_tcscmp(usersLogged->names[i], TEXT("empty") != 0)) {
-	//			score = 1000 + i;
-	//			RegSetValueEx(chave, usersLogged->names[i], 0, REG_DWORD, (LPBYTE)&score, sizeof(DWORD));
-	//		}
-
-	//	_tprintf(TEXT("Valores Guardados\n"));
-	//}
-	//else if (regOutput == REG_OPENED_EXISTING_KEY) {
-	//	tamanho = 20;
-	//	RegQueryValueEx(chave, TEXT("Autor"), NULL, NULL, (LPBYTE)autor,&tamanho);
-	//	autor[tamanho / sizeof(TCHAR)] = '\0';
-	//	tamanho = sizeof(versao);
-	//	RegQueryValueEx(chave, TEXT("Versao"), NULL, NULL, (LPBYTE)&versao,	&tamanho);
-	//	versao++;
-	//	RegSetValueEx(chave, TEXT("Versao"), 0, REG_DWORD, (LPBYTE)&versao,	sizeof(DWORD));
-	//	_stprintf_s(str, TAM, TEXT("Autor:%s Versão:%d\n"), autor, versao);
-	//	_tprintf(TEXT("Lido do Registry:%s\n"), str);
-
-	//}
-	//		RegCloseKey(chave)
+	if (RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("Software\\SO2_TP"), 0, NULL,
+		REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &chave, &regOutput) != ERROR_SUCCESS) {
+		_tprintf(TEXT("Erro ao criar/abrir chave (%d)\n"), GetLastError());
+		return -1;
+	}
+ 
+	if (regOutput == REG_CREATED_NEW_KEY) {//if there is no scores saved
+		//_tprintf(TEXT("Chave: (HKEY_CURRENT_USER\\Software\\SO2_TP) - Criada\n"));
+		for (int i = 0; i < 10; i++) {
+			_tcscpy_s(name, TAM, TEXT("HighScore"));
+			_itot_s(i, info, TAM, 10);
+			_tcscat_s(name, TAM, info);
+			_stprintf_s(info, MAX_NAME_LENGTH, TEXT("none:"));
+			_tcscat_s(info, TAM, TEXT("0"));
+			RegSetValueEx(chave, name, 0, REG_SZ, (LPBYTE)("%s", info), _tcslen(("%s", info)) * sizeof(TCHAR));
+		}
+		
+		_tprintf(TEXT("TOP 10 Created\n"));
+		return 1;
+	}
+	else if (regOutput == REG_OPENED_EXISTING_KEY) {//if there are scores
+		//_tprintf(TEXT("Chave: (HKEY_CURRENT_USER\\Software\\SO2_TP) - Aberta\n"));
+		for (int i = 0; i < 10; i++) {
+			flag = 0;
+			flag_2 = 0;
+			_tcscpy_s(name, TAM, TEXT("HighScore"));
+			_itot_s(i, info, TAM, 10);
+			_tcscat_s(name, TAM, info);
+			RegQueryValueEx(chave,name, NULL, NULL, (LPBYTE)info, &tam);
+			//_tprintf(TEXT("Lido from(%s) = %s\n"),name,info);
+			while(info[flag]!=':'){//copy name
+				user_name[flag] = info[flag];
+				flag++;
+			}
+			user_name[flag] = '\0';//end of user_name
+			flag++;
+			while (info[flag] != '\0') {//copy score
+				tmp[flag_2] = info[flag];
+				flag_2++;
+				flag++;
+			}
+			tmp[flag_2] = '\0';//end of score
+			score = _tstoi(tmp);//tranlate
+			_tprintf(TEXT("TOP[%d]%s:%d\n"),i+1, user_name, score);
+			//_tprintf(TEXT("NOVO:%dvs%d:OLD\n"),userData.score,score);
+			if (userData.score > score) {
+				value = 1;
+				_tcscpy_s(tmp, TAM, userData.name);
+				_tcscat_s(tmp, TAM, TEXT(":"));
+				_itot_s(userData.score, tmp_2, TAM, 10);
+				_tcscat_s(tmp, TAM, tmp_2);
+				RegSetValueEx(chave, name, 0, REG_SZ, (LPBYTE)("%s", tmp), _tcslen(("%s", tmp)) * sizeof(TCHAR));
+				userData.score = score;
+				_tcscpy_s(userData.name, MAX_NAME_LENGTH ,user_name);	
+			}
+		
+		}
+		//_tprintf(TEXT("Valores Lidos\n"));
+	}
+	RegCloseKey(chave);
+	return value;
 }
