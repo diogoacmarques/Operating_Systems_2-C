@@ -65,7 +65,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	msg tmpMsg;
 	user tmp_user;
-	tmp_user.score = 0;
+	tmp_user.score = -1;
 	_tcscpy_s(tmp_user.name, MAX_NAME_LENGTH, TEXT("just checking"));
 	registry(tmp_user); //Creates/Checks TOP 10
 	do{
@@ -79,7 +79,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		fflush(stdin);
 		KeyPress = _gettch();
 		_puttchar(KeyPress);
-		//system("cls");
+		system("cls");
 
 		switch (KeyPress) {
 		case '1':
@@ -97,6 +97,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 			else if (gameInfo->numUsers >= 0) {
 				_tprintf(TEXT("Game is starting!\n"));
 				startGame();
+				gameInfo->gameStatus = -1; //after game ends
 				system("cls");				
 			}
 			else {
@@ -423,6 +424,14 @@ int startVars() {
 		gameInfo->nBalls[i].status = 0;
 		hTBola[i] = NULL;
 	}
+	//Brick
+	gameInfo->numBricks = 0;
+	for (i = 0; i < MAX_BRICKS; i++) {
+		gameInfo->nBricks[i].posx = 0;
+		gameInfo->nBricks[i].posy = 0;
+		gameInfo->nBricks[i].status = 0;
+		gameInfo->nBricks[i].tam = 0;
+	}
 
 	return 0;
 }
@@ -447,7 +456,7 @@ int registry(user userData) {
 	TCHAR tmp[TAM];
 	TCHAR user_name[TAM];
 	TCHAR tmp_2[TAM];
-	DWORD score = 0, tam = TAM, user_score;
+	DWORD score = 0, tam = MAX_NAME_LENGTH, user_score;
 	int flag, flag_2;
 	BOOLEAN value = 0;
 
@@ -479,7 +488,9 @@ int registry(user userData) {
 			_itot_s(i, info, TAM, 10);
 			_tcscat_s(name, TAM, info);
 			RegQueryValueEx(chave,name, NULL, NULL, (LPBYTE)info, &tam);
-			//_tprintf(TEXT("Lido from(%s) = %s\n"),name,info);
+			_tprintf(TEXT("%s - %s | Tamanho = %d\n"),name,info, _tcslen(info));
+			if (userData.score == -1)
+				continue;
 			for(flag = 0;flag<MAX_NAME_LENGTH;flag++){
 			//while(info[flag]!=':'){//copy name
 				if (info[flag] == ':')
@@ -490,12 +501,14 @@ int registry(user userData) {
 			flag++;
 			for (; flag < MAX_NAME_LENGTH; flag++) {
 			//while (info[flag] != '\0') {//copy score
+				if (info[flag] == '\0')
+					break;
 				tmp[flag_2] = info[flag];
 				flag_2++;
 			}
 			tmp[flag_2] = '\0';//end of score
 			score = _tstoi(tmp);//tranlate
-			_tprintf(TEXT("TOP[%d]%s:%d\n"),i+1, user_name, score);
+			//_tprintf(TEXT("TOP[%d]%s:%d\n"),i+1, user_name, score);
 			//_tprintf(TEXT("NOVO:%dvs%d:OLD\n"),userData.score,score);
 			if (userData.score > score) {
 				value = 1;

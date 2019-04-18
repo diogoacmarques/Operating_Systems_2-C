@@ -1,20 +1,20 @@
 ﻿  servidor.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(36): warning C4101: 'hTGame': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(246): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(251): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(254): warning C4033: 'moveUser' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(267): warning C4098: 'createBalls': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(294): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(306): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(334): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(338): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(338): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(340): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(340): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(444): warning C4101: 'regSize': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(450): warning C4101: 'user_score': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(444): warning C4101: 'regVersion': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(190): warning C4716: 'receiveMessageThread': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(219): warning C4715: 'startGame': not all control paths return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\servidor\servidor\servidor.c(255): warning C4716: 'moveUser': must return a value
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(36): warning C4101: 'hTGame': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(247): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(252): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(255): warning C4033: 'moveUser' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(268): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(295): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(307): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(335): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(339): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(339): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(341): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(341): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(453): warning C4101: 'regSize': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(459): warning C4101: 'user_score': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(453): warning C4101: 'regVersion': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(220): warning C4715: 'startGame': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(191): warning C4716: 'receiveMessageThread': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\servidor\servidor\servidor.c(256): warning C4716: 'moveUser': must return a value
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\servidor.exe

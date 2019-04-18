@@ -63,8 +63,11 @@ int _tmain(int argc, LPTSTR argv[]) {
 	do {
 		system("cls");
 		_tprintf(TEXT("--Welcome to Client[%d]--\n"), GetCurrentThreadId());
+		_tprintf(TEXT("'exit - Leave\n"));
 		_tprintf(TEXT("LOGIN:"));
 		_tscanf_s(TEXT("%s"), str, MAX_NAME_LENGTH);
+		if (_tcscmp(str, TEXT("exit")) == 0 || _tcscmp(str, TEXT("fim")) == 0)
+			break;
 		Login(str);
 		hTBroadcast = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveBroadcast, NULL, 0, NULL);
 		if (hTBroadcast == NULL) {
@@ -259,19 +262,23 @@ DWORD WINAPI UserThread(LPVOID param){
 					sendMessage(gameMsg);
 					break;
 
-				case 32://sends ball	
-					drawHelp(0);
-					SetEvent(gameEvent);
-					ResetEvent(gameEvent);
+				case 32://sends ball
+					if (gameInfo->numBalls == 0 &&  gameInfo->nUsers[user_id].lifes > 0) {
+						drawHelp(0);
+						SetEvent(gameEvent);
+						ResetEvent(gameEvent);
+					}
 					break;
 		
 				case 27://esc
-					gameMsg.codigoMsg = 2;
-					gameMsg.from = user_id;
-					gameMsg.to = 254;
-					_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
-					sendMessage(gameMsg);
-					return 0;
+					if (gameInfo->nUsers[user_id].lifes == 0) {
+						gameMsg.codigoMsg = 2;
+						gameMsg.from = user_id;
+						gameMsg.to = 254;
+						_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
+						sendMessage(gameMsg);
+						return 0;
+					}
 					break;
 				}
 
@@ -341,6 +348,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	ReleaseMutex(hStdoutMutex);
 	//_tprintf(TEXT("Bola[%d]-Deleted\n"), id);
 	hTBola[id] = NULL;
+	drawHelp(1);
 	return 0;
 }
 
@@ -365,13 +373,13 @@ void gotoxy(int x, int y) {
 
 void drawHelp(BOOLEAN num) {
 	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(0, 1);
 	if (num) {
 		_tprintf(TEXT("A/D - Move\n"));
 		_tprintf(TEXT("SPACE - New Ball\n"));
 		_tprintf(TEXT("ESC - EXIT\n"));
 	}
 	else {
-		gotoxy(0, 0);
 		_tprintf(TEXT("                        \n                      \n\                      "));
 	}
 	ReleaseMutex(hStdoutMutex);

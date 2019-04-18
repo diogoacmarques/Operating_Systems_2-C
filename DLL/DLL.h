@@ -16,6 +16,7 @@
 #define MAX_MSG 50
 #define MAX_USERS 20
 #define MAX_BALLS 20
+#define MAX_BRICKS 50
 #define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
 #define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
 #define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
@@ -46,6 +47,14 @@ typedef struct ball {
 	int status;
 } ball;
 
+typedef struct brick {
+	int posx;
+	int posy;
+	int tam;
+	int status;
+	//brinde or not
+} brick;
+
 typedef struct config {
 	int nMaxUsers;
 	int limx;
@@ -66,8 +75,10 @@ typedef struct {
 	config myconfig;
 	user nUsers[MAX_USERS];
 	ball nBalls[MAX_BALLS];	
+	brick nBricks[MAX_BRICKS];
 	int numUsers;
 	int numBalls;
+	int numBricks;
 	int gameStatus;
 }game,*pgame;
 
