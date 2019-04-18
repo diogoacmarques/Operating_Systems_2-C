@@ -18,10 +18,11 @@ DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI receiveMessageThread(LPVOID param);
 DWORD WINAPI receiveBroadcast(LPVOID param);
+DWORD WINAPI BrickThread(LPVOID param);
 
 DWORD user_id;
 
-HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast;
+HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick;
 
 HANDLE messageEventBroadcast, messageEvent;
 
@@ -63,11 +64,15 @@ int _tmain(int argc, LPTSTR argv[]) {
 	do {
 		system("cls");
 		_tprintf(TEXT("--Welcome to Client[%d]--\n"), GetCurrentThreadId());
-		_tprintf(TEXT("'exit - Leave\n"));
+		_tprintf(TEXT("'exit' - Leave\n"));
 		_tprintf(TEXT("LOGIN:"));
 		_tscanf_s(TEXT("%s"), str, MAX_NAME_LENGTH);
 		if (_tcscmp(str, TEXT("exit")) == 0 || _tcscmp(str, TEXT("fim")) == 0)
 			break;
+		for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using : (messes up registry)
+			if (str[i] == ':')
+				str[i] = '\0';
+		_tprintf(TEXT("Trying login with:%s"),str);
 		Login(str);
 		hTBroadcast = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveBroadcast, NULL, 0, NULL);
 		if (hTBroadcast == NULL) {
@@ -184,6 +189,13 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		else if (inMsg.codigoMsg == 101) {//new ball
 			createBalls(inMsg.number);
 		}
+		else if (inMsg.codigoMsg == 102) {//create bricks
+			hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);
+			if (hTBrick == NULL) {
+				_tprintf(TEXT("Erro ao criar thread para desenhar bricks!\n"));
+				return -1;
+			}			
+		}
 	} while (1);
 }
 
@@ -283,10 +295,8 @@ DWORD WINAPI UserThread(LPVOID param){
 				}
 
 		if (flag) {
-
-		WaitForSingleObject(canMove, INFINITE);
-		userInfo = gameInfo->nUsers[user_id];
-
+			WaitForSingleObject(canMove, INFINITE);
+			userInfo = gameInfo->nUsers[user_id];
 			if (_tcscmp(gameMsg.messageInfo, TEXT("left")) == 0) {
 				WaitForSingleObject(hStdoutMutex, INFINITE);
 				gotoxy(userInfo.posx + userInfo.size, userInfo.posy);
@@ -307,6 +317,7 @@ DWORD WINAPI UserThread(LPVOID param){
 				//do something
 			}
 		}
+		
 	}	
 }
 
@@ -350,6 +361,50 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	hTBola[id] = NULL;
 	drawHelp(1);
 	return 0;
+}
+
+DWORD WINAPI BrickThread(LPVOID param) {
+	brick localBricks[MAX_BRICKS];
+	int numBricks = gameInfo->numBricks;
+	for (int i = 0; i < numBricks; i++)
+		localBricks[i] = gameInfo->nBricks[i];
+	//draws intially all bricks
+	/*WaitForSingleObject(hStdoutMutex, INFINITE);
+	_tprintf(TEXT("Creating %d bricks"), numBricks);
+	ReleaseMutex(hStdoutMutex);*/
+	for (int i = 0; i < gameInfo->numBricks; i++) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+		for (int j = 0; j < gameInfo->nBricks[i].tam; j++) 
+			_tprintf(TEXT("%d"), gameInfo->nBricks[i].status);
+		ReleaseMutex(hStdoutMutex);
+		}
+
+	//updates
+	do {
+		WaitForSingleObject(updateBalls, INFINITE);
+		numBricks = gameInfo->numBricks;
+		for (int i = 0; i < numBricks; i++)
+			if (localBricks[i].status != gameInfo->nBricks[i].status) {
+				if (gameInfo->nBricks[i].status == 0) {//end of brick life
+					WaitForSingleObject(hStdoutMutex, INFINITE);
+					gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+					for (int j = 0; j < gameInfo->nBricks[i].tam; j++)
+						_tprintf(TEXT(" "));
+					ReleaseMutex(hStdoutMutex);
+				}
+				else {
+					WaitForSingleObject(hStdoutMutex, INFINITE);
+					gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+					for (int j = 0; j < gameInfo->nBricks[i].tam; j++)
+						_tprintf(TEXT("%d"), gameInfo->nBricks[i].status);
+					ReleaseMutex(hStdoutMutex);
+					localBricks[i] = gameInfo->nBricks[i];
+				}
+				
+			}
+	} while (gameInfo->numBricks);
+	
 }
 
 void hidecursor()

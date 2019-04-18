@@ -1,11 +1,12 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(61): warning C4553: '==': result of expression not used; did you intend '='?
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(40): warning C4101: 'res': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(41): warning C4101: 'newMsg': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(38): warning C4101: 'userLogged': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(42): warning C4101: 'threadId': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(198): warning C4098: 'readGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(201): warning C4098: 'readGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(213): warning C4098: 'createBalls': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(383): warning C4129: ' ': unrecognized character escape sequence
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(62): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(41): warning C4101: 'res': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(42): warning C4101: 'newMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(39): warning C4101: 'userLogged': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(43): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(210): warning C4098: 'readGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(213): warning C4098: 'readGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(225): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(438): warning C4129: ' ': unrecognized character escape sequence
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\cliente\cliente\cliente.c(408): warning C4716: 'BrickThread': must return a value
   cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\servidor\Debug\cliente.exe

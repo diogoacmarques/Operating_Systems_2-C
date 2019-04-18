@@ -18,9 +18,12 @@ int startVars();
 void resetUser(DWORD id);
 int registry(user userData);
 int moveUser(DWORD id, TCHAR side[TAM]);
+void createBrick(DWORD num);
+void hitBrick(DWORD id);
 
 HANDLE moveBalls;
 HANDLE hTBola[MAX_BALLS];
+HANDLE hTBrick[MAX_BRICKS];
 HANDLE messageEvent;
 
 BOOLEAN continua = 1;
@@ -72,8 +75,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("--Welcome to Server--\n"));
 		_tprintf(TEXT("1:Create Game\n"));
 		_tprintf(TEXT("2:Start Game\n"));
-		_tprintf(TEXT("3:Users Logged in\n"));
-		_tprintf(TEXT("4:top 10(create 1 ball)\n"));
+		_tprintf(TEXT("3:Users Logged\n"));
+		_tprintf(TEXT("4:Top 10\n"));
 		_tprintf(TEXT("5:Exit\n"));
 		
 		fflush(stdin);
@@ -133,10 +136,11 @@ DWORD WINAPI receiveMessageThread() {
 	
 	do{
 		flag = 1;
+		//_tprintf(TEXT("waiting for msg...\n"));
 		WaitForSingleObject(messageEvent,INFINITE);
 		newMsg = receiveMessage();
 		quant++;
-		//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
+		_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
 			_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
 			for (int i = 0; i < gameInfo->numUsers; i++) {
@@ -177,7 +181,6 @@ DWORD WINAPI receiveMessageThread() {
 		else if (newMsg.codigoMsg == 200) {//user trying to move
 			moveUser(newMsg.from, newMsg.messageInfo);
 			SetEvent(canMove);
-
 			//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
 			//_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
 		}
@@ -230,6 +233,10 @@ DWORD WINAPI userThread(LPVOID param) {
 	
 	//_tprintf(TEXT("Waiting for a user to let us know that we can start\n"));
 	Sleep(250);
+
+	//build bricks here
+	createBrick(5);//auto
+
 	while (gameInfo->nUsers[id].lifes > 0){
 		//_tprintf(TEXT("User[%d] waiting for input %d lifes\n"), id, gameInfo->nUsers[id].lifes);
 		WaitForSingleObject(gameEvent, INFINITE);
@@ -305,6 +312,17 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		oposy = posy;
 		if (goingRight) {
 			if (posx < gameInfo->myconfig.limx - 1) {
+				for (int i = 0; i < gameInfo->numBricks; i++) {
+					if (gameInfo->nBricks[i].posy == posy - 1 && gameInfo->nBricks[i].status) {
+						//_tprintf(TEXT("checking going right...!!\n"));
+						//_tprintf(TEXT("BRICK:(%d) | ball(%d)\n"), gameInfo->nBricks[i].posx,posx);
+						if (gameInfo->nBricks[i].posx == (posx + 2)) {
+							_tprintf(TEXT("HIT Brick going right!!\n"));
+							hitBrick(i);
+							goingRight = 0;
+						}
+					}
+				}
 				posx++;
 			}
 			else {
@@ -314,6 +332,17 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		}
 		else {
 			if (posx > 0) {
+				for (int i = 0; i < gameInfo->numBricks; i++) {
+					if (gameInfo->nBricks[i].posy == posy - 1 && gameInfo->nBricks[i].status) {
+						//_tprintf(TEXT("checking going left...!!\n"));
+						//_tprintf(TEXT("BRICK:(%d) | ball(%d)\n"), gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam, posx);
+						if ((gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam )== (posx - 1)) {
+							_tprintf(TEXT("HIT Brick going left!!\n"));
+							hitBrick(i);
+							goingRight = 1;
+						}
+					}
+				}
 				posx--;
 			}
 			else {
@@ -324,6 +353,17 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 		if (goingUp) {
 			if (posy > 0) {
+				for (int i = 0; i < gameInfo->numBricks; i++) {
+					if (gameInfo->nBricks[i].posy == posy - 2 && gameInfo->nBricks[i].status) {
+						_tprintf(TEXT("checking going up...!!\n"));
+						//_tprintf(TEXT("BRICK:(%d - %d) | ball(%d)\n"), gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam,posx);
+						if (gameInfo->nBricks[i].posx < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+							_tprintf(TEXT("HIT Brick going up!!\n"));
+							hitBrick(i);
+							goingUp = 0;
+						}
+					}
+				}
 				posy--;
 			}
 			else {
@@ -334,12 +374,24 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		else {
 			if (posy < gameInfo->myconfig.limy - 1) {// se nao atinge o limite do mapa
 
-				for (int i = 0; i < gameInfo->numUsers; i++) {
+				for (int i = 0; i < gameInfo->numUsers; i++){//checks for player
 					//_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
 					if (posy == gameInfo->nUsers[i].posy - 1 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size))) {//atinge a barreira
 						flag = 1;
-						_tprintf(TEXT("HIT!!\n"), id);	
+						_tprintf(TEXT("HIT player!!\n"));	
 						break;
+					}
+				}
+
+				for (int i = 0; i < gameInfo->numBricks; i++) {//checks for brick
+					if (gameInfo->nBricks[i].posy == posy + 2 && gameInfo->nBricks[i].status) {
+						//_tprintf(TEXT("checking going down...!!\n"));
+						//_tprintf(TEXT("BRICK:(%d - %d) | ball(%d)\n"), gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam,posx);
+						if (gameInfo->nBricks[i].posx < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+							_tprintf(TEXT("HIT Brick going down!!\n"));
+							goingUp = 1;
+							hitBrick(i);
+						}
 					}
 				}
 
@@ -398,6 +450,66 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	return 0;
 }
 
+void createBrick(DWORD num) {
+	//create num brick
+	DWORD count = 0;
+	DWORD threadId;
+	int i;
+	for (i = 0; i < MAX_BRICKS; i++) {
+		if (i == 0) {
+			gameInfo->nBricks[i].posx = 30;
+			gameInfo->nBricks[i].posy = 3;
+			gameInfo->nBricks[i].tam = 15;
+			gameInfo->nBricks[i].status = 1;
+		}
+		else if (i == 1) {
+			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 20;
+			gameInfo->nBricks[i].posy = 3;
+			gameInfo->nBricks[i].tam = 15;
+			gameInfo->nBricks[i].status = 2;
+		}
+		else if (i == 2) {
+			gameInfo->nBricks[i].posx = 80;
+			gameInfo->nBricks[i].posy = 3;
+			gameInfo->nBricks[i].tam = 10;
+			gameInfo->nBricks[i].status = 3;
+		}
+		else if (i == 3) {
+			gameInfo->nBricks[i].posx = 15;
+			gameInfo->nBricks[i].posy = 5;
+			gameInfo->nBricks[i].tam = 20;
+			gameInfo->nBricks[i].status = 4;
+		}
+		else if (i == 4) {
+			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 35;;
+			gameInfo->nBricks[i].posy = 5;
+			gameInfo->nBricks[i].tam = 20;
+			gameInfo->nBricks[i].status = 5;
+		}
+		gameInfo->numBricks++;
+		count++;
+		if (count >= num)
+			break;
+	}
+
+
+	_tprintf(TEXT("created %d bricks!\n"), count);
+	msg tmpMsg;
+	tmpMsg.codigoMsg = 102;
+	tmpMsg.from = server_id;
+	tmpMsg.to = 255;
+	tmpMsg.number = num;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("brick"));
+	sendMessage(tmpMsg);
+	return;
+}
+
+void hitBrick(DWORD id) {
+	gameInfo->nBricks[id].status--;
+	for (int i = 0; i < gameInfo->numUsers; i++)
+		gameInfo->nUsers[i].score += 100;
+
+}
 
 
 int startVars() {
@@ -411,6 +523,9 @@ int startVars() {
 	//Config
 	gameInfo->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 	gameInfo->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+	_tprintf(TEXT("Lim(%d,%d)\n"), gameInfo->myconfig.limx, gameInfo->myconfig.limy);
+
 	//Users
 	gameInfo->numUsers = 0;
 	for (i = 0; i < MAX_USERS; i++) {
@@ -431,6 +546,7 @@ int startVars() {
 		gameInfo->nBricks[i].posy = 0;
 		gameInfo->nBricks[i].status = 0;
 		gameInfo->nBricks[i].tam = 0;
+		hTBrick[i] = NULL;
 	}
 
 	return 0;
@@ -483,12 +599,13 @@ int registry(user userData) {
 	else if (regOutput == REG_OPENED_EXISTING_KEY) {//if there are scores
 		//_tprintf(TEXT("Chave: (HKEY_CURRENT_USER\\Software\\SO2_TP) - Aberta\n"));
 		for (int i = 0; i < 10; i++) {
+			tam = MAX_NAME_LENGTH;
 			flag_2 = 0;
 			_tcscpy_s(name, TAM, TEXT("HighScore"));
 			_itot_s(i, info, TAM, 10);
 			_tcscat_s(name, TAM, info);
 			RegQueryValueEx(chave,name, NULL, NULL, (LPBYTE)info, &tam);
-			_tprintf(TEXT("%s - %s | Tamanho = %d\n"),name,info, _tcslen(info));
+			_tprintf(TEXT("%s - %s\n"),name,info);
 			if (userData.score == -1)
 				continue;
 			for(flag = 0;flag<MAX_NAME_LENGTH;flag++){
