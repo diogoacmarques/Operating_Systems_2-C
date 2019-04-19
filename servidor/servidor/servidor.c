@@ -19,7 +19,7 @@ void resetUser(DWORD id);
 int registry(user userData);
 int moveUser(DWORD id, TCHAR side[TAM]);
 void createBrick(DWORD num);
-void hitBrick(DWORD id);
+void hitBrick(DWORD brick_id, DWORD ball_id);
 
 HANDLE moveBalls;
 HANDLE hTBola[MAX_BALLS];
@@ -235,7 +235,7 @@ DWORD WINAPI userThread(LPVOID param) {
 	Sleep(250);
 
 	//build bricks here
-	createBrick(5);//auto
+	createBrick(1);
 
 	while (gameInfo->nUsers[id].lifes > 0){
 		//_tprintf(TEXT("User[%d] waiting for input %d lifes\n"), id, gameInfo->nUsers[id].lifes);
@@ -300,29 +300,90 @@ void createBalls(DWORD num){
 DWORD WINAPI BolaThread(LPVOID param) {
 	DWORD id = ((DWORD)param);
 	srand((int)time(NULL));
-	DWORD posx = gameInfo->myconfig.limx/2, posy = gameInfo->myconfig.limy / 2, oposx, oposy,num=0,ballScore = 0;
+	DWORD posx = gameInfo->myconfig.limx/2, posy = 7, oposx, oposy,num=0,ballScore = 0;
 	boolean goingUp = 1, goingRight = (rand() % 2), flag;
+	goingRight = 1;
 	gameInfo->nBalls[id].status = 1;
 	do{
 		ballScore = GetTickCount();
 		flag = 0;
-		Sleep(250);
-		//Sleep(1000);
+		Sleep(gameInfo->nBalls[id].speed);
+		//checks for bricks
+		for (int i = 0; i < gameInfo->numBricks; i++) {
+			_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+			//up
+			if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
+
+				//straight up
+				if (gameInfo->nBricks[i].posx - 1 < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+					_tprintf(TEXT("Hit up\n"), posy - 1, gameInfo->nBricks[i].posy);
+					goingUp = 0;
+					hitBrick(i, id);
+				}
+				//up-left
+				else if (!goingRight && posx  == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
+					_tprintf(TEXT("Hit up-left\n"));
+					goingUp = 0;
+					goingRight = 1;
+					hitBrick(i, id);
+				}
+				//up-right
+				else if(goingRight && posx+1 == gameInfo->nBricks[i].posx){
+					_tprintf(TEXT("Hit up-right\n"));
+					goingUp = 0;
+					goingRight = 0;
+					hitBrick(i, id);
+				}
+				
+				
+			}
+			else if(!goingUp && posy + 1 == gameInfo->nBricks[i].posy){
+				//down
+				if (gameInfo->nBricks[i].posx < posx + 1 && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+					_tprintf(TEXT("Hit down\n"), posy + 1, gameInfo->nBricks[i].posy);
+					goingUp = 1;
+					hitBrick(i, id);
+				}
+				//down-left
+				else if (!goingRight && posx == (gameInfo->nBricks[i].posx+gameInfo->nBricks[i].tam)) {
+					_tprintf(TEXT("Hit down-left\n"));
+					goingUp = 1;
+					goingRight = 1;
+					hitBrick(i, id);
+				}
+				//down-right
+				else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
+					_tprintf(TEXT("Hit down-right\n"));
+					goingUp = 1;
+					goingRight = 0;
+					hitBrick(i, id);
+				}
+
+				
+				
+			}
+			
+			//left
+			if (!goingRight && posy == gameInfo->nBricks[i].posy && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
+				_tprintf(TEXT("Hit left\n"));
+				goingRight = 1;
+				hitBrick(i, id);
+			
+			}
+			//right
+			else if (goingRight && posy == gameInfo->nBricks[i].posy && posx + 1 == gameInfo->nBricks[i].posx) {
+				_tprintf(TEXT("Hit right\n"));
+				goingRight = 0;
+				hitBrick(i, id);
+			}
+			
+			
+		}
+
 		oposx = posx;
 		oposy = posy;
 		if (goingRight) {
 			if (posx < gameInfo->myconfig.limx - 1) {
-				for (int i = 0; i < gameInfo->numBricks; i++) {
-					if (gameInfo->nBricks[i].posy == posy - 1 && gameInfo->nBricks[i].status) {
-						//_tprintf(TEXT("checking going right...!!\n"));
-						//_tprintf(TEXT("BRICK:(%d) | ball(%d)\n"), gameInfo->nBricks[i].posx,posx);
-						if (gameInfo->nBricks[i].posx == (posx + 2)) {
-							_tprintf(TEXT("HIT Brick going right!!\n"));
-							hitBrick(i);
-							goingRight = 0;
-						}
-					}
-				}
 				posx++;
 			}
 			else {
@@ -332,17 +393,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		}
 		else {
 			if (posx > 0) {
-				for (int i = 0; i < gameInfo->numBricks; i++) {
-					if (gameInfo->nBricks[i].posy == posy - 1 && gameInfo->nBricks[i].status) {
-						//_tprintf(TEXT("checking going left...!!\n"));
-						//_tprintf(TEXT("BRICK:(%d) | ball(%d)\n"), gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam, posx);
-						if ((gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam )== (posx - 1)) {
-							_tprintf(TEXT("HIT Brick going left!!\n"));
-							hitBrick(i);
-							goingRight = 1;
-						}
-					}
-				}
 				posx--;
 			}
 			else {
@@ -353,17 +403,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 		if (goingUp) {
 			if (posy > 0) {
-				for (int i = 0; i < gameInfo->numBricks; i++) {
-					if (gameInfo->nBricks[i].posy == posy - 2 && gameInfo->nBricks[i].status) {
-						_tprintf(TEXT("checking going up...!!\n"));
-						//_tprintf(TEXT("BRICK:(%d - %d) | ball(%d)\n"), gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam,posx);
-						if (gameInfo->nBricks[i].posx < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-							_tprintf(TEXT("HIT Brick going up!!\n"));
-							hitBrick(i);
-							goingUp = 0;
-						}
-					}
-				}
 				posy--;
 			}
 			else {
@@ -382,19 +421,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 						break;
 					}
 				}
-
-				for (int i = 0; i < gameInfo->numBricks; i++) {//checks for brick
-					if (gameInfo->nBricks[i].posy == posy + 2 && gameInfo->nBricks[i].status) {
-						//_tprintf(TEXT("checking going down...!!\n"));
-						//_tprintf(TEXT("BRICK:(%d - %d) | ball(%d)\n"), gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posx+ gameInfo->nBricks[i].tam,posx);
-						if (gameInfo->nBricks[i].posx < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-							_tprintf(TEXT("HIT Brick going down!!\n"));
-							goingUp = 1;
-							hitBrick(i);
-						}
-					}
-				}
-
 				if (flag) {
 					goingUp = 1;
 					posy--;
@@ -410,7 +436,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 				gameInfo->numBalls--;
 			}
 		}
-		
+
 		gameInfo->nBalls[id].posx = posx;
 		gameInfo->nBalls[id].posy = posy;
 
@@ -457,9 +483,9 @@ void createBrick(DWORD num) {
 	int i;
 	for (i = 0; i < MAX_BRICKS; i++) {
 		if (i == 0) {
-			gameInfo->nBricks[i].posx = 30;
+			gameInfo->nBricks[i].posx = 72;
 			gameInfo->nBricks[i].posy = 3;
-			gameInfo->nBricks[i].tam = 15;
+			gameInfo->nBricks[i].tam = 3;
 			gameInfo->nBricks[i].status = 1;
 		}
 		else if (i == 1) {
@@ -475,16 +501,16 @@ void createBrick(DWORD num) {
 			gameInfo->nBricks[i].status = 3;
 		}
 		else if (i == 3) {
-			gameInfo->nBricks[i].posx = 15;
-			gameInfo->nBricks[i].posy = 5;
-			gameInfo->nBricks[i].tam = 20;
-			gameInfo->nBricks[i].status = 4;
+			gameInfo->nBricks[i].posx = 5;
+			gameInfo->nBricks[i].posy = 10;
+			gameInfo->nBricks[i].tam = 50;
+			gameInfo->nBricks[i].status = 9;
 		}
 		else if (i == 4) {
-			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 35;;
-			gameInfo->nBricks[i].posy = 5;
-			gameInfo->nBricks[i].tam = 20;
-			gameInfo->nBricks[i].status = 5;
+			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 55;
+			gameInfo->nBricks[i].posy = 10;
+			gameInfo->nBricks[i].tam = 50;
+			gameInfo->nBricks[i].status = 9;
 		}
 		gameInfo->numBricks++;
 		count++;
@@ -504,8 +530,10 @@ void createBrick(DWORD num) {
 	return;
 }
 
-void hitBrick(DWORD id) {
-	gameInfo->nBricks[id].status--;
+void hitBrick(DWORD brick_id,DWORD ball_id) {
+	gameInfo->nBricks[brick_id].status--;
+	if(gameInfo->nBalls[ball_id].speed >= 100)
+		gameInfo->nBalls[ball_id].speed -= 50;
 	for (int i = 0; i < gameInfo->numUsers; i++)
 		gameInfo->nUsers[i].score += 100;
 
@@ -537,6 +565,7 @@ int startVars() {
 		gameInfo->nBalls[i].posx = 0;
 		gameInfo->nBalls[i].posy = 0;
 		gameInfo->nBalls[i].status = 0;
+		gameInfo->nBalls[i].speed = 1500;
 		hTBola[i] = NULL;
 	}
 	//Brick

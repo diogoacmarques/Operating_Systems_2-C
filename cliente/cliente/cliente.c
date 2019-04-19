@@ -69,7 +69,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tscanf_s(TEXT("%s"), str, MAX_NAME_LENGTH);
 		if (_tcscmp(str, TEXT("exit")) == 0 || _tcscmp(str, TEXT("fim")) == 0)
 			break;
-		for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using : (messes up registry)
+		for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using ':' (messes up registry)
 			if (str[i] == ':')
 				str[i] = '\0';
 		_tprintf(TEXT("Trying login with:%s"),str);
@@ -137,10 +137,8 @@ DWORD WINAPI receiveMessageThread(LPVOID param) {
 		gotoxy(0, 0);
 		_tprintf(TEXT("[%d]NewMsg(%d):%s                \n-from:%d                            \n-to:%d                         \n                             "), quant++, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 2) {//end of user
-			_tprintf(TEXT("----------should exit here--------------\n"));
 			TerminateThread(hTBroadcast, 1);
 			CloseHandle(hTBroadcast);
-			_tprintf(TEXT("----------im out btw--------------\n"));
 			return 0;
 		}
 		else if (newMsg.codigoMsg == 123) {
@@ -349,7 +347,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		gotoxy(posx, posy);
 		_tprintf(TEXT("%d"),id);
 		gotoxy(0, 0);
-		_tprintf(TEXT("LIFES:%d|SCORE:%d"), gameInfo->nUsers[user_id].lifes,gameInfo->nUsers[user_id].score);
+		_tprintf(TEXT("LIFES:%d|SCORE:%d|BALL(%d,%d)"), gameInfo->nUsers[user_id].lifes,gameInfo->nUsers[user_id].score,posx,posy);
 		//_tprintf(TEXT("Bola[%d]-(%d,%d)\n"), id, ballInfo.posx, ballInfo.posy);
 		ReleaseMutex(hStdoutMutex);
 	} while (ballInfo.status);
@@ -369,9 +367,10 @@ DWORD WINAPI BrickThread(LPVOID param) {
 	for (int i = 0; i < numBricks; i++)
 		localBricks[i] = gameInfo->nBricks[i];
 	//draws intially all bricks
-	/*WaitForSingleObject(hStdoutMutex, INFINITE);
-	_tprintf(TEXT("Creating %d bricks"), numBricks);
-	ReleaseMutex(hStdoutMutex);*/
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(gameInfo->myconfig.limy - 1, 0);
+	_tprintf(TEXT("Brick(%d,%d)"), gameInfo->nBricks[0].posx, gameInfo->nBricks[0].posy);
+	ReleaseMutex(hStdoutMutex);
 	for (int i = 0; i < gameInfo->numBricks; i++) {
 		WaitForSingleObject(hStdoutMutex, INFINITE);
 		gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);

@@ -45,6 +45,7 @@ typedef struct ball {
 	int posx;
 	int posy;
 	int status;
+	int speed;
 } ball;
 
 typedef struct brick {
