@@ -235,7 +235,7 @@ DWORD WINAPI userThread(LPVOID param) {
 	Sleep(250);
 
 	//build bricks here
-	createBrick(1);
+	createBrick(5);
 
 	while (gameInfo->nUsers[id].lifes > 0){
 		//_tprintf(TEXT("User[%d] waiting for input %d lifes\n"), id, gameInfo->nUsers[id].lifes);
@@ -300,9 +300,10 @@ void createBalls(DWORD num){
 DWORD WINAPI BolaThread(LPVOID param) {
 	DWORD id = ((DWORD)param);
 	srand((int)time(NULL));
-	DWORD posx = gameInfo->myconfig.limx/2, posy = 7, oposx, oposy,num=0,ballScore = 0;
+	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size / 2);
+	DWORD posy = gameInfo->nUsers[0].posy;
+	DWORD oposx, oposy, num = 0, ballScore = 0;
 	boolean goingUp = 1, goingRight = (rand() % 2), flag;
-	goingRight = 1;
 	gameInfo->nBalls[id].status = 1;
 	do{
 		ballScore = GetTickCount();
@@ -310,7 +311,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		Sleep(gameInfo->nBalls[id].speed);
 		//checks for bricks
 		for (int i = 0; i < gameInfo->numBricks; i++) {
-			_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+			//_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
 			//up
 			if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
 
@@ -483,32 +484,32 @@ void createBrick(DWORD num) {
 	int i;
 	for (i = 0; i < MAX_BRICKS; i++) {
 		if (i == 0) {
-			gameInfo->nBricks[i].posx = 72;
+			gameInfo->nBricks[i].posx = 15;
 			gameInfo->nBricks[i].posy = 3;
-			gameInfo->nBricks[i].tam = 3;
-			gameInfo->nBricks[i].status = 1;
+			gameInfo->nBricks[i].tam = 30;
+			gameInfo->nBricks[i].status = 4;
 		}
 		else if (i == 1) {
-			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 20;
+			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 40;
 			gameInfo->nBricks[i].posy = 3;
 			gameInfo->nBricks[i].tam = 15;
-			gameInfo->nBricks[i].status = 2;
+			gameInfo->nBricks[i].status = 5;
 		}
 		else if (i == 2) {
-			gameInfo->nBricks[i].posx = 80;
+			gameInfo->nBricks[i].posx = 60;
 			gameInfo->nBricks[i].posy = 3;
 			gameInfo->nBricks[i].tam = 10;
-			gameInfo->nBricks[i].status = 3;
+			gameInfo->nBricks[i].status = 6;
 		}
 		else if (i == 3) {
 			gameInfo->nBricks[i].posx = 5;
-			gameInfo->nBricks[i].posy = 10;
+			gameInfo->nBricks[i].posy = 7;
 			gameInfo->nBricks[i].tam = 50;
 			gameInfo->nBricks[i].status = 9;
 		}
 		else if (i == 4) {
 			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 55;
-			gameInfo->nBricks[i].posy = 10;
+			gameInfo->nBricks[i].posy = 7;
 			gameInfo->nBricks[i].tam = 50;
 			gameInfo->nBricks[i].status = 9;
 		}
@@ -565,7 +566,7 @@ int startVars() {
 		gameInfo->nBalls[i].posx = 0;
 		gameInfo->nBalls[i].posy = 0;
 		gameInfo->nBalls[i].status = 0;
-		gameInfo->nBalls[i].speed = 1500;
+		gameInfo->nBalls[i].speed =750;
 		hTBola[i] = NULL;
 	}
 	//Brick

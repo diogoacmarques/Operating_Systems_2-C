@@ -367,10 +367,7 @@ DWORD WINAPI BrickThread(LPVOID param) {
 	for (int i = 0; i < numBricks; i++)
 		localBricks[i] = gameInfo->nBricks[i];
 	//draws intially all bricks
-	WaitForSingleObject(hStdoutMutex, INFINITE);
-	gotoxy(gameInfo->myconfig.limy - 1, 0);
-	_tprintf(TEXT("Brick(%d,%d)"), gameInfo->nBricks[0].posx, gameInfo->nBricks[0].posy);
-	ReleaseMutex(hStdoutMutex);
+	//draws intially all bricks
 	for (int i = 0; i < gameInfo->numBricks; i++) {
 		WaitForSingleObject(hStdoutMutex, INFINITE);
 		gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
@@ -427,7 +424,7 @@ void gotoxy(int x, int y) {
 
 void drawHelp(BOOLEAN num) {
 	WaitForSingleObject(hStdoutMutex, INFINITE);
-	gotoxy(0, 1);
+	gotoxy(0, 15);
 	if (num) {
 		_tprintf(TEXT("A/D - Move\n"));
 		_tprintf(TEXT("SPACE - New Ball\n"));
