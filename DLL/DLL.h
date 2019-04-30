@@ -60,6 +60,7 @@ typedef struct config {
 	int nMaxUsers;
 	int limx;
 	int limy;
+	int initalLifes;
 } config;
 
 typedef struct Player {

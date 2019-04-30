@@ -12,6 +12,7 @@
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI userThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
+void createGame();
 int startGame();
 void createBalls(DWORD num);
 int startVars();
@@ -66,7 +67,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 		return -1;
 	}
 
-	msg tmpMsg;
 	user tmp_user;
 	tmp_user.score = -1;
 	_tcscpy_s(tmp_user.name, MAX_NAME_LENGTH, TEXT("just checking"));
@@ -82,22 +82,17 @@ int _tmain(int argc, LPTSTR argv[]) {
 		fflush(stdin);
 		KeyPress = _gettch();
 		_puttchar(KeyPress);
-		system("cls");
+		//system("cls");
 
 		switch (KeyPress) {
 		case '1':
-			gameInfo->gameStatus = 0;
-			tmpMsg.codigoMsg = 100;//new game
-			tmpMsg.from = server_id;
-			tmpMsg.to = 255; //broadcast
-			_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("new game created"));
-			sendMessage(tmpMsg);				
+			createGame();	
 			break;
 		case '2':
-			if (gameInfo->gameStatus == -1) {
+			if (gameInfo->gameStatus != 0) {
 				_tprintf(TEXT("Game isnt created yet!\n"));
 			}
-			else if (gameInfo->numUsers >= 0) {
+			else if (gameInfo->numUsers > 0) {
 				_tprintf(TEXT("Game is starting!\n"));
 				startGame();
 				gameInfo->gameStatus = -1; //after game ends
@@ -140,9 +135,28 @@ DWORD WINAPI receiveMessageThread() {
 		WaitForSingleObject(messageEvent,INFINITE);
 		newMsg = receiveMessage();
 		quant++;
-		_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
+		//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
 			_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
+			if (gameInfo->gameStatus != 0) {
+				//_tprintf(TEXT("User(%s) tried to login with no game created\n"), newMsg.messageInfo);
+				newMsg.codigoMsg = -100;//no game created
+				newMsg.number = -100;
+				newMsg.to = 255;//broadcast
+				newMsg.from = 254;
+				//_tprintf(TEXT("Sent no game created\n"));
+				sendMessage(newMsg);
+				continue;
+			}else if(_tcscmp(newMsg.messageInfo, TEXT("nop")) == 0) {//for tests
+				//_tprintf(TEXT("Login do Utilizador (%s) not accepted\n"), newMsg.messageInfo);
+				newMsg.codigoMsg = -1;//not successful
+				newMsg.number = -1;
+				newMsg.to = 255;//broadcast
+				newMsg.from = 254;
+				//_tprintf(TEXT("Sent user not accepted created\n"));
+				sendMessage(newMsg);
+				continue;
+			}				
 			for (int i = 0; i < gameInfo->numUsers; i++) {
 				if (_tcscmp(gameInfo->nUsers[i].name, newMsg.messageInfo) == 0) {
 					flag = 0;
@@ -154,9 +168,10 @@ DWORD WINAPI receiveMessageThread() {
 				gameInfo->nUsers[gameInfo->numUsers].user_id = newMsg.from;
 				//_tprintf(TEXT("\nAdicionei (%s) na pos %d\n\n"),usersLogged->names[usersLogged->tam], usersLogged->tam);
 				newMsg.codigoMsg = 1;//sucesso
-				newMsg.number = gameInfo->numUsers++;;
+				newMsg.number = gameInfo->numUsers++;
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
+				_tprintf(TEXT("sending message with sucess from:%d\n"),newMsg.from);
 				sendMessage(newMsg);
 			}
 		}
@@ -179,6 +194,7 @@ DWORD WINAPI receiveMessageThread() {
 			sendMessage(newMsg);
 		}
 		else if (newMsg.codigoMsg == 200) {//user trying to move
+			_tprintf(TEXT("[%d]-%s\n"), newMsg.from,newMsg.messageInfo);
 			moveUser(newMsg.from, newMsg.messageInfo);
 			SetEvent(canMove);
 			//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
@@ -197,12 +213,17 @@ int startGame() {
 	HANDLE hTUser[MAX_USERS];
 	DWORD threadId;
 	int i;
-
+	msg tmpMsg;
 	//moveBalls = CreateSemaphore(NULL, gameInfo->numBalls, gameInfo->numBalls, NULL);//semafore que dispara quando tem a posicao de todas as bolas.
 	//for (i = 0; i < gameInfo->numBalls; i++)//preenche semaforo
 	//	WaitForSingleObject(moveBalls, INFINITE);
 
 	_tprintf(TEXT("Game started!\n"));
+	tmpMsg.codigoMsg = 100;//new game
+	tmpMsg.from = server_id;
+	tmpMsg.to = 255; //broadcast
+	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("game started"));
+	sendMessage(tmpMsg);
 
 	for (i = 0; i < gameInfo->numUsers; i++) {
 		hTUser[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)userThread, NULL, 0, &threadId);
@@ -219,7 +240,7 @@ int startGame() {
 	ResetEvent(gameEvent);//lets users know that the game started
 
 	WaitForMultipleObjects(gameInfo->numUsers, hTUser, TRUE, INFINITE);
-	_tprintf(TEXT("out of start game!\n"));
+	//_tprintf(TEXT("out of start game!\n"));
 }
 
 DWORD WINAPI userThread(LPVOID param) {
@@ -311,6 +332,8 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		Sleep(gameInfo->nBalls[id].speed);
 		//checks for bricks
 		for (int i = 0; i < gameInfo->numBricks; i++) {
+			if (!gameInfo->nBricks[i].status)
+				continue;
 			//_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
 			//up
 			if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
@@ -533,13 +556,31 @@ void createBrick(DWORD num) {
 
 void hitBrick(DWORD brick_id,DWORD ball_id) {
 	gameInfo->nBricks[brick_id].status--;
-	if(gameInfo->nBalls[ball_id].speed >= 100)
+	if(gameInfo->nBalls[ball_id].speed >= 150)
 		gameInfo->nBalls[ball_id].speed -= 50;
 	for (int i = 0; i < gameInfo->numUsers; i++)
 		gameInfo->nUsers[i].score += 100;
 
 }
 
+void createGame() {
+	msg tmpMsg;
+	TCHAR resp;
+	DWORD num;
+	_tprintf(TEXT("Would you like to change defaut values for the game?(Y/N):"));
+	fflush(stdin);
+	resp = _gettch();
+	if (resp == 'y' || resp == 'Y') {
+		do {
+			_tprintf(TEXT("\nNumber of initial lifes(1-10):"));
+			_tscanf_s(TEXT("%d"), &num,1);
+		} while (num <= 0 || num > 10);
+		_tprintf(TEXT("\nNumber of initial lifes is now %d\n"),num);
+	}
+
+	gameInfo->gameStatus = 0;
+	_tprintf(TEXT("New Game Created!\n"));
+}
 
 int startVars() {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -566,7 +607,7 @@ int startVars() {
 		gameInfo->nBalls[i].posx = 0;
 		gameInfo->nBalls[i].posy = 0;
 		gameInfo->nBalls[i].status = 0;
-		gameInfo->nBalls[i].speed =750;
+		gameInfo->nBalls[i].speed = 500;
 		hTBola[i] = NULL;
 	}
 	//Brick
