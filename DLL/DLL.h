@@ -12,11 +12,27 @@
 #include <tchar.h>
 
 #define TAM 256
-#define MAX_NAME_LENGTH 250
 #define MAX_MSG 50
+//game
+#define MAX_LEVELS 5
+//User
 #define MAX_USERS 20
+#define MAX_NAME_LENGTH 250
+#define MAX_INIT_LIFES 10
+
+//bals
+#define MAX_SPEED 100
 #define MAX_BALLS 20
+#define MAX_SPEED_BONUS 5
+#define PROB_SPEED_BONUS 0.5
+#define INIT_SPEED 500
+#define MAX_DURATION 50000
+
+//bricks
 #define MAX_BRICKS 50
+#define INIT_BRICKS 5
+
+
 #define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
 #define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
 #define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
@@ -30,16 +46,9 @@
 
 
 typedef struct Message {
-	DWORD codigoMsg, number,from,to;
+	DWORD codigoMsg, number, from, to;
 	TCHAR messageInfo[TAM];
-} msg,*pmsg;
-
-typedef struct memoryMessage {
-	msg nMsg[MAX_MSG];
-	int count; // indica o numero de elementos presentes
-	int begin; // aponta para a posicao anterior ao primeiro elemento
-	int last; // aponta para o ultimo elemento
-} mMsg;
+} msg, *pmsg;
 
 typedef struct ball {
 	int posx;
@@ -57,10 +66,25 @@ typedef struct brick {
 } brick;
 
 typedef struct config {
-	int nMaxUsers;
+	//game
 	int limx;
 	int limy;
-	int initalLifes;
+	int num_levels;
+	//user
+	int max_users;
+	int inital_lifes;
+	//ball
+	int max_balls;
+	int max_speed;
+	int num_speed_up;
+	int num_speed_down;
+	int prob_speed_up;
+	int prob_speed_down;
+	int duration;
+	int inital_ball_speed;
+	//bricks
+	int max_bricks;
+	int initial_bricks;
 } config;
 
 typedef struct Player {
@@ -70,21 +94,19 @@ typedef struct Player {
 	DWORD score;
 	int size;
 	int posx, posy;
-	
 }user;
 
 typedef struct {
 	config myconfig;
 	user nUsers[MAX_USERS];
-	ball nBalls[MAX_BALLS];	
+	ball nBalls[MAX_BALLS];
 	brick nBricks[MAX_BRICKS];
 	int numUsers;
 	int numBalls;
 	int numBricks;
 	int gameStatus;
-}game,*pgame;
+}game, *pgame;
 
-mMsg *msgFromMemory;
 HANDLE canMove, gameEvent, updateBalls;
 HANDLE messageEventClient[MAX_USERS];
 

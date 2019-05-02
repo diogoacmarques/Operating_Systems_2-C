@@ -165,7 +165,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		}
 			
 		//WaitForSingleObject(hStdoutMutex, INFINITE);
-		//gotoxy(0, 1);
+		//gotoxy(0, 0);
 		//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
 		//ReleaseMutex(hStdoutMutex);
 		
@@ -186,7 +186,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 			}
 
 		}
-		else if (inMsg.codigoMsg == -1) {
+		else if (inMsg.codigoMsg == -1){
 			_tprintf(TEXT("Server refused login with %s\nPress Any Key ..."), inMsg.messageInfo);
 			TCHAR tmp;
 			fflush(stdin);

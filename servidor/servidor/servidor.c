@@ -15,12 +15,16 @@ DWORD WINAPI receiveMessageThread();
 void createGame();
 int startGame();
 void createBalls(DWORD num);
-int startVars();
+int startVars(TCHAR file[TAM]);
+BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value);
 void resetUser(DWORD id);
+void resetBrick(DWORD id);
+void resetBall(DWORD id);
 int registry(user userData);
 int moveUser(DWORD id, TCHAR side[TAM]);
 void createBrick(DWORD num);
 void hitBrick(DWORD brick_id, DWORD ball_id);
+void checkSettings();
 
 HANDLE moveBalls;
 HANDLE hTBola[MAX_BALLS];
@@ -55,8 +59,9 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	//Message
 	createSharedMemoryMsg();
-
-	BOOLEAN res = startVars();
+	//TCHAR file[TAM];
+	//_tcscpy_s(name, TAM, TEXT("HighScore"));
+	BOOLEAN res = startVars(TEXT("config.txt"));
 	if (res) {
 		_tprintf(TEXT("Erro ao iniciar as variaveis!"));
 	}
@@ -77,7 +82,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("2:Start Game\n"));
 		_tprintf(TEXT("3:Users Logged\n"));
 		_tprintf(TEXT("4:Top 10\n"));
-		_tprintf(TEXT("5:Exit\n"));
+		_tprintf(TEXT("5:Check Settings\n"));
+		_tprintf(TEXT("6:Exit\n"));
 		
 		fflush(stdin);
 		KeyPress = _gettch();
@@ -110,8 +116,11 @@ int _tmain(int argc, LPTSTR argv[]) {
 		case '4':
 			registry(tmp_user);
 			break;
+		case '5':
+			checkSettings();
 		}
-	} while (KeyPress != '5');
+		
+	} while (KeyPress != '6');
 
 	continua = 0;
 	SetEvent(messageEvent);
@@ -211,7 +220,6 @@ DWORD WINAPI receiveMessageThread() {
 
 int startGame() {
 	HANDLE hTUser[MAX_USERS];
-	DWORD threadId;
 	int i;
 	msg tmpMsg;
 	//moveBalls = CreateSemaphore(NULL, gameInfo->numBalls, gameInfo->numBalls, NULL);//semafore que dispara quando tem a posicao de todas as bolas.
@@ -226,7 +234,7 @@ int startGame() {
 	sendMessage(tmpMsg);
 
 	for (i = 0; i < gameInfo->numUsers; i++) {
-		hTUser[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)userThread, NULL, 0, &threadId);
+		hTUser[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)userThread, NULL, 0, NULL);
 		if (hTUser[i] == NULL) {
 			_tprintf(TEXT("Erro ao criar user numero:%d!\n"), i);
 			return -1;
@@ -250,13 +258,13 @@ DWORD WINAPI userThread(LPVOID param) {
 	//_tprintf(TEXT("(THREAD)User:%s-id[%d]\n"),userData.name,id);
 	gameInfo->nUsers[id].posx = gameInfo->myconfig.limx / 2;
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 2;
-	gameInfo->nUsers[id].lifes = 3;
+	gameInfo->nUsers[id].lifes = gameInfo->myconfig.inital_lifes;
 	
 	//_tprintf(TEXT("Waiting for a user to let us know that we can start\n"));
 	Sleep(250);
 
 	//build bricks here
-	createBrick(5);
+	createBrick(gameInfo->myconfig.initial_bricks);
 
 	while (gameInfo->nUsers[id].lifes > 0){
 		//_tprintf(TEXT("User[%d] waiting for input %d lifes\n"), id, gameInfo->nUsers[id].lifes);
@@ -359,7 +367,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 					hitBrick(i, id);
 				}
 				
-				
+	
 			}
 			else if(!goingUp && posy + 1 == gameInfo->nBricks[i].posy){
 				//down
@@ -556,8 +564,9 @@ void createBrick(DWORD num) {
 
 void hitBrick(DWORD brick_id,DWORD ball_id) {
 	gameInfo->nBricks[brick_id].status--;
-	if(gameInfo->nBalls[ball_id].speed >= 150)
-		gameInfo->nBalls[ball_id].speed -= 50;
+	if(gameInfo->nBalls[ball_id].speed >= gameInfo->myconfig.max_speed)
+		gameInfo->nBalls[ball_id].speed -= gameInfo->myconfig.num_speed_up;
+	_tprintf(TEXT("Ball speed is:%d!\n"), gameInfo->myconfig.num_speed_up);
 	for (int i = 0; i < gameInfo->numUsers; i++)
 		gameInfo->nUsers[i].score += 100;
 
@@ -582,19 +591,80 @@ void createGame() {
 	_tprintf(TEXT("New Game Created!\n"));
 }
 
-int startVars() {
+int startVars(TCHAR file[TAM]) {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-	int i;
+	int i,j;
+	BOOLEAN flag;
 	//Status
 	gameInfo->gameStatus = -1;
-	//sessionId = (GetCurrentThreadId() + GetTickCount());
 	server_id = 254;
-	//Config
+	//default config
+	//game
 	gameInfo->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 	gameInfo->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+	gameInfo->myconfig.num_levels = MAX_LEVELS;
+	//Users
+	gameInfo->myconfig.max_users = MAX_USERS;
+	gameInfo->myconfig.inital_lifes = MAX_INIT_LIFES;
+	//balls
+	gameInfo->myconfig.max_balls = MAX_BALLS;
+	gameInfo->myconfig.max_speed = MAX_SPEED;
+	gameInfo->myconfig.num_speed_up = MAX_SPEED_BONUS;
+	gameInfo->myconfig.num_speed_down = MAX_SPEED_BONUS;
+	gameInfo->myconfig.duration = MAX_DURATION;
+	gameInfo->myconfig.inital_ball_speed = INIT_SPEED;
+	//bricks
+	gameInfo->myconfig.max_bricks = MAX_BRICKS;
+	gameInfo->myconfig.initial_bricks = INIT_BRICKS;
+	//end of default config
 
-	_tprintf(TEXT("Lim(%d,%d)\n"), gameInfo->myconfig.limx, gameInfo->myconfig.limy);
+	//file config
+	FILE *fp;
+	errno_t err;
+	err = _tfopen_s(&fp,file,"r");
+	_tprintf(TEXT("err = %s\n"), err);
+	if (!fp) {
+		_tprintf(TEXT("Error opening '%s' file\n"), file);
+		return -1;
+	}
+
+	TCHAR line[TAM];
+	TCHAR setting[TAM];
+	TCHAR value[TAM];
+	DWORD num;
+	//fseek(fp, 0L, SEEK_SET);
+
+	while (_ftscanf_s(fp, TEXT("%s"), line, _countof(line))!=EOF) {
+		flag = 0;
+		j = 0;
+		//_tprintf(TEXT("Line[%d]=%s\n"), ++i, line);
+		for (int i = 0; i < TAM; i++) {
+			if (line[i] == ':') {
+				setting[i] = '\0';//end of setting
+				flag = 1;
+				continue;
+			}
+
+			if (!flag) {
+				setting[i] = line[i];
+			}
+			else {
+				value[j] = line[i];
+				j++;
+				if (line[i] == "\0")
+					break;
+			}			
+		}
+		num = _tstoi(value);//tranlate
+		flag = insertSetting(setting, num);
+		if (flag) {
+			_tprintf(TEXT("Error inserting the setting '%s' with the value (%d)\n"), setting, num);
+		}
+		else {
+			_tprintf(TEXT("Setting:'%s' was successufuly added with the value of(%d)\n"), setting, num);
+		}
+	}
 
 	//Users
 	gameInfo->numUsers = 0;
@@ -604,24 +674,91 @@ int startVars() {
 	//Balls
 	gameInfo->numBalls = 0;
 	for (i = 0; i < MAX_BALLS; i++) {
-		gameInfo->nBalls[i].posx = 0;
-		gameInfo->nBalls[i].posy = 0;
-		gameInfo->nBalls[i].status = 0;
-		gameInfo->nBalls[i].speed = 500;
-		hTBola[i] = NULL;
+		resetBall(i);
 	}
 	//Brick
 	gameInfo->numBricks = 0;
 	for (i = 0; i < MAX_BRICKS; i++) {
-		gameInfo->nBricks[i].posx = 0;
-		gameInfo->nBricks[i].posy = 0;
-		gameInfo->nBricks[i].status = 0;
-		gameInfo->nBricks[i].tam = 0;
-		hTBrick[i] = NULL;
+		resetBrick(i);
 	}
 
+	fclose(fp);
 	return 0;
 }
+
+BOOLEAN insertSetting(TCHAR setting[TAM],DWORD value) {
+	if (_tcscmp(setting, TEXT("MAX_USERS")) == 0) {
+		gameInfo->myconfig.max_users = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("MAX_BALLS")) == 0) {
+		gameInfo->myconfig.max_balls = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("MAX_BRICKS")) == 0) {
+		gameInfo->myconfig.max_bricks = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("NUM_LEVELS")) == 0) {
+		gameInfo->myconfig.num_levels = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("SPEED_UP")) == 0) {
+		gameInfo->myconfig.num_speed_up = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("SPEED_DOWN")) == 0) {
+		gameInfo->myconfig.num_speed_down = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("PROB_SPEED_UP")) == 0) {
+		gameInfo->myconfig.prob_speed_up = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("PROB_SPEED_DOWN")) == 0) {
+		gameInfo->myconfig.prob_speed_down = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("DURATION_SPEED")) == 0) {
+		gameInfo->myconfig.duration = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("INITIAL_LIFES")) == 0) {
+		gameInfo->myconfig.inital_lifes = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("INITAL_BALL_SPEED")) == 0) {
+		gameInfo->myconfig.inital_ball_speed = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("NUM_INIT_BRICKS")) == 0) {
+		gameInfo->myconfig.initial_bricks = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("MAX_SPEED")) == 0) {
+		gameInfo->myconfig.max_speed = value;
+		return 0;
+	}
+	return 1;
+}
+
+void checkSettings() {
+	system("cls");
+	//game
+	_tprintf(TEXT("------------------------------GAME------------------------------\n"));
+	_tprintf(TEXT("limite x:%d\n"),gameInfo->myconfig.limx);
+	_tprintf(TEXT("limite y:%d\n"),gameInfo->myconfig.limy);
+	_tprintf(TEXT("Number of Levels:%d\n"),gameInfo->myconfig.num_levels);
+	//users
+	_tprintf(TEXT("------------------------------USERS------------------------------\n"));
+	_tprintf(TEXT("Max Users:%d\n"),gameInfo->myconfig.num_levels);
+	_tprintf(TEXT("Initial Lifes:%d\n"),gameInfo->myconfig.inital_lifes);
+	//balls
+	_tprintf(TEXT("------------------------------BALLS------------------------------\n"));
+	_tprintf(TEXT("Max number of Balls:%d\n"), gameInfo->myconfig.max_balls);
+	_tprintf(TEXT("Initial Lifes:%d\n"), gameInfo->myconfig.max_speed);
+	_tprintf(TEXT("Number of Speed Ups:%d\n"), gameInfo->myconfig.num_speed_up);
+	_tprintf(TEXT("Number of Speed Downs Lifes:%d\n"), gameInfo->myconfig.num_speed_down);
+	_tprintf(TEXT("Probability of speed up:%d\n"), gameInfo->myconfig.prob_speed_up);
+	_tprintf(TEXT("Probability of speed down:%d\n"), gameInfo->myconfig.prob_speed_down);
+	_tprintf(TEXT("Bonus duration:%d\n"), gameInfo->myconfig.duration);
+	_tprintf(TEXT("Initial ball speed:%d\n"), gameInfo->myconfig.inital_ball_speed);
+	//bricks
+	_tprintf(TEXT("------------------------------BRICKS------------------------------\n"));
+	_tprintf(TEXT("Max number of bricks speed:%d\n"), gameInfo->myconfig.max_bricks);
+	_tprintf(TEXT("Number of initial bricks:%d\n"), gameInfo->myconfig.initial_bricks);
+
+	_tprintf(TEXT("\n\n"));
+}
+
 
 void resetUser(DWORD id) {
 	//_tprintf(TEXT("Reseting user %d\n"), id);
@@ -632,6 +769,24 @@ void resetUser(DWORD id) {
 	gameInfo->nUsers[id].size = 10;
 	gameInfo->nUsers[id].posx = 0;
 	gameInfo->nUsers[id].posy = 0;
+}
+
+void resetBall(DWORD id) {
+	//_tprintf(TEXT("Reseting ball %d\n"), id);
+	gameInfo->nBalls[id].posx = 0;
+	gameInfo->nBalls[id].posy = 0;
+	gameInfo->nBalls[id].status = 0;
+	gameInfo->nBalls[id].speed = gameInfo->myconfig.inital_ball_speed;
+	hTBola[id] = NULL;
+}
+
+void resetBrick(DWORD id) {
+	//_tprintf(TEXT("Reseting brick %d\n"), id);
+	gameInfo->nBricks[id].posx = 0;
+	gameInfo->nBricks[id].posy = 0;
+	gameInfo->nBricks[id].status = 0;
+	gameInfo->nBricks[id].tam = 0;
+	hTBrick[id] = NULL;
 }
 
 int registry(user userData) {
