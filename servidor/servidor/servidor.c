@@ -86,8 +86,9 @@ int _tmain(int argc, LPTSTR argv[]) {
 		fflush(stdin);
 		KeyPress = _gettch();
 		_puttchar(KeyPress);
+		_tprintf(TEXT("\n"));
 		//system("cls");
-
+		
 		switch (KeyPress) {
 		case '1':
 			createGame();	
@@ -591,6 +592,7 @@ void createGame() {
 			_tprintf(TEXT("\nNumber of initial lifes(1-10):"));
 			_tscanf_s(TEXT("%d"), &num,1);
 		} while (num <= 0 || num > 10);
+		gameInfo->myconfig.inital_lifes = num;
 		_tprintf(TEXT("\nNumber of initial lifes is now %d\n"),num);
 	}
 
@@ -599,10 +601,12 @@ void createGame() {
 }
 
 int startVars(TCHAR file[TAM]) {
+
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
 	int i,j;
 	BOOLEAN flag;
+
 	//Status
 	gameInfo->gameStatus = -1;
 	server_id = 254;
@@ -625,52 +629,53 @@ int startVars(TCHAR file[TAM]) {
 	gameInfo->myconfig.max_bricks = MAX_BRICKS;
 	gameInfo->myconfig.initial_bricks = INIT_BRICKS;
 	//end of default config
-
 	//file config
 	FILE *fp;
 	errno_t err;
 	err = _tfopen_s(&fp,file,"r");
-	_tprintf(TEXT("err = %s\n"), err);
-	if (!fp) {
-		_tprintf(TEXT("Error opening '%s' file\n"), file);
-		return -1;
+	if (err) {
+		_tprintf(TEXT("Error opening '%s' file with error(%d)\n"), file,err);
 	}
 
-	TCHAR line[TAM];
-	TCHAR setting[TAM];
-	TCHAR value[TAM];
-	DWORD num;
-	//fseek(fp, 0L, SEEK_SET);
+	if (!err) {//if no error
+		_tprintf(TEXT("reading...\n"));
+		TCHAR line[TAM];
+		TCHAR setting[TAM];
+		TCHAR value[TAM];
+		DWORD num;
+		//fseek(fp, 0L, SEEK_SET);
 
-	while (_ftscanf_s(fp, TEXT("%s"), line, _countof(line))!=EOF) {
-		flag = 0;
-		j = 0;
-		//_tprintf(TEXT("Line[%d]=%s\n"), ++i, line);
-		for (int i = 0; i < TAM; i++) {
-			if (line[i] == ':') {
-				setting[i] = '\0';//end of setting
-				flag = 1;
-				continue;
+		while (_ftscanf_s(fp, TEXT("%s"), line, _countof(line)) != EOF) {
+			flag = 0;
+			j = 0;
+			_tprintf(TEXT("Line=%s\n"), line);
+			for (int i = 0; i < TAM; i++) {
+				if (line[i] == ':') {
+					setting[i] = '\0';//end of setting
+					flag = 1;
+					continue;
+				}
+
+				if (!flag) {
+					setting[i] = line[i];
+				}
+				else {
+					value[j] = line[i];
+					j++;
+					if (line[i] == "\0")
+						break;
+				}
 			}
-
-			if (!flag) {
-				setting[i] = line[i];
+			num = _tstoi(value);//tranlate
+			flag = insertSetting(setting, num);
+			if (flag) {
+				_tprintf(TEXT("Error inserting the setting '%s' with the value (%d)\n"), setting, num);
 			}
 			else {
-				value[j] = line[i];
-				j++;
-				if (line[i] == "\0")
-					break;
-			}			
+				_tprintf(TEXT("Setting:'%s' was successufuly added with the value of(%d)\n"), setting, num);
+			}
 		}
-		num = _tstoi(value);//tranlate
-		flag = insertSetting(setting, num);
-		if (flag) {
-			_tprintf(TEXT("Error inserting the setting '%s' with the value (%d)\n"), setting, num);
-		}
-		else {
-			_tprintf(TEXT("Setting:'%s' was successufuly added with the value of(%d)\n"), setting, num);
-		}
+
 	}
 
 	//Users
@@ -689,7 +694,9 @@ int startVars(TCHAR file[TAM]) {
 		resetBrick(i);
 	}
 
-	fclose(fp);
+	if(!err)
+		fclose(fp);
+
 	return 0;
 }
 
