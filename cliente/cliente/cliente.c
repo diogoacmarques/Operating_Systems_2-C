@@ -27,6 +27,8 @@ HANDLE messageEventBroadcast, messageEvent;
 
 pgame gameInfo;
 
+BOOLEAN gameStatus = 0;
+
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -42,7 +44,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
 
 	messageEventBroadcast = CreateEvent(NULL, FALSE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
-	gameEvent = CreateEvent(NULL, TRUE, FALSE, GAME_EVENT_NNAME);
+	gameEvent = CreateEvent(NULL, TRUE, FALSE, GAME_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, STDOUT_CLIENT_MUTEX_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	canMove = CreateEvent(NULL, FALSE, FALSE, USER_MOVE_EVENT_NAME);
@@ -85,43 +87,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 		WaitForSingleObject(hTBroadcast, INFINITE);
 	} while (1);
 
-	/*do {
-		_tprintf(TEXT("--Welcome to Client[%d]--\n"),GetCurrentThreadId());
-		_tprintf(TEXT("1:Login?\n"));
-		_tprintf(TEXT("2:Send Message\n"));
-		_tprintf(TEXT("3:Play game\n"));
-		_tprintf(TEXT("4:Check var gData\n"));
-		_tprintf(TEXT("5:Exit\n"));
-
-		fflush(stdin);
-		KeyPress = _gettch();
-		_puttchar(KeyPress);
-		//system("cls");
-
-		switch (KeyPress) {
-		case '1':
-			
-			break;
-		case '2':
-			//_tprintf(TEXT("Mensagem:"));
-			//_tscanf_s(TEXT("%s"), newMsg.messageInfo, TAM);
-			//newMsg.codigoMsg = 123;
-			//newMsg.to = 254;
-			//newMsg.from = user_id;
-
-			//sendMessage(newMsg);
-			break;
-		case '3':
-			//newMsg.codigoMsg = 10;//new game
-			//_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, userLogged);
-			//sendMessage(newMsg);
-			break;
-		case '4':
-			break;
-		}
-	} while (KeyPress != '5');
-	*/
-	
 	system("cls");
 	_tprintf(TEXT("end of user....\n"));
 	closeSharedMemoryMsg();
@@ -203,6 +168,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		else if (inMsg.codigoMsg == 100) {//new game
 			_tprintf(TEXT("GAME created by server...\n"));
 			WaitForSingleObject(gameEvent, INFINITE);
+			gameStatus = 1;
 			hidecursor();
 			hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
 			if (hTUserInput == NULL) {
@@ -219,6 +185,13 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 				_tprintf(TEXT("Erro ao criar thread para desenhar bricks!\n"));
 				return -1;
 			}			
+		}
+		else if (inMsg.codigoMsg == -110 && gameStatus == 0) {
+			_tprintf(TEXT("A game is already in progress, this still needs to be implemented so that i can see what is going on with the game...\n"));
+			TCHAR tmp;
+			fflush(stdin);
+			tmp = _gettch();
+			return -1;
 		}
 	} while (1);
 }
@@ -277,32 +250,32 @@ DWORD WINAPI UserThread(LPVOID param){
 				sendMessage(gameMsg);
 				break;
 		
-				case 'd':
-				case 'D':	
-					flag = 1;
-					_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
-					sendMessage(gameMsg);
-					break;
+			case 'd':
+			case 'D':	
+				flag = 1;
+				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
+				sendMessage(gameMsg);
+				break;
 
-				case 32://sends ball
-					if (gameInfo->numBalls == 0 &&  gameInfo->nUsers[user_id].lifes > 0) {
-						drawHelp(0);
-						SetEvent(gameEvent);
-						ResetEvent(gameEvent);
-					}
-					break;
-		
-				case 27://esc
-					if (gameInfo->nUsers[user_id].lifes == 0) {
-						gameMsg.codigoMsg = 2;
-						gameMsg.from = user_id;
-						gameMsg.to = 254;
-						_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
-						sendMessage(gameMsg);
-						return 0;
-					}
-					break;
+			case 32://sends ball
+				if (gameInfo->numBalls == 0 &&  gameInfo->nUsers[user_id].lifes > 0) {
+					drawHelp(0);
+					SetEvent(gameEvent);
+					ResetEvent(gameEvent);
 				}
+				break;
+		
+			case 27://esc
+				if (gameInfo->nUsers[user_id].lifes == 0) {
+					gameMsg.codigoMsg = 2;
+					gameMsg.from = user_id;
+					gameMsg.to = 254;
+					_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
+					sendMessage(gameMsg);
+					return 0;
+				}
+				break;
+		}
 
 		if (flag) {
 			WaitForSingleObject(canMove, INFINITE);

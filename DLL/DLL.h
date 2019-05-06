@@ -40,7 +40,7 @@
 #define SEMAPHORE_MEMORY_WRITE TEXT("../../memory_semaphore_write")
 #define MESSAGE_EVENT_NAME TEXT("../../messageEventServer")
 #define MESSAGE_BROADCAST_EVENT_NAME TEXT("../../messageEventBroadcast")
-#define GAME_EVENT_NNAME TEXT("../../gameEvent")
+#define GAME_EVENT_NAME TEXT("../../gameEvent")
 #define BALL_EVENT_NAME TEXT("../../ballEvent")
 #define USER_MOVE_EVENT_NAME TEXT("../../userMoveEvent")
 

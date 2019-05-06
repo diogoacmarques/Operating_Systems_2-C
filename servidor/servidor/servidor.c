@@ -31,8 +31,6 @@ HANDLE hTBola[MAX_BALLS];
 HANDLE hTBrick[MAX_BRICKS];
 HANDLE messageEvent;
 
-BOOLEAN continua = 1;
-
 DWORD server_id;
 
 pgame gameUpdate;
@@ -50,7 +48,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_setmode(_fileno(stdout), _O_WTEXT);
 #endif
 	messageEvent = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
-	gameEvent = CreateEvent(NULL,TRUE,FALSE, GAME_EVENT_NNAME);
+	gameEvent = CreateEvent(NULL,TRUE,FALSE, GAME_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	canMove = CreateEvent(NULL, FALSE, FALSE, USER_MOVE_EVENT_NAME);
 	createHandles();
@@ -122,10 +120,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 		
 	} while (KeyPress != '6');
 
-	continua = 0;
-	SetEvent(messageEvent);
+	TerminateThread(receiveMessageThread, 1);
 	//WaitForSingleObject(hTBola, INFINITE);
-	WaitForSingleObject(hTReceiveMessage, INFINITE);
 	closeSharedMemoryMsg();
 	closeSharedMemoryGame();
 	_tprintf(TEXT("[Thread Principal %d] Vou terminar..."), GetCurrentThreadId());
@@ -147,7 +143,7 @@ DWORD WINAPI receiveMessageThread() {
 		//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 1 && gameInfo->numUsers < MAX_USERS) {//login de utilizador
 			_tprintf(TEXT("Login do Utilizador (%s)\n"), newMsg.messageInfo);
-			if (gameInfo->gameStatus != 0) {
+			if (gameInfo->gameStatus == -1) {
 				//_tprintf(TEXT("User(%s) tried to login with no game created\n"), newMsg.messageInfo);
 				newMsg.codigoMsg = -100;//no game created
 				newMsg.number = -100;
@@ -156,7 +152,17 @@ DWORD WINAPI receiveMessageThread() {
 				//_tprintf(TEXT("Sent no game created\n"));
 				sendMessage(newMsg);
 				continue;
-			}else if(_tcscmp(newMsg.messageInfo, TEXT("nop")) == 0) {//for tests
+			}
+			else if (gameInfo->gameStatus == 1) {
+				newMsg.codigoMsg = -110;//game already in progress
+				newMsg.number = -110;
+				newMsg.to = 255;//broadcast
+				newMsg.from = 254;
+				_tprintf(TEXT("Sent game in progress\n"));
+				sendMessage(newMsg);
+				continue;
+			}
+			else if(_tcscmp(newMsg.messageInfo, TEXT("nop")) == 0) {//for tests
 				//_tprintf(TEXT("Login do Utilizador (%s) not accepted\n"), newMsg.messageInfo);
 				newMsg.codigoMsg = -1;//not successful
 				newMsg.number = -1;
@@ -215,7 +221,7 @@ DWORD WINAPI receiveMessageThread() {
 			sendMessage(newMsg);
 		}
 
-	} while (continua);
+	} while (1);//this thread is terminated when exiting the main "trhead"
 }
 
 int startGame() {
@@ -227,6 +233,7 @@ int startGame() {
 	//	WaitForSingleObject(moveBalls, INFINITE);
 
 	_tprintf(TEXT("Game started!\n"));
+	gameInfo->gameStatus = 1;
 	tmpMsg.codigoMsg = 100;//new game
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255; //broadcast
