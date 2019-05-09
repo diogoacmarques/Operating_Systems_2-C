@@ -46,7 +46,7 @@
 
 
 typedef struct Message {
-	DWORD codigoMsg, number, from, to;
+	DWORD codigoMsg, from, to;
 	TCHAR messageInfo[TAM];
 } msg, *pmsg;
 

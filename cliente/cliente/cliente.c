@@ -124,7 +124,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		inMsg = receiveMessage();
 		if (inMsg.from != 254) {
 			_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
-			_tprintf(TEXT("to:%d\nfrom:%d\nnumber:%d\ncontent:%s\n"), inMsg.to, inMsg.from, inMsg.number, inMsg.messageInfo);
+			_tprintf(TEXT("to:%d\nfrom:%d\ncontent:%s\n"), inMsg.to, inMsg.from, inMsg.messageInfo);
 			Sleep(3000);
 			return 0;
 		}
@@ -137,11 +137,11 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		if (inMsg.codigoMsg == 1) {//successful login
 			system("cls");
 			_tcscpy_s(str, TAM, TEXT("messageEventClient"));
-			_itot_s(inMsg.number, tmp, TAM, 10);
-			_tcscat_s(str, TAM, tmp);
-			//_tprintf(TEXT("(Client) HANDLE = (%s)\n"), str);
+			//_itot_s(inMsg.number, tmp, TAM, 10);
+			_tcscat_s(str, TAM, inMsg.messageInfo);
+			_tprintf(TEXT("(Client) HANDLE = (%s)\n"), str);
 			messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
-			user_id = inMsg.number;
+			user_id = _tstoi(inMsg.messageInfo);
 			_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\nWaiting for server to start game..."), inMsg.messageInfo);
 
 			hTreceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, NULL);
@@ -177,7 +177,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 			}
 		}
 		else if (inMsg.codigoMsg == 101) {//new ball
-			createBalls(inMsg.number);
+			createBalls(_tstoi(inMsg.messageInfo));
 		}
 		else if (inMsg.codigoMsg == 102) {//create bricks
 			hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);

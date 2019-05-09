@@ -147,7 +147,6 @@ DWORD WINAPI receiveMessageThread() {
 			if (gameInfo->gameStatus == -1) {
 				//_tprintf(TEXT("User(%s) tried to login with no game created\n"), newMsg.messageInfo);
 				newMsg.codigoMsg = -100;//no game created
-				newMsg.number = -100;
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
 				//_tprintf(TEXT("Sent no game created\n"));
@@ -156,7 +155,6 @@ DWORD WINAPI receiveMessageThread() {
 			}
 			else if (gameInfo->gameStatus == 1) {
 				newMsg.codigoMsg = -110;//game already in progress
-				newMsg.number = -110;
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
 				_tprintf(TEXT("Sent game in progress\n"));
@@ -166,7 +164,6 @@ DWORD WINAPI receiveMessageThread() {
 			else if(_tcscmp(newMsg.messageInfo, TEXT("nop")) == 0) {//for tests
 				//_tprintf(TEXT("Login do Utilizador (%s) not accepted\n"), newMsg.messageInfo);
 				newMsg.codigoMsg = -1;//not successful
-				newMsg.number = -1;
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
 				//_tprintf(TEXT("Sent user not accepted created\n"));
@@ -180,11 +177,13 @@ DWORD WINAPI receiveMessageThread() {
 				}
 			}
 			if (flag) {
+				TCHAR tmp[TAM];
 				_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, newMsg.messageInfo);
 				gameInfo->nUsers[gameInfo->numUsers].user_id = newMsg.from;
 				//_tprintf(TEXT("\nAdicionei (%s) na pos %d\n\n"),usersLogged->names[usersLogged->tam], usersLogged->tam);
 				newMsg.codigoMsg = 1;//sucesso
-				newMsg.number = gameInfo->numUsers++;
+				_itot_s(gameInfo->numUsers++, tmp, TAM, 10);
+				_tcscpy_s(newMsg.messageInfo, TAM, tmp);
 				newMsg.to = 255;//broadcast
 				newMsg.from = 254;
 				_tprintf(TEXT("sending message with sucess from:%d\n"),newMsg.from);
@@ -324,11 +323,12 @@ void createBalls(DWORD num){
 	}
 
 	msg tmpMsg;
+	TCHAR tmp[TAM];
 	tmpMsg.codigoMsg = 101;
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255;
-	tmpMsg.number = num;
-	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("ball"));
+	_itot_s(num, tmp, TAM, 10);
+	_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
 	sendMessage(tmpMsg);
 
 	return;
@@ -561,11 +561,12 @@ void createBrick(DWORD num) {
 
 	_tprintf(TEXT("created %d bricks!\n"), count);
 	msg tmpMsg;
+	TCHAR tmp[TAM];
 	tmpMsg.codigoMsg = 102;
+	_itot_s(num, tmp, TAM, 10);
+	_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255;
-	tmpMsg.number = num;
-	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("brick"));
 	sendMessage(tmpMsg);
 	return;
 }
