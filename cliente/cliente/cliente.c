@@ -13,6 +13,7 @@ void hidecursor();
 void gotoxy(int x, int y);
 void createBalls(DWORD num);
 void drawHelp(BOOLEAN num);
+void usersMove(TCHAR move[TAM]);
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI receiveMessageThread(LPVOID param);
@@ -21,7 +22,7 @@ DWORD WINAPI BrickThread(LPVOID param);
 
 DWORD user_id;
 
-HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick;
+HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick, hTUserOutput;
 
 HANDLE messageEventBroadcast, messageEvent;
 
@@ -60,7 +61,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	gameInfo = createSharedMemoryGame();
 
 	for (int i = 0; i < MAX_BALLS; i++)
-		hTBola[i] == NULL;
+		hTBola[i] == INVALID_HANDLE_VALUE;
 
 	do {
 		system("cls");
@@ -107,6 +108,14 @@ DWORD WINAPI receiveMessageThread(LPVOID param) {
 		if (newMsg.codigoMsg == 2) {//end of user
 			TerminateThread(hTBroadcast, 1);
 			CloseHandle(hTBroadcast);
+			TerminateThread(hTBrick, 1);
+			CloseHandle(hTBrick);
+			for (int i = 0; i < gameInfo->numBalls; i++) {
+				TerminateThread(hTBola[i], 1);
+				CloseHandle(hTBola[i]);
+				hTBola[i] = INVALID_HANDLE_VALUE;
+			}
+			
 			return 0;
 		}
 		else if (newMsg.codigoMsg == 123) {
@@ -119,6 +128,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 	msg inMsg;
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
+	BOOLEAN logged = 0;
 	do{
 		WaitForSingleObject(messageEventBroadcast, INFINITE);
 		inMsg = receiveMessage();
@@ -134,7 +144,8 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
 		//ReleaseMutex(hStdoutMutex);
 		
-		if (inMsg.codigoMsg == 1) {//successful login
+		if (inMsg.codigoMsg == 1 && !logged) {//successful login
+			logged = 1;
 			system("cls");
 			_tcscpy_s(str, TAM, TEXT("messageEventClient"));
 			//_itot_s(inMsg.number, tmp, TAM, 10);
@@ -151,7 +162,7 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 			}
 
 		}
-		else if (inMsg.codigoMsg == -1){
+		else if (inMsg.codigoMsg == -1 && !logged){
 			_tprintf(TEXT("Server refused login with %s\nPress Any Key ..."), inMsg.messageInfo);
 			TCHAR tmp;
 			fflush(stdin);
@@ -167,17 +178,24 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		}
 		else if (inMsg.codigoMsg == 100) {//new game
 			_tprintf(TEXT("GAME created by server...\n"));
-			WaitForSingleObject(gameEvent, INFINITE);
 			gameStatus = 1;
 			hidecursor();
+			usersMove(TEXT("init"));
 			hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
 			if (hTUserInput == NULL) {
-				_tprintf(TEXT("Erro ao criar thread para o utilizador!\n"));
+				_tprintf(TEXT("Erro ao criar thread para o utilizador escrever!\n"));
+				return -1;
+			}
+			hTUserOutput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
+			if (hTUserOutput == NULL) {
+				_tprintf(TEXT("Erro ao criar thread para o utilizador ler!\n"));
 				return -1;
 			}
 		}
 		else if (inMsg.codigoMsg == 101) {//new ball
-			createBalls(_tstoi(inMsg.messageInfo));
+			DWORD tmp = _tstoi(inMsg.messageInfo);
+			//_tprintf(TEXT("creating %d balls thread para o utilizador!\n"),tmp);
+			createBalls(tmp);
 		}
 		else if (inMsg.codigoMsg == 102) {//create bricks
 			hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);
@@ -193,6 +211,10 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 			tmp = _gettch();
 			return -1;
 		}
+		else if (inMsg.codigoMsg == 200) {
+			usersMove(inMsg.messageInfo
+);
+		}
 	} while (1);
 }
 
@@ -202,7 +224,9 @@ void createBalls(DWORD num) {
 	DWORD count = 0;
 	DWORD threadId;
 	for (int i = 0; i < MAX_BALLS; i++) {
-		if (hTBola[i] == NULL) {//se handle is available
+		//_tprintf(TEXT("BOLA[%d]\n"),i);
+		if (hTBola[i] == INVALID_HANDLE_VALUE || hTBola[i] == NULL) {//se handle is available
+			//_tprintf(TEXT("Found a free handle\n"));
 			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
 			if (hTBola[i] == NULL) {
 				_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
@@ -210,6 +234,7 @@ void createBalls(DWORD num) {
 			}
 			else {
 				count++;
+				//_tprintf(TEXT("BolaThread Created\n"));
 			}
 		}
 
@@ -221,89 +246,121 @@ void createBalls(DWORD num) {
 }
 
 DWORD WINAPI UserThread(LPVOID param){
+	Sleep(1000);
 	user userInfo = gameInfo->nUsers[user_id];
-	system("cls");
-	drawHelp(1);
-	WaitForSingleObject(hStdoutMutex, INFINITE);
-	gotoxy(userInfo.posx, userInfo.posy);
-	for (int i = 0; i < userInfo.size; i++) {
-		_tprintf(TEXT("%d"), user_id);
-	}
-	ReleaseMutex(hStdoutMutex);
-
+	//gotoxy(0, 10);
+	//_tprintf(TEXT("I have the id number:%d\n"), user_id);
+	//_tprintf(TEXT("my name is %s\n"), userInfo.name);
+	//_tprintf(TEXT("I am in pos(%d,%d)\n"), userInfo.posx,userInfo.posy);
+	//_tprintf(TEXT("My id is'%d' and my name is size is'%d'\n"), userInfo.user_id,userInfo.size);
 	TCHAR KeyPress;
 	msg gameMsg;
-	BOOLEAN flag;
-	gameMsg.codigoMsg = 200;
-	gameMsg.from = user_id;
-	gameMsg.to = 254;
+	
 	while(1) {
-		flag = 0;
+		gameMsg.codigoMsg = 200;
+		gameMsg.from = user_id;
+		gameMsg.to = 254;
 		fflush(stdin);
 		KeyPress = _gettch();
 		//_putch(keypress);
 		switch (KeyPress) {
 			case 'a':
 			case 'A':
-				flag = 1;
 				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
 				sendMessage(gameMsg);
 				break;
 		
 			case 'd':
 			case 'D':	
-				flag = 1;
 				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
 				sendMessage(gameMsg);
 				break;
 
 			case 32://sends ball
-				if (gameInfo->numBalls == 0 &&  gameInfo->nUsers[user_id].lifes > 0) {
-					drawHelp(0);
-					SetEvent(gameEvent);
-					ResetEvent(gameEvent);
-				}
+				gameMsg.codigoMsg = 101;
+				gameMsg.from = user_id;
+				gameMsg.to = 254;
+				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
+				sendMessage(gameMsg);
 				break;
 		
 			case 27://esc
-				if (gameInfo->nUsers[user_id].lifes == 0) {
-					gameMsg.codigoMsg = 2;
-					gameMsg.from = user_id;
-					gameMsg.to = 254;
-					_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
-					sendMessage(gameMsg);
-					return 0;
-				}
-				break;
+				gameMsg.codigoMsg = 2;
+				gameMsg.from = user_id;
+				gameMsg.to = 254;
+				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
+				sendMessage(gameMsg);
+				return 0;
 		}
-
-		if (flag) {
-			WaitForSingleObject(canMove, INFINITE);
-			userInfo = gameInfo->nUsers[user_id];
-			if (_tcscmp(gameMsg.messageInfo, TEXT("left")) == 0) {
-				WaitForSingleObject(hStdoutMutex, INFINITE);
-				gotoxy(userInfo.posx + userInfo.size, userInfo.posy);
-				_tprintf(TEXT(" "));
-				gotoxy(userInfo.posx, userInfo.posy);
-				_tprintf(TEXT("%d"), user_id);
-				ReleaseMutex(hStdoutMutex);
-			}
-			else if (_tcscmp(gameMsg.messageInfo, TEXT("right")) == 0) {
-				WaitForSingleObject(hStdoutMutex, INFINITE);
-				gotoxy(userInfo.posx - 1, userInfo.posy);
-				_tprintf(TEXT(" "));
-				gotoxy(userInfo.posx + userInfo.size - 1, userInfo.posy);
-				_tprintf(TEXT("%d"), user_id);
-				ReleaseMutex(hStdoutMutex);
-			}
-			else if(_tcscmp(gameMsg.messageInfo, TEXT("space")) == 0) {
-				//do something
-			}
-		}
-		
+	
 	}	
 }
 
+void usersMove(TCHAR move[TAM]) {
+	if (_tcscmp(move, TEXT("init")) == 0) {
+		system("cls");
+		drawHelp(1);
+		for (int i = 0; i < gameInfo->numUsers; i++) {
+			//gotoxy(0, i);
+			//_tprintf(TEXT("Drwaing user %d"), i);
+			WaitForSingleObject(hStdoutMutex, INFINITE);
+			gotoxy(gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy);
+			for(int j = 0;j< gameInfo->nUsers[i].size;j++)
+				_tprintf(TEXT("%d"), i);
+			ReleaseMutex(hStdoutMutex);
+		}
+		return;
+	}
+
+	//this trhreads displays users barreiras
+	BOOLEAN flag = 0;
+	DWORD user_id, j = 0;
+	TCHAR usr[TAM];
+	TCHAR direction[TAM];
+	for (int i = 0; i < TAM; i++) {
+		if (move[i] == ':') {
+			usr[i] == '\0';
+			flag = 1;
+			continue;
+		}
+		else if (move[i] == '\0') {
+			direction[j] = '\0';
+			break;
+		}
+
+		if (!flag)
+			usr[i] = move[i];
+		else {
+			direction[j] = move[i];
+			j++;
+		}		
+	}
+	user_id = _tstoi(usr);
+	if (user_id < 0 || user_id > MAX_USERS) {
+		_tprintf(TEXT("Invalido->From (%s) to user[%d]->(%s)\n"),move,user_id,direction);
+		return;
+	}
+		
+	user userinfo = gameInfo->nUsers[user_id];
+	if (_tcscmp(direction, TEXT("left")) == 0) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(userinfo.posx + userinfo.size, userinfo.posy);
+		_tprintf(TEXT(" "));
+		gotoxy(userinfo.posx, userinfo.posy);
+		_tprintf(TEXT("%d"), user_id);
+		ReleaseMutex(hStdoutMutex);
+	}
+	else if (_tcscmp(direction, TEXT("right")) == 0) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(userinfo.posx - 1, userinfo.posy);
+		_tprintf(TEXT(" "));
+		gotoxy(userinfo.posx + userinfo.size - 1, userinfo.posy);
+		_tprintf(TEXT("%d"), user_id);
+		ReleaseMutex(hStdoutMutex);
+	}
+	//_tprintf(TEXT("im out\n"));
+	return;
+}
 
 DWORD WINAPI BolaThread(LPVOID param) {
 	int oposx, oposy, posx=0, posy=0;
@@ -341,8 +398,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	_tprintf(TEXT(" "));
 	ReleaseMutex(hStdoutMutex);
 	//_tprintf(TEXT("Bola[%d]-Deleted\n"), id);
-	hTBola[id] = NULL;
-	drawHelp(1);
+	hTBola[id] = INVALID_HANDLE_VALUE;
 	return 0;
 }
 
@@ -414,9 +470,10 @@ void drawHelp(BOOLEAN num) {
 		_tprintf(TEXT("A/D - Move\n"));
 		_tprintf(TEXT("SPACE - New Ball\n"));
 		_tprintf(TEXT("ESC - EXIT\n"));
+		_tprintf(TEXT("NUM OF PLAYERS:%d\n"),gameInfo->numUsers);
 	}
 	else {
-		_tprintf(TEXT("                        \n                      \n\                      "));
+		_tprintf(TEXT("                        \n                      \n\                      \n                                     "));
 	}
 	ReleaseMutex(hStdoutMutex);
 	return;

@@ -66,6 +66,7 @@ typedef struct brick {
 } brick;
 
 typedef struct config {
+	TCHAR file[TAM];
 	//game
 	int limx;
 	int limy;
