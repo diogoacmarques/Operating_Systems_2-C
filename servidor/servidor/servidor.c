@@ -35,7 +35,6 @@ HANDLE messageEvent;
 
 DWORD server_id;
 
-pgame gameUpdate;
 pgame gameInfo;
 
 int _tmain(int argc, LPTSTR argv[]) {
@@ -205,7 +204,7 @@ DWORD WINAPI receiveMessageThread() {
 			}
 		}
 		else if (newMsg.codigoMsg == 2) {//end of user
-			_tprintf(TEXT("User %d ended the game\n"),newMsg.from);
+			_tprintf(TEXT("%s[%d] exited with the score of:%d\n"), gameInfo->nUsers[newMsg.from].name, gameInfo->nUsers[newMsg.from].user_id,gameInfo->nUsers[newMsg.from].score);
 			int res = registry(gameInfo->nUsers[newMsg.from]);
 			if (res) {
 				_tprintf(TEXT("new high score saved!\n"));
@@ -225,7 +224,6 @@ DWORD WINAPI receiveMessageThread() {
 			sendMessage(newMsg);
 
 			if (gameInfo->numUsers == 0) {//closing game
-				system("cls");
 				_tprintf(TEXT("Reseting game...\n"));
 				for (int i = 0; i < MAX_BALLS;i++) {
 					TerminateThread(hTBola[i], 1);
@@ -268,15 +266,12 @@ DWORD WINAPI receiveMessageThread() {
 			sendMessage(newMsg);
 		}
 
-	} while (1);//this thread is terminated when exiting the main "trhead"
+	} while (1);//this thread is terminated when exiting the main process
 }
 
 int startGame() {
 	int i;
 	msg tmpMsg;
-	//moveBalls = CreateSemaphore(NULL, gameInfo->numBalls, gameInfo->numBalls, NULL);//semafore que dispara quando tem a posicao de todas as bolas.
-	//for (i = 0; i < gameInfo->numBalls; i++)//preenche semaforo
-	//	WaitForSingleObject(moveBalls, INFINITE);
 
 	_tprintf(TEXT("Game started!\n"));
 	gameInfo->gameStatus = 1;
@@ -304,8 +299,7 @@ void userInit(DWORD id){
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 2;
 	gameInfo->nUsers[id].lifes = gameInfo->myconfig.inital_lifes;
 	
-	_tprintf(TEXT("(THREAD)User[%d]->%s\n"), id, gameInfo->nUsers[id].name);
-	_tprintf(TEXT("(THREAD)User[%d]-pos(%d,%d)\n"), id,gameInfo->nUsers[id].posx, gameInfo->nUsers[id].posy);
+	_tprintf(TEXT("(THREAD)User[%d]->%s | pos(%d,%d)\n"), id, gameInfo->nUsers[id].name, gameInfo->nUsers[id].posx, gameInfo->nUsers[id].posy);
 
 	return 0;
 }
@@ -372,41 +366,34 @@ void createBalls(DWORD num){
 
 DWORD WINAPI BolaThread(LPVOID param) {
 
-	//LARGE_INTEGER li;
-	//HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
-	//li.QuadPart = -100000000LL;
-	//// Set a timer to wait for 10 seconds.
-	//if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0)){
-	//	_tprintf(TEXT("SetWaitableTimer() failed, error %d\n"), GetLastError());
-	//	return 2;
-	//}else
-	//	_tprintf(TEXT("SetWaitableTimer() is OK, waiting for 10 seconds...\n"));
-
-	//// Wait for the timer.
-	//if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
-	//	_tprintf(TEXT("WaitForSingleObject() failed, error %d\n"), GetLastError());
-	//else
-	//	_tprintf(TEXT("WaitForSingleObject() - timer was signaled...\n"));
-
-	//if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, TRUE)); {
-	//	_tprintf(TEXT("Erro no programcao do timer"));
-	//	return -1;
-	//}
+	LARGE_INTEGER li;
+	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
 
 	DWORD id = ((DWORD)param);
+	int numberBrick = gameInfo->numBricks;
 	srand((int)time(NULL));
+	gameInfo->nBalls[id].id = id;
 	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size / 2);
 	DWORD posy = gameInfo->nUsers[0].posy;
 	DWORD oposx, oposy, num = 0, ballScore = 0;
-	boolean goingUp = 1, goingRight = (rand() % 2), flag;
+	boolean flag, goingUp = 1, goingRight = (rand() % 2);
 	gameInfo->nBalls[id].status = 1;
 	do{
 		ballScore = GetTickCount();
 		flag = 0;
-		Sleep(gameInfo->nBalls[id].speed);
+		//Sleep(gameInfo->nBalls[id].speed);
+		li.QuadPart = -(gameInfo->nBalls[id].speed) * _MSECOND; // negative = relative time | 100-nanosecond units
+		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
+		{
+			printf("SetWaitableTimer failed (%d)\n", GetLastError());
+		}
+		
+		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
+			printf("WaitForSingleObject waitableTimer failed (%d)\n", GetLastError());
+
 		//checks for bricks
-		for (int i = 0; i < gameInfo->numBricks; i++) {
-			if (!gameInfo->nBricks[i].status)
+		for (int i = 0; i < numberBrick; i++) {
+			if (gameInfo->nBricks[i].status<=0)
 				continue;
 			//_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
 			//up
@@ -470,9 +457,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 				_tprintf(TEXT("Hit right\n"));
 				goingRight = 0;
 				hitBrick(i, id);
-			}
-			
-			
+			}		
 		}
 
 		oposx = posx;
@@ -526,10 +511,13 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			else {//se atinge o fim do mapa
 				//reset ball
 				gameInfo->nBalls[id].status = 0;//end of ball
-				gameInfo->nBalls[id].posx = 0;
-				gameInfo->nBalls[id].posy = 0;
 				gameInfo->numBalls--;
 			}
+		}
+
+		if (gameInfo->numBricks <= 0) {
+			gameInfo->nBalls[id].status = 0;//end of ball
+			gameInfo->numBalls--;
 		}
 
 		gameInfo->nBalls[id].posx = posx;
@@ -538,27 +526,20 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		if (gameInfo->nBalls[id].status != 0)//if is to end
 			gameInfo->nBalls[id].status = 1;		
 
-		//ReleaseSemaphore(moveBalls, 1, &num);
-		//_tprintf(TEXT("ball[%d];num=%d!\n"),id,num);
-		//_tprintf(TEXT("Ball[%d]!\n"),id);
-		//if (num == gameInfo->numBalls - 1) {
-			//_tprintf(TEXT("Balls moved(%d,%d)\n"),posx,posy);
-		//_tprintf(TEXT("Balls moved(%d,%d)\n"), posx, posy);
-			SetEvent(updateBalls);
-			ResetEvent(updateBalls);
-
+		SetEvent(updateBalls);
+		ResetEvent(updateBalls);
 		
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
 		}
-		//}
 	} while (gameInfo->nBalls[id].status);
 	
 	if(gameInfo->numBalls == 0)
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].lifes--;
 		}
-			
+	
+	resetBall(id);
 	hTBola[id] = INVALID_HANDLE_VALUE;
 	_tprintf(TEXT("End of Ball %d!\n"), id);
 
@@ -578,6 +559,7 @@ void createBrick(DWORD num) {
 	DWORD threadId;
 	int i;
 	for (i = 0; i < MAX_BRICKS; i++) {
+		gameInfo->nBricks[i].id = i;
 		if (i == 0) {
 			gameInfo->nBricks[i].posx = 15;
 			gameInfo->nBricks[i].posy = 3;
@@ -614,7 +596,6 @@ void createBrick(DWORD num) {
 			break;
 	}
 
-
 	_tprintf(TEXT("created %d bricks!\n"), count);
 	msg tmpMsg;
 	TCHAR tmp[TAM];
@@ -628,13 +609,17 @@ void createBrick(DWORD num) {
 }
 
 void hitBrick(DWORD brick_id,DWORD ball_id) {
+	//_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
+	if (gameInfo->nBricks[brick_id].status == 0)
+		gameInfo->numBricks--;
+
 	if(gameInfo->nBalls[ball_id].speed >= gameInfo->myconfig.max_speed)
 		gameInfo->nBalls[ball_id].speed -= gameInfo->myconfig.num_speed_up;
-	_tprintf(TEXT("Ball speed is now:%d!\n"), gameInfo->nBalls[ball_id].speed);
+	//_tprintf(TEXT("Ball speed is now:%d!\n"), gameInfo->nBalls[ball_id].speed);
+
 	for (int i = 0; i < gameInfo->numUsers; i++)
 		gameInfo->nUsers[i].score += 100;
-
 }
 
 void createGame() {
@@ -840,18 +825,38 @@ void checkSettings() {
 	_tprintf(TEXT("Max number of bricks speed:%d\n"), gameInfo->myconfig.max_bricks);
 	_tprintf(TEXT("Number of initial bricks:%d\n"), gameInfo->myconfig.initial_bricks);
 
-	//_tprintf(TEXT("\nPress Any Key ..."));
-	//TCHAR tmp;
-	//fflush(stdin);
-	//tmp = _gettch();
-	//system("cls");
-	////users
-	//_tprintf(TEXT("------------------------------USERS------------------------------\n"));
-	//_tprintf(TEXT("Number of Users:\n"), gameInfo->numUsers);
-	////balls
-	//_tprintf(TEXT("------------------------------BALLS------------------------------\n"));
-	//_tprintf(TEXT("Number of Balls:%d\n"), gameInfo->numBalls);
+	_tprintf(TEXT("\nPress Any Key ..."));
+	TCHAR tmp;
+	fflush(stdin);
+	tmp = _gettch();
+	system("cls");
+	//GAME
+	_tprintf(TEXT("------------------------------GAME------------------------------\n"));
+	_tprintf(TEXT("gameStatus:%d\n"), gameInfo->gameStatus);
+	
+	//users
+	_tprintf(TEXT("------------------------------USERS------------------------------\n"));
+	_tprintf(TEXT("Number of Users:%d\n"), gameInfo->numUsers);
+	for(int i = 0;i<MAX_USERS;i++)
+		if(gameInfo->nUsers[i].user_id != -1)
+			_tprintf(TEXT("User[%d]-'%s' -> Lifes=%d|Score=%d\n"), gameInfo->nUsers[i].user_id, gameInfo->nUsers[i].name, gameInfo->nUsers[i].lifes, gameInfo->nUsers[i].score);
+	
+	//balls
+	_tprintf(TEXT("------------------------------BALLS------------------------------\n"));
+	_tprintf(TEXT("Number of Balls:%d\n"), gameInfo->numBalls);
+	for (int i = 0; i < MAX_BALLS; i++)
+		if (gameInfo->nBalls[i].status != 0)
+			_tprintf(TEXT("Ball[%d]->Pos(%d,%d) Status=%d|Speed=%d\n"), gameInfo->nBalls[i].id, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, gameInfo->nBalls[i].status, gameInfo->nBalls[i].speed);
+
+	//bricks
+	_tprintf(TEXT("------------------------------BRICKS------------------------------\n"));
+	_tprintf(TEXT("Number of Bricks:%d\n"), gameInfo->numBricks);
+	for (int i = 0; i < MAX_BRICKS; i++)
+		if (gameInfo->nBricks[i].status != 0)
+			_tprintf(TEXT("Brick[%d] -> Status:%d\n"), gameInfo->nBricks[i].id, gameInfo->nBricks[i].status);
+
 	 _tprintf(TEXT("\n\n"));
+	 //bricks
 }
 
 
@@ -870,6 +875,7 @@ void resetUser(DWORD id) {
 
 void resetBall(DWORD id) {
 	//_tprintf(TEXT("Reseting ball %d\n"), id);
+	gameInfo->nBalls[id].id = -1;
 	gameInfo->nBalls[id].posx = 0;
 	gameInfo->nBalls[id].posy = 0;
 	gameInfo->nBalls[id].status = 0;
@@ -879,6 +885,7 @@ void resetBall(DWORD id) {
 
 void resetBrick(DWORD id) {
 	//_tprintf(TEXT("Reseting brick %d\n"), id);
+	gameInfo->nBricks->id = -1;
 	gameInfo->nBricks[id].posx = 0;
 	gameInfo->nBricks[id].posy = 0;
 	gameInfo->nBricks[id].status = 0;
@@ -928,7 +935,8 @@ int registry(user userData) {
 			_itot_s(i, info, TAM, 10);
 			_tcscat_s(name, TAM, info);
 			RegQueryValueEx(chave,name, NULL, NULL, (LPBYTE)info, &tam);
-			_tprintf(TEXT("%s - %s\n"),name,info);
+			if(userData.score == -1)
+				_tprintf(TEXT("%s - %s\n"),name,info);
 			if (userData.score == -1)
 				continue;
 			for(flag = 0;flag<MAX_NAME_LENGTH;flag++){

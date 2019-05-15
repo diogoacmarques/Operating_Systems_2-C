@@ -420,7 +420,7 @@ DWORD WINAPI BrickThread(LPVOID param) {
 	//updates
 	do {
 		WaitForSingleObject(updateBalls, INFINITE);
-		numBricks = gameInfo->numBricks;
+		//numBricks = gameInfo->numBricks;
 		for (int i = 0; i < numBricks; i++)
 			if (localBricks[i].status != gameInfo->nBricks[i].status) {
 				if (gameInfo->nBricks[i].status == 0) {//end of brick life

@@ -13,17 +13,18 @@
 
 #define TAM 256
 #define MAX_MSG 50
+#define _MSECOND 10000
 //game
 #define MAX_LEVELS 5
 //User
 #define MAX_USERS 20
 #define MAX_NAME_LENGTH 250
-#define MAX_INIT_LIFES 10
+#define MAX_INIT_LIFES 3
 
 //bals
-#define MAX_SPEED 100
+#define MAX_SPEED 150
 #define MAX_BALLS 20
-#define MAX_SPEED_BONUS 5
+#define MAX_SPEED_BONUS 50
 #define PROB_SPEED_BONUS 0.5
 #define INIT_SPEED 500
 #define MAX_DURATION 50000
@@ -51,6 +52,7 @@ typedef struct Message {
 } msg, *pmsg;
 
 typedef struct ball {
+	int id;
 	int posx;
 	int posy;
 	int status;
@@ -58,6 +60,7 @@ typedef struct ball {
 } ball;
 
 typedef struct brick {
+	int id;
 	int posx;
 	int posy;
 	int tam;
