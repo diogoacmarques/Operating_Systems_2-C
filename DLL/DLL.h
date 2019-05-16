@@ -31,7 +31,7 @@
 
 //bricks
 #define MAX_BRICKS 50
-#define INIT_BRICKS 5
+#define INIT_BRICKS 30
 
 
 #define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
@@ -65,7 +65,8 @@ typedef struct brick {
 	int posy;
 	int tam;
 	int status;
-	//brinde or not
+	int type;	//1 = normal | 2 = resistente | 3 = magico
+	int bonus;	// 1 = speed_up | 2 = speed_down | 3 = extra_life | 4 = triple
 } brick;
 
 typedef struct config {
@@ -78,17 +79,19 @@ typedef struct config {
 	int max_users;
 	int inital_lifes;
 	//ball
+	int inital_ball_speed;
 	int max_balls;
 	int max_speed;
-	int num_speed_up;
-	int num_speed_down;
-	int prob_speed_up;
-	int prob_speed_down;
-	int duration;
-	int inital_ball_speed;
 	//bricks
 	int max_bricks;
 	int initial_bricks;
+	//bonus
+	int score_up;
+	int prob_speed_up;
+	int prob_speed_down;
+	int num_speed_up;
+	int num_speed_down;
+	int duration;
 } config;
 
 typedef struct Player {

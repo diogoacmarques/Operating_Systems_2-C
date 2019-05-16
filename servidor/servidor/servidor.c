@@ -41,6 +41,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
 	HANDLE hTGame,hTReceiveMessage;
 	TCHAR KeyPress;
+	srand((int)time(NULL));
 	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.
 	//A maneira mais fácil para ter esta funcionalidade é chamar _setmode:
 #ifdef UNICODE
@@ -235,6 +236,9 @@ DWORD WINAPI receiveMessageThread() {
 					TerminateThread(hTBola[i], 1);
 					CloseHandle(hTBola[i]);
 					resetBall(i);
+				}
+				for (int i = 0; i < MAX_BRICKS;i++) {
+					resetBrick(i);
 				}
 				gameInfo->numBalls = 0;
 				gameInfo->gameStatus = -1; //after game ends
@@ -565,45 +569,38 @@ void createBrick(DWORD num) {
 	DWORD count = 0;
 	DWORD threadId;
 	int i;
-	for (i = 0; i < MAX_BRICKS; i++) {
+	int oposx = 3, oposy = 2;
+	for (i = 0; i < num; i++) {
+
+
 		gameInfo->nBricks[i].id = i;
-		if (i == 0) {
-			gameInfo->nBricks[i].posx = 15;
-			gameInfo->nBricks[i].posy = 3;
-			gameInfo->nBricks[i].tam = 30;
-			gameInfo->nBricks[i].status = 4;
+
+		gameInfo->nBricks[i].tam = 5;
+		gameInfo->nBricks[i].type = 1 + rand() % 3;
+		if (gameInfo->nBricks[i].type == 1) {//normal
+			gameInfo->nBricks[i].status = 1;
 		}
-		else if (i == 1) {
-			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 40;
-			gameInfo->nBricks[i].posy = 3;
-			gameInfo->nBricks[i].tam = 15;
-			gameInfo->nBricks[i].status = 5;
+		else if (gameInfo->nBricks[i].type == 2) {//resistent
+			gameInfo->nBricks[i].status = 2 + rand() % 3;
 		}
-		else if (i == 2) {
-			gameInfo->nBricks[i].posx = 60;
-			gameInfo->nBricks[i].posy = 3;
-			gameInfo->nBricks[i].tam = 10;
-			gameInfo->nBricks[i].status = 6;
+		else if (gameInfo->nBricks[i].type == 3) {//magic
+			gameInfo->nBricks[i].status = 1;
+		}	
+
+
+		if (!(oposx + gameInfo->nBricks[i].tam + 3 <= gameInfo->myconfig.limx)) {
+			oposx = 3;
+			oposy++;
 		}
-		else if (i == 3) {
-			gameInfo->nBricks[i].posx = 5;
-			gameInfo->nBricks[i].posy = 7;
-			gameInfo->nBricks[i].tam = 50;
-			gameInfo->nBricks[i].status = 9;
-		}
-		else if (i == 4) {
-			gameInfo->nBricks[i].posx = gameInfo->myconfig.limx - 55;
-			gameInfo->nBricks[i].posy = 7;
-			gameInfo->nBricks[i].tam = 50;
-			gameInfo->nBricks[i].status = 9;
-		}
-		gameInfo->numBricks++;
-		count++;
-		if (count >= num)
-			break;
+
+		gameInfo->nBricks[i].posx = oposx;
+		gameInfo->nBricks[i].posy = oposy;
+		oposx += gameInfo->nBricks[i].tam + 3;
+
 	}
 
-	_tprintf(TEXT("created %d bricks!\n"), count);
+	gameInfo->numBricks = num;
+
 	localNumBricks = gameInfo->numBricks;
 	msg tmpMsg;
 	TCHAR tmp[TAM];
@@ -619,15 +616,15 @@ void createBrick(DWORD num) {
 void hitBrick(DWORD brick_id,DWORD ball_id) {
 	//_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
-	if (gameInfo->nBricks[brick_id].status == 0)
+	if (gameInfo->nBricks[brick_id].status == 0) {
 		localNumBricks--;
+		for (int i = 0; i < gameInfo->numUsers; i++)
+			gameInfo->nUsers[i].score += gameInfo->myconfig.score_up;
 
-	if(gameInfo->nBalls[ball_id].speed >= gameInfo->myconfig.max_speed)
-		gameInfo->nBalls[ball_id].speed -= gameInfo->myconfig.num_speed_up;
-	//_tprintf(TEXT("Ball speed is now:%d!\n"), gameInfo->nBalls[ball_id].speed);
-
-	for (int i = 0; i < gameInfo->numUsers; i++)
-		gameInfo->nUsers[i].score += 100;
+		//if(gameInfo->nBricks[brick_id].type==3)//magic
+			//creates thread that drops brinds
+	}
+		
 }
 
 void createGame() {
@@ -665,6 +662,7 @@ int startVars() {
 	gameInfo->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 	gameInfo->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	gameInfo->myconfig.num_levels = MAX_LEVELS;
+	gameInfo->myconfig.score_up = 100;
 	//Users
 	gameInfo->myconfig.max_users = MAX_USERS;
 	gameInfo->myconfig.inital_lifes = MAX_INIT_LIFES;
@@ -861,7 +859,7 @@ void checkSettings() {
 	_tprintf(TEXT("Number of Bricks:%d\n"), gameInfo->numBricks);
 	for (int i = 0; i < MAX_BRICKS; i++)
 		if (gameInfo->nBricks[i].status != 0)
-			_tprintf(TEXT("Brick[%d] -> Status:%d\n"), gameInfo->nBricks[i].id, gameInfo->nBricks[i].status);
+			_tprintf(TEXT("Brick[%d]->Type:%d|Status:%d\n"), gameInfo->nBricks[i].id, gameInfo->nBricks[i].type, gameInfo->nBricks[i].status);
 
 	 _tprintf(TEXT("\n\n"));
 	 //bricks
@@ -898,6 +896,8 @@ void resetBrick(DWORD id) {
 	gameInfo->nBricks[id].posy = 0;
 	gameInfo->nBricks[id].status = 0;
 	gameInfo->nBricks[id].tam = 0;
+	gameInfo->nBricks[id].type = 0;
+	gameInfo->nBricks[id].bonus = 0;
 	hTBrick[id] = INVALID_HANDLE_VALUE;
 }
 
