@@ -33,7 +33,7 @@ HANDLE hTBola[MAX_BALLS];
 HANDLE hTBrick[MAX_BRICKS];
 HANDLE messageEvent;
 
-DWORD server_id;
+DWORD server_id, localNumBricks;
 
 pgame gameInfo;
 
@@ -225,6 +225,12 @@ DWORD WINAPI receiveMessageThread() {
 
 			if (gameInfo->numUsers == 0) {//closing game
 				_tprintf(TEXT("Reseting game...\n"));
+				_tcscpy_s(newMsg.messageInfo, TAM, TEXT("End of Game"));
+				newMsg.to = 255;
+				newMsg.from = server_id;
+				newMsg.codigoMsg = -999;
+				sendMessage(newMsg);
+
 				for (int i = 0; i < MAX_BALLS;i++) {
 					TerminateThread(hTBola[i], 1);
 					CloseHandle(hTBola[i]);
@@ -232,6 +238,7 @@ DWORD WINAPI receiveMessageThread() {
 				}
 				gameInfo->numBalls = 0;
 				gameInfo->gameStatus = -1; //after game ends
+				localNumBricks = 0;
 				Sleep(1000);
 				_tprintf(TEXT("Game reseted!\n"));
 			}else
@@ -515,7 +522,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			}
 		}
 
-		if (gameInfo->numBricks <= 0) {
+		if (localNumBricks <= 0) {
 			gameInfo->nBalls[id].status = 0;//end of ball
 			gameInfo->numBalls--;
 		}
@@ -597,6 +604,7 @@ void createBrick(DWORD num) {
 	}
 
 	_tprintf(TEXT("created %d bricks!\n"), count);
+	localNumBricks = gameInfo->numBricks;
 	msg tmpMsg;
 	TCHAR tmp[TAM];
 	tmpMsg.codigoMsg = 102;
@@ -612,7 +620,7 @@ void hitBrick(DWORD brick_id,DWORD ball_id) {
 	//_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
 	if (gameInfo->nBricks[brick_id].status == 0)
-		gameInfo->numBricks--;
+		localNumBricks--;
 
 	if(gameInfo->nBalls[ball_id].speed >= gameInfo->myconfig.max_speed)
 		gameInfo->nBalls[ball_id].speed -= gameInfo->myconfig.num_speed_up;
