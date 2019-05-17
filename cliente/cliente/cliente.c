@@ -48,7 +48,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	msg newMsg;
 	DWORD threadId;
 
-	messageEventBroadcast = CreateEvent(NULL, FALSE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
+	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);

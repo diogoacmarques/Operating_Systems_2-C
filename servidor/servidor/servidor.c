@@ -33,6 +33,7 @@ int moveUser(DWORD id, TCHAR side[TAM]);
 
 void assignBrick(DWORD num);
 void hitBrick(DWORD brick_id, DWORD ball_id);
+void addBonus(DWORD user_id, DWORD brick_id);
 
 
 HANDLE moveBalls;
@@ -599,9 +600,8 @@ void assignBrick(DWORD num) {
 			gameInfo->nBricks[i].status = 2 + rand() % 3;
 		}
 		else if (gameInfo->nBricks[i].type == 3) {//magic
-			gameInfo->nBricks[i].status = 1;	
-			gameInfo->nBricks[i].brinde.type = 1;
-
+			gameInfo->nBricks[i].status = 1;
+			gameInfo->nBricks[i].brinde.type = 1 + rand() % 3;
 		}	
 
 
@@ -1034,8 +1034,7 @@ DWORD WINAPI bonusDrop(LPVOID param){
 	gameInfo->nBricks[id].brinde.status = 1;
 	gameInfo->nBricks[id].brinde.type = 1;
 
-
-	_tprintf(TEXT("Sending message that bonus with id:%d was created!\n"),id);
+	//_tprintf(TEXT("Sending message that bonus with id:%d was created!\n"),id);
 	msg tmpMsg;
 	TCHAR tmp[TAM];
 	tmpMsg.codigoMsg = 103;
@@ -1056,8 +1055,7 @@ DWORD WINAPI bonusDrop(LPVOID param){
 					SetEvent(updateBonus);
 					ResetEvent(updateBonus);
 					_tprintf(TEXT("%s caught the bonus[%d]!\n"), gameInfo->nUsers[i].name, id);
-					for (int j = 0; j < gameInfo->numBalls; j++)
-						gameInfo->nBalls[j].speed -= gameInfo->myconfig.num_speed_up;
+					addBonus(id,i);
 					return;
 				}
 
@@ -1076,4 +1074,26 @@ DWORD WINAPI bonusDrop(LPVOID param){
 	ResetEvent(updateBonus);
 
 	return 0;
+}
+
+void addBonus(DWORD user_id,DWORD brick_id) {
+	if (gameInfo->nBricks[brick_id].brinde.type == 1) {//speed up
+		for (int j = 0; j < gameInfo->numBalls; j++) {
+			gameInfo->nBalls[j].speed -= gameInfo->myconfig.num_speed_up;
+		}
+		gameInfo->myconfig.inital_ball_speed -= gameInfo->myconfig.num_speed_up;
+	}
+	else if (gameInfo->nBricks[brick_id].brinde.type == 2) {//speed down
+		for (int j = 0; j < gameInfo->numBalls; j++) {
+			gameInfo->nBalls[j].speed += gameInfo->myconfig.num_speed_down;
+		}
+		gameInfo->myconfig.inital_ball_speed -= gameInfo->myconfig.num_speed_down;
+	}
+	else if (gameInfo->nBricks[brick_id].brinde.type == 3) {//extra life
+		for (int i = 0; i < gameInfo->numUsers; i++)
+			gameInfo->nUsers[i].lifes++;
+	}else if(gameInfo->nBricks[brick_id].brinde.type == 4){//triple
+		return;
+		//still needs to be implemented
+	}
 }
