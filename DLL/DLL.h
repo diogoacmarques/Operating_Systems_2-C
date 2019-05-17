@@ -26,13 +26,14 @@
 #define MAX_BALLS 20
 #define MAX_SPEED_BONUS 50
 #define PROB_SPEED_BONUS 0.5
-#define INIT_SPEED 500
+#define INIT_SPEED 250
 #define MAX_DURATION 50000
 
 //bricks
 #define MAX_BRICKS 50
 #define INIT_BRICKS 30
 
+#define MAX_BONUS_AT_TIME 10
 
 #define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
 #define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
@@ -44,6 +45,7 @@
 #define GAME_EVENT_NAME TEXT("../../gameEvent")
 #define BALL_EVENT_NAME TEXT("../../ballEvent")
 #define USER_MOVE_EVENT_NAME TEXT("../../userMoveEvent")
+#define BONUS_EVENT_NAME TEXT("../../bonusEvent")
 
 
 typedef struct Message {
@@ -59,6 +61,13 @@ typedef struct ball {
 	int speed;
 } ball;
 
+typedef struct bonus {
+	int status;
+	int type;	// 1 = speed_up | 2 = speed_down | 3 = extra_life | 4 = triple
+	int posx;
+	int posy;
+} bonus;
+
 typedef struct brick {
 	int id;
 	int posx;
@@ -66,7 +75,7 @@ typedef struct brick {
 	int tam;
 	int status;
 	int type;	//1 = normal | 2 = resistente | 3 = magico
-	int bonus;	// 1 = speed_up | 2 = speed_down | 3 = extra_life | 4 = triple
+	bonus brinde;
 } brick;
 
 typedef struct config {
@@ -114,8 +123,12 @@ typedef struct {
 	int gameStatus;
 }game, *pgame;
 
-HANDLE canMove, gameEvent, updateBalls;
+HANDLE updateBalls, updateBonus;
 HANDLE messageEventClient[MAX_USERS];
+
+HANDLE messageBroadcastDll;
+HANDLE messageServerDll;
+
 
 
 //Definir uma constante para facilitar a leitura do protótipo da função
@@ -148,6 +161,7 @@ extern "C"
 	//functions
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
 	DLL_IMP_API void createHandles(void);
+	DLL_IMP_API int initializeHandles(void);
 
 #ifdef __cplusplus
 }

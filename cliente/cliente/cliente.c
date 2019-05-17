@@ -12,6 +12,7 @@
 void hidecursor();
 void gotoxy(int x, int y);
 void createBalls(DWORD num);
+void createBonus(DWORD num);
 void drawHelp(BOOLEAN num);
 void usersMove(TCHAR move[TAM]);
 void watchGame();
@@ -21,17 +22,18 @@ DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI receiveMessageThread(LPVOID param);
 DWORD WINAPI receiveBroadcast(LPVOID param);
 DWORD WINAPI BrickThread(LPVOID param);
+DWORD WINAPI bonusDrop(LPVOID param);
 
 DWORD user_id;
 
-HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick, hTUserOutput;
+HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick, hTUserOutput, hTBonus[MAX_BONUS_AT_TIME];
 
-HANDLE messageEventBroadcast, messageEvent;
+HANDLE  messageEvent;
 
 pgame gameInfo;
 
 DWORD localGameStatus = 0;//0 = no game | 1 = playing | 2 = watching
-
+HANDLE messageEventBroadcast;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -47,11 +49,17 @@ int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
 
 	messageEventBroadcast = CreateEvent(NULL, FALSE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
-	gameEvent = CreateEvent(NULL, TRUE, FALSE, GAME_EVENT_NAME);
-	hStdoutMutex = CreateMutex(NULL, FALSE, STDOUT_CLIENT_MUTEX_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
-	canMove = CreateEvent(NULL, FALSE, FALSE, USER_MOVE_EVENT_NAME);
-	//initializeHandles();
+	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
+	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
+	res = initializeHandles();
+	if (res) {
+		_tprintf(TEXT("Erro ao criar Hnaldes!"));
+		//return 1;
+	}
+	else {
+		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
+	}
 
 	//sessionId = (GetCurrentThreadId() + GetTickCount());
 	//sessionId = GetCurrentThreadId();
@@ -66,7 +74,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		hTBola[i] == INVALID_HANDLE_VALUE;
 
 	do {
-		system("cls");
+		
 		_tprintf(TEXT("--Welcome to Client[%d]--\n"), GetCurrentThreadId());
 		_tprintf(TEXT("'exit' - Leave\n"));
 		_tprintf(TEXT("LOGIN:"));
@@ -199,6 +207,10 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 				return -1;
 			}			
 		}
+		else if (inMsg.codigoMsg == 103) {
+			int tmp = _tstoi(inMsg.messageInfo);
+			createBonus(tmp);
+		}
 		else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
 			_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
 			fflush(stdin);
@@ -244,6 +256,30 @@ void createBalls(DWORD num) {
 
 	return;
 }
+
+void createBonus(DWORD id) {
+	//create num balls
+	DWORD threadId;
+	//_tprintf(TEXT("Creating Bonus with id:%d\n"), id);
+	for (int i = 0; i < MAX_BONUS_AT_TIME; i++) {
+		if (hTBonus[i] == INVALID_HANDLE_VALUE || hTBonus[i] == NULL) {//se handle is available
+			//_tprintf(TEXT("Found a free handle\n"));
+			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)id, 0, &threadId);
+			if (hTBonus[i] == NULL) {
+				_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
+				return -1;
+			}
+			else {
+				break;
+			}
+		}
+	}
+
+	return;
+}
+
+
+
 
 DWORD WINAPI UserThread(LPVOID param){
 	Sleep(1000);
@@ -378,10 +414,15 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	DWORD id = ((DWORD)param);
 	ball ballInfo;
 	hidecursor();
+	DWORD count = 0;
 	//_tprintf(TEXT("Bola[%d]-Created\n"),id);
 	do {
 		WaitForSingleObject(updateBalls, INFINITE);
-		//_tprintf(TEXT("Bola[%d]-Updated\n"), id);
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(0, 0);
+		_tprintf(TEXT("[%d]Bola[%d]-Updated\n"),count++, id);
+		ReleaseMutex(hStdoutMutex);
+		
 		ballInfo = gameInfo->nBalls[id];
 		oposx = posx;
 		oposy = posy;
@@ -485,6 +526,7 @@ void gotoxy(int x, int y) {
 }
 
 void drawHelp(BOOLEAN num) {
+	return;
 	WaitForSingleObject(hStdoutMutex, INFINITE);
 	gotoxy(0, 15);
 	if (num) {
@@ -547,4 +589,48 @@ void endUser() {
 	}
 
 	localGameStatus = 0;
+}
+
+DWORD WINAPI bonusDrop(LPVOID param) {
+	DWORD id = ((DWORD)param);
+	int oposy,posy = -1;
+	int posx = gameInfo->nBricks[id].brinde.posx;
+	int count = 0;
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0, gameInfo->myconfig.limy / 2);
+	//_tprintf(TEXT("Created bonus with id:%d!"), id);
+	//ReleaseMutex(hStdoutMutex);
+	do {
+		oposy = posy;
+		WaitForSingleObject(updateBonus,INFINITE);
+
+		if (gameInfo->nBricks[id].brinde.posy == oposy) {
+			WaitForSingleObject(hStdoutMutex, INFINITE);
+			gotoxy(0, 9);
+			_tprintf(TEXT("[%d]should not update bonus pos(%d,%d)!"), count++,posx,oposy);
+			ReleaseMutex(hStdoutMutex);
+			continue;
+		}
+
+		posy = gameInfo->nBricks[id].brinde.posy;
+
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		gotoxy(0, 10);
+		_tprintf(TEXT("[%d]should update bonus pos(%d,%d)!"),count++,posx,oposy);
+		gotoxy(posx, oposy);
+		_tprintf(TEXT(" "));
+		gotoxy(posx, gameInfo->nBricks[id].brinde.posy);
+		_tprintf(TEXT("B"));
+		ReleaseMutex(hStdoutMutex);
+
+	} while (gameInfo->nBricks[id].brinde.status);
+
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(posx, oposy);
+	_tprintf(TEXT(" "));
+	gotoxy(0, 11);
+	_tprintf(TEXT("End of bonus %d!"), id);
+	ReleaseMutex(hStdoutMutex);
+
+	return;
 }

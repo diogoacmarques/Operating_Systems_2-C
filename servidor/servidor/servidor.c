@@ -11,35 +11,42 @@
 
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
+DWORD WINAPI bonusDrop(LPVOID param);
+
 void createGame();
 int startGame();
+
 void createBalls(DWORD num);
+void createBonus(DWORD id);
+
+int registry(user userData);
+void checkSettings();
 int startVars();
 int readFromFile();
-void userInit(DWORD id);
 BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value);
+
 void resetUser(DWORD id);
 void resetBrick(DWORD id);
 void resetBall(DWORD id);
-int registry(user userData);
+void userInit(DWORD id);
 int moveUser(DWORD id, TCHAR side[TAM]);
-void createBrick(DWORD num);
+
+void assignBrick(DWORD num);
 void hitBrick(DWORD brick_id, DWORD ball_id);
-void checkSettings();
+
 
 HANDLE moveBalls;
-HANDLE hTUser[MAX_USERS];
 HANDLE hTBola[MAX_BALLS];
-HANDLE hTBrick[MAX_BRICKS];
-HANDLE messageEvent;
-
+HANDLE hTBonus[MAX_BONUS_AT_TIME];
 DWORD server_id, localNumBricks;
 
 pgame gameInfo;
 
+HANDLE messageEventServer;
+
 int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
-	HANDLE hTGame,hTReceiveMessage;
+	HANDLE hTReceiveMessage;
 	TCHAR KeyPress;
 	srand((int)time(NULL));
 	//UNICODE: Por defeito, a consola Windows não processe caracteres wide.
@@ -48,10 +55,17 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_setmode(_fileno(stdin), _O_WTEXT);
 	_setmode(_fileno(stdout), _O_WTEXT);
 #endif
-	messageEvent = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
-	gameEvent = CreateEvent(NULL,TRUE,FALSE, GAME_EVENT_NAME);
+	messageEventServer = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
-	canMove = CreateEvent(NULL, FALSE, FALSE, USER_MOVE_EVENT_NAME);
+	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
+	BOOLEAN res = initializeHandles();
+	if (res) {
+		_tprintf(TEXT("Erro ao iniciar Hanldes!\n"));
+		//return 1;
+	}
+	else {
+		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
+	}
 	createHandles();
 	//Game
 	gameInfo = createSharedMemoryGame();
@@ -63,7 +77,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	else
 		_tcscpy_s(gameInfo->myconfig.file, TAM, TEXT("none"));
 
-	BOOLEAN res = startVars();
+	res = startVars();
 	if (res) {
 		_tprintf(TEXT("Erro ao iniciar as variaveis!"));
 	}
@@ -109,7 +123,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 				startGame();
 				//build bricks here
 				Sleep(1000);
-				createBrick(gameInfo->myconfig.initial_bricks);
+				assignBrick(gameInfo->myconfig.initial_bricks);
 			}
 			else {
 				_tprintf(TEXT("No users playing have joined in.\n"));
@@ -146,7 +160,7 @@ DWORD WINAPI receiveMessageThread() {
 	do{
 		flag = 1;
 		//_tprintf(TEXT("waiting for msg...\n"));
-		WaitForSingleObject(messageEvent,INFINITE);
+		WaitForSingleObject(messageEventServer,INFINITE);
 		newMsg = receiveMessage();
 		quant++;
 		//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
@@ -214,8 +228,6 @@ DWORD WINAPI receiveMessageThread() {
 				_tprintf(TEXT("not enough for top 10!\n"));
 			}
 
-			TerminateThread(hTUser[newMsg.from], 1);
-			CloseHandle(hTUser[newMsg.from]);
 			Sleep(250);
 			resetUser(newMsg.from);
 			gameInfo->numUsers--;
@@ -377,10 +389,10 @@ void createBalls(DWORD num){
 
 DWORD WINAPI BolaThread(LPVOID param) {
 
+	DWORD id = ((DWORD)param);
 	LARGE_INTEGER li;
 	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
 
-	DWORD id = ((DWORD)param);
 	int numberBrick = gameInfo->numBricks;
 	srand((int)time(NULL));
 	gameInfo->nBalls[id].id = id;
@@ -392,16 +404,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	do{
 		ballScore = GetTickCount();
 		flag = 0;
-		//Sleep(gameInfo->nBalls[id].speed);
-		li.QuadPart = -(gameInfo->nBalls[id].speed) * _MSECOND; // negative = relative time | 100-nanosecond units
-		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
-		{
-			printf("SetWaitableTimer failed (%d)\n", GetLastError());
-		}
-		
-		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
-			printf("WaitForSingleObject waitableTimer failed (%d)\n", GetLastError());
-
 		//checks for bricks
 		for (int i = 0; i < numberBrick; i++) {
 			if (gameInfo->nBricks[i].status<=0)
@@ -543,6 +545,19 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
 		}
+
+
+		//Sleep(gameInfo->nBalls[id].speed);
+		li.QuadPart = -(gameInfo->nBalls[id].speed) * _MSECOND; // negative = relative time | 100-nanosecond units
+		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
+		{
+			_tprintf(TEXT("SetWaitableTimer failed (%d)\n"), GetLastError());
+		}
+
+		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
+			_tprintf(TEXT("WaitForSingleObject waitableTimer failed (%d)\n"), GetLastError());
+
+
 	} while (gameInfo->nBalls[id].status);
 	
 	if(gameInfo->numBalls == 0)
@@ -564,7 +579,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	return 0;
 }
 
-void createBrick(DWORD num) {
+void assignBrick(DWORD num) {
 	//create num brick
 	DWORD count = 0;
 	DWORD threadId;
@@ -584,7 +599,9 @@ void createBrick(DWORD num) {
 			gameInfo->nBricks[i].status = 2 + rand() % 3;
 		}
 		else if (gameInfo->nBricks[i].type == 3) {//magic
-			gameInfo->nBricks[i].status = 1;
+			gameInfo->nBricks[i].status = 1;	
+			gameInfo->nBricks[i].brinde.type = 1;
+
 		}	
 
 
@@ -595,6 +612,11 @@ void createBrick(DWORD num) {
 
 		gameInfo->nBricks[i].posx = oposx;
 		gameInfo->nBricks[i].posy = oposy;
+		if (gameInfo->nBricks[i].type == 3) {//create bonus
+			gameInfo->nBricks[i].brinde.posx = oposx;
+			gameInfo->nBricks[i].brinde.posy = oposy;
+			gameInfo->nBricks[i].brinde.posx;
+		}
 		oposx += gameInfo->nBricks[i].tam + 3;
 
 	}
@@ -613,6 +635,26 @@ void createBrick(DWORD num) {
 	return;
 }
 
+void createBonus(DWORD id) {
+	//create num bonus	
+	DWORD threadId;
+	_tprintf(TEXT("Creating Bonus with id:%d\n"), id);
+	for (int i = 0; i < MAX_BONUS_AT_TIME; i++) {
+		if (hTBonus[i] == INVALID_HANDLE_VALUE || hTBonus[i] == NULL) {//se handle is available
+			//_tprintf(TEXT("Found a free handle\n"));
+			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)id, 0, &threadId);
+			if (hTBonus[i] == NULL) {
+				_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
+				return -1;
+			}
+			else {
+				break;
+			}
+		}
+	}
+	return;
+}
+
 void hitBrick(DWORD brick_id,DWORD ball_id) {
 	//_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
@@ -621,8 +663,10 @@ void hitBrick(DWORD brick_id,DWORD ball_id) {
 		for (int i = 0; i < gameInfo->numUsers; i++)
 			gameInfo->nUsers[i].score += gameInfo->myconfig.score_up;
 
-		//if(gameInfo->nBricks[brick_id].type==3)//magic
+		if (gameInfo->nBricks[brick_id].type == 3) {//magic
 			//creates thread that drops brinds
+			createBonus(brick_id);
+		}
 	}
 		
 }
@@ -865,7 +909,6 @@ void checkSettings() {
 	 //bricks
 }
 
-
 void resetUser(DWORD id) {
 	//_tprintf(TEXT("Reseting user %d\n"), id);
 	_stprintf_s(gameInfo->nUsers[id].name, MAX_NAME_LENGTH, TEXT("empty"));
@@ -875,7 +918,6 @@ void resetUser(DWORD id) {
 	gameInfo->nUsers[id].size = 10;
 	gameInfo->nUsers[id].posx = 0;
 	gameInfo->nUsers[id].posy = 0;
-	hTUser[id] = INVALID_HANDLE_VALUE;
 
 }
 
@@ -897,8 +939,10 @@ void resetBrick(DWORD id) {
 	gameInfo->nBricks[id].status = 0;
 	gameInfo->nBricks[id].tam = 0;
 	gameInfo->nBricks[id].type = 0;
-	gameInfo->nBricks[id].bonus = 0;
-	hTBrick[id] = INVALID_HANDLE_VALUE;
+	gameInfo->nBricks[id].brinde.status = 0;
+	gameInfo->nBricks[id].brinde.type = 0;
+	gameInfo->nBricks[id].brinde.posx = 0;
+	gameInfo->nBricks[id].brinde.posy = 0;
 }
 
 int registry(user userData) {
@@ -982,4 +1026,54 @@ int registry(user userData) {
 	}
 	RegCloseKey(chave);
 	return value;
+}
+
+DWORD WINAPI bonusDrop(LPVOID param){
+	DWORD id = ((DWORD)param);
+	_tprintf(TEXT("bonus created!\n"));
+	gameInfo->nBricks[id].brinde.status = 1;
+	gameInfo->nBricks[id].brinde.type = 1;
+
+
+	_tprintf(TEXT("Sending message that bonus with id:%d was created!\n"),id);
+	msg tmpMsg;
+	TCHAR tmp[TAM];
+	tmpMsg.codigoMsg = 103;
+	_itot_s(id, tmp, TAM, 10);
+	_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
+	tmpMsg.from = server_id;
+	tmpMsg.to = 255;
+	sendMessage(tmpMsg);
+
+
+	do{
+		Sleep(1000);
+		for (int i = 0; i < gameInfo->numUsers; i++) {
+			if ((gameInfo->nUsers[i].posy - 1) == gameInfo->nBricks[id].brinde.posy) {
+				_tprintf(TEXT("cheking user [%s]!\n"),gameInfo->nUsers[i].name);
+				if (gameInfo->nBricks[id].brinde.posx >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size)) {
+					gameInfo->nBricks[id].brinde.status = 0;
+					SetEvent(updateBonus);
+					ResetEvent(updateBonus);
+					_tprintf(TEXT("%s caught the bonus[%d]!\n"), gameInfo->nUsers[i].name, id);
+					for (int j = 0; j < gameInfo->numBalls; j++)
+						gameInfo->nBalls[j].speed -= gameInfo->myconfig.num_speed_up;
+					return;
+				}
+
+			}
+		}
+	
+		gameInfo->nBricks[id].brinde.posy++; 
+		SetEvent(updateBonus);
+		ResetEvent(updateBonus);		
+	} while (gameInfo->nBricks[id].brinde.posy < gameInfo->myconfig.limy - 1);
+	
+	
+	_tprintf(TEXT("End of bonus[%d]!\n"), id);
+	gameInfo->nBricks[id].brinde.status = 0;
+	SetEvent(updateBonus);
+	ResetEvent(updateBonus);
+
+	return 0;
 }
