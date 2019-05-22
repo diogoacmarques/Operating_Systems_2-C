@@ -17,6 +17,11 @@ void drawHelp(BOOLEAN num);
 void usersMove(TCHAR move[TAM]);
 void watchGame();
 void endUser();
+void sendMessage(msg sendMsg);
+msg receiveMessage();
+BOOLEAN createLocalConnection();
+BOOLEAN createRemoteConnection();
+DWORD WINAPI remotePipe(LPVOID param);
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI receiveMessageThread(LPVOID param);
@@ -35,45 +40,14 @@ pgame gameInfo;
 DWORD localGameStatus = 0;//0 = no game | 1 = playing | 2 = watching
 HANDLE messageEventBroadcast;
 
+DWORD connection_mode = -1;
+
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
 	//exemplo: cliente consola pede o username ao utilizador;
 	//envia ao servidor;
 	//recebe confirmação / rejeição; 
 	//entra em ciclo a receber novas posições da bola até uma tecla ser premida pelo utilizador).
-	//here
-	msg buf;
-	HANDLE hPipe;
-	int i = 0;
-	BOOL ret;
-	DWORD n;
-	_tprintf(TEXT("[LEITOR] Esperar pelo pipe '%s' (WaitNamedPipe)\n"), INIT_PIPE_NAME);
-	if (!WaitNamedPipe(INIT_PIPE_NAME, NMPWAIT_WAIT_FOREVER)) {
-		_tprintf(TEXT("[ERRO] Ligar ao pipe '%s'! (WaitNamedPipe)\n"), INIT_PIPE_NAME);
-		exit(-1);
-	}
-	_tprintf(TEXT("[LEITOR] Ligação ao pipe do escritor... (CreateFile)\n"));
-	hPipe = CreateFile(INIT_PIPE_NAME, GENERIC_READ, 0, NULL, OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hPipe == NULL) {
-		_tprintf(TEXT("[ERRO] Ligar ao pipe '%s'! (CreateFile)\n"), INIT_PIPE_NAME);
-		exit(-1);
-	}
-	_tprintf(TEXT("[LEITOR] Liguei-me...\n"));
-	while (1) {
-		ret = ReadFile(hPipe, &buf, sizeof(buf), &n, NULL);
-		buf.messageInfo[n / sizeof(TCHAR)] = '\0';
-		if (!ret || !n) {
-			_tprintf(TEXT("[LEITOR] %d %d... (ReadFile)\n"), ret, n);
-			break;
-		}
-		_tprintf(TEXT("[LEITOR] Recebi %d com o codigo %d bytes: '%s'... (ReadFile)\n"), n,buf.codigoMsg, buf.messageInfo);
-	}
-	CloseHandle(hPipe);
-	Sleep(200);
-	return 0;
-
-	//to-here
 	TCHAR str[MAX_NAME_LENGTH];
 	TCHAR userLogged[MAX_NAME_LENGTH];
 	TCHAR KeyPress;
@@ -81,27 +55,29 @@ int _tmain(int argc, LPTSTR argv[]) {
 	msg newMsg;
 	DWORD threadId;
 
-	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
-	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
-	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
-	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
-	res = initializeHandles();
-	if (res) {
-		_tprintf(TEXT("Erro ao criar Hnaldes!"));
-		//return 1;
-	}
-	else {
-		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
-	}
+	do {
+		_tprintf(TEXT("What type of connection would you like?(0=local | 1=remote) > "));
+		fflush(stdin);
+		KeyPress = _gettch();
+		_putch(KeyPress);
 
-	//sessionId = (GetCurrentThreadId() + GetTickCount());
-	//sessionId = GetCurrentThreadId();
+		_tprintf(TEXT("\n"));
+		if (KeyPress == '0') {
+			connection_mode = 0;
+			break;
+		}
+		else if (KeyPress == '1') {
+			connection_mode = 1;
+			break;
+		}
+	} while (1);
 
-	//Message
-	createSharedMemoryMsg();
-	//Game
-	//gameInfo = (game *)malloc(sizeof(game));
-	gameInfo = createSharedMemoryGame();
+
+	if (connection_mode == 0)
+		createLocalConnection();
+	else if (connection_mode == 1)
+		createRemoteConnection();
+
 
 	for (int i = 0; i < MAX_BALLS; i++)
 		hTBola[i] == INVALID_HANDLE_VALUE;
@@ -246,7 +222,6 @@ DWORD WINAPI receiveBroadcast(LPVOID param) {
 		}
 		else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
 			_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
-			fflush(stdin);
 			TCHAR resp;
 			fflush(stdin);
 			resp = _gettch();
@@ -310,9 +285,6 @@ void createBonus(DWORD id) {
 
 	return;
 }
-
-
-
 
 DWORD WINAPI UserThread(LPVOID param){
 	Sleep(1000);
@@ -600,7 +572,6 @@ void watchGame() {
 
 }
 
-
 void endUser() {
 	//broadcast thread
 	TerminateThread(hTBroadcast, 1);
@@ -666,4 +637,108 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 	ReleaseMutex(hStdoutMutex);
 
 	return;
+}
+
+DWORD WINAPI remotePipe(LPVOID param) {
+	HANDLE hPipe /*, hPipeDup*/;
+	BOOL fSuccess = FALSE;
+	DWORD cbWritten, dwMode;
+	HANDLE hThread;
+	DWORD dwThreadId = 0;
+
+	/*while (1) { // Tenta abrir o pipe repetidamente em ciclo
+		hPipe = CreateFile(
+			INIT_PIPE_NAME, // Nome do pipe
+			GENERIC_READ | // acesso read e write
+			GENERIC_WRITE,
+			0 | FILE_SHARE_READ | FILE_SHARE_WRITE, // sem->com partilha
+			NULL, // atributos de segurança = default
+			OPEN_EXISTING, // É para abrir um pipe já existente
+			0 | FILE_FLAG_OVERLAPPED, // atributos default
+			NULL); // sem ficheiro template
+
+		if (hPipe != INVALID_HANDLE_VALUE)
+			break;
+		if (GetLastError() != ERROR_PIPE_BUSY) {
+			_tprintf(TEXT("\nCreate file deu erro e não foi BUSY. Erro = %d\n"),
+				GetLastError());
+			pressEnter();
+			return -1;
+		}
+		// Se chegou aqui é porque todas as instâncias
+		// do pipe estão ocupadas. Remédio: aguardar que uma
+		// fique livre com um timeout
+		// Aguarda por instância no máximo de 30 segs (podia ser outro intervalo de tempo.
+		if (!WaitNamedPipe(INIT_PIPE_NAME, 30000)) {
+			_tprintf(TEXT("Esperei por uma instância durante 30 segundos. Desisto. Sair"));
+			return -1;
+		}
+	} // Fim do ciclo em que tenta abrir a instância do pipe
+
+	dwMode = PIPE_READMODE_MESSAGE;
+	fSuccess = SetNamedPipeHandleState(
+		hPipe, // handle para o pipe
+		&dwMode, // Novo modo do pipe
+		NULL, // Não é para mudar max. bytes
+		NULL); // Não é para mudar max. timeout
+
+	if (!fSuccess) {
+		_tprintf(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"),
+			GetLastError());
+		pressEnter();
+		return -1;
+	}*/
+}
+
+BOOLEAN createLocalConnection() {
+	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
+	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
+	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
+	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
+	BOOLEAN res = initializeHandles();
+	if (res) {
+		_tprintf(TEXT("Erro ao criar Hnaldes!"));
+		//return 1;
+	}
+	else {
+		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
+	}
+
+	//sessionId = (GetCurrentThreadId() + GetTickCount());
+	//sessionId = GetCurrentThreadId();
+
+	//Message
+	createSharedMemoryMsg();
+	//Game
+	//gameInfo = (game *)malloc(sizeof(game));
+	gameInfo = createSharedMemoryGame();
+
+	return 1;
+}
+
+void sendMessage(msg sendMsg){
+	if (connection_mode == 0)
+		sendMessageDLL(sendMsg);
+	else if (connection_mode == 1)
+		return;
+		//sendMessagePipe(sendMsg);
+}
+
+msg receiveMessage() {
+	msg inMsg;
+	if (connection_mode == 0) {
+		inMsg = receiveMessageDLL();
+		return inMsg;
+	}
+	else if (connection_mode == 1) {
+		//inMsg receiveMessagePipe();
+		inMsg.codigoMsg = -99999999;
+		return inMsg;
+	}
+
+	return;
+}
+
+BOOLEAN createRemoteConnection() {
+
 }

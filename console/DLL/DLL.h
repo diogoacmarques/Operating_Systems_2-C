@@ -58,6 +58,7 @@
 
 typedef struct Message {
 	DWORD codigoMsg, from, to;
+	DWORD connection_mode;
 	TCHAR messageInfo[TAM];
 } msg, *pmsg;
 
@@ -159,8 +160,8 @@ extern "C"
 	//msg memory
 	DLL_IMP_API void createSharedMemoryMsg(void);
 	DLL_IMP_API void mapViewOfFileMsg(void);
-	DLL_IMP_API void sendMessage(msg newMsg);
-	DLL_IMP_API msg receiveMessage(void);
+	DLL_IMP_API void sendMessageDLL(msg newMsg);
+	DLL_IMP_API msg receiveMessageDLL(void);
 	DLL_IMP_API void closeSharedMemoryMsg(void);
 	//game memory
 	DLL_IMP_API pgame createSharedMemoryGame(void);

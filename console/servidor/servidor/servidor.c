@@ -9,7 +9,6 @@
 
 #include "DLL.h"
 
-#define Msg_Sz sizeof(msg)
 #define BUFSIZE 2048
 
 DWORD WINAPI BolaThread(LPVOID param);
@@ -20,6 +19,8 @@ DWORD WINAPI remoteUserPipe(LPVOID param);
 
 void createGame();
 int startGame();
+void sendMessage(msg sendMsg);
+msg receiveMessage();
 
 void createBalls(DWORD num);
 void createBonus(DWORD id);
@@ -73,11 +74,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
 		return -1;
 	}
-
-	WaitForSingleObject(hMainPipe, INFINITE);
-	return 0;
-
-
 
 	HANDLE checkExistingServer = CreateEvent(NULL, FALSE, FALSE, CHECK_SERVER_EVENT);
 	//if(checkExistingServer == )
@@ -1137,8 +1133,11 @@ DWORD WINAPI connectPipe(LPVOID param) {
 	pipeMutex = CreateMutex(NULL, FALSE, NULL);
 	if (pipeMutex == NULL) { return 0; }
 
-	for (i = 0; i < MAX_PIPES; i++)
+	for (i = 0; i < MAX_PIPES; i++) {
 		hPipeClient[i] = NULL;
+		hThreadClient[i] = NULL;
+	}
+		
 
 	do {
 
@@ -1150,7 +1149,7 @@ DWORD WINAPI connectPipe(LPVOID param) {
 			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
 			BUFSIZE, // tam buffer output
 			BUFSIZE, // tam buffer input
-			5000, // time-out p/ cliente 5k milisegundos (0->default=50)
+			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
 			NULL);
 
 
@@ -1171,7 +1170,12 @@ DWORD WINAPI connectPipe(LPVOID param) {
 				_tprintf(TEXT("Erro a criar thread para o pipe do user\n"));
 				return 0;
 			}
-			else {
+			else {//created with success
+				for (int i = 0; i < MAX_PIPES; i++)
+					if (hPipeClient[i] == NULL) {
+						hPipeClient[i] = hPipe;
+						hThreadClient[i] = hThread;
+					}	
 				CloseHandle(hThread);
 			}
 		}
@@ -1192,7 +1196,8 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 	if (hPipe == NULL) {
 		_tprintf(TEXT("\nErro – o handle enviado no param da thread é nulo"));
 		return -1;
-	}
+	}
+
 	HANDLE ReadReady;
 	OVERLAPPED OverlRd = { 0 };
 
@@ -1204,10 +1209,7 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 	if (ReadReady == NULL) {
 		_tprintf(TEXT("\nServidor: não foi possível criar o evento Read. Mais vale parar já"));
 		return 1;
-	}	
-	for (int i = 0; i < MAX_PIPES; i++)
-		if (hPipeClient[i] == NULL)
-			hPipeClient[i] = hPipe;
+	}
 
 	while (1) {
 		ZeroMemory(&OverlRd, sizeof(OverlRd));
@@ -1217,32 +1219,43 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 		fSuccess = ReadFile(
 			hPipe, // handle para o pipe (recebido no param)
 			&inMsg, // buffer para os dados a ler
-			Msg_Sz, // Tamanho msg a ler
+			sizeof(msg), // Tamanho msg a ler
 			&cbBytesRead, // número de bytes lidos
 			&OverlRd); // != NULL -> é overlapped I/O
 
 		WaitForSingleObject(ReadReady, INFINITE);
-
+		_tprintf(TEXT("\n[SERVER]Got a message\n"));
 		GetOverlappedResult(hPipe, &OverlRd, &cbBytesRead, FALSE); // sem WAIT
-		if (cbBytesRead < Msg_Sz)
-			_tprintf(TEXT("\nReadFile não leu os dados todos. Erro = %d"),
-				GetLastError()); // acrescentar lógica de encerrar a thread cliente
-
+		if (cbBytesRead < sizeof(msg))
+			_tprintf(TEXT("\nReadFile não leu os dados todos. Erro = %d"),GetLastError()); // acrescentar lógica de encerrar a thread cliente
 
 		//processa info recebida
-		//_tprintf(TEXT("\nServidor: Recebi (?) de: [%s] msg: [%s]"),Pedido.quem, Pedido.msg);
+		_tprintf(TEXT("\nServidor: Recebi:Codigo[%d]|Info:%s|From:%d|To:%d\n"), inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
 		//_tcscpy(Resposta.msg, Pedido.quem);
 		//_tcscat(Resposta.msg, TEXT(": "));
-		//_tcscat(Resposta.msg, Pedido.msg);		
+		//_tcscat(Resposta.msg, Pedido.msg);
+		
 		//numresp = broadcastClientes(Resposta);
 		//_tprintf(TEXT("\nServidor: %d respostas enviadas"), numresp);
 	}
 
 	//end client
-	removeCliente(hPipe);
+	//removeCliente(hPipe);
 	FlushFileBuffers(hPipe);
 	DisconnectNamedPipe(hPipe); // Desliga servidor da instância
 	CloseHandle(hPipe); // Fecha este lado desta instância
 	_tprintf(TEXT("\nThread dedicada Cliente a terminar"));
 	return 1;
+}
+
+void sendMessage(msg sendMsg) {
+	if (sendMsg.connection_mode == 0)
+		sendMessageDLL(sendMsg);
+	else if (sendMsg.connection_mode == 1)
+		return;
+	//sendMessagePipe(sendMsg);
+}
+
+msg receiveMessage() {
+
 }
