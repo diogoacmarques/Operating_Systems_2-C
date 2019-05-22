@@ -42,6 +42,8 @@ HANDLE messageEventBroadcast;
 
 DWORD connection_mode = -1;
 
+HANDLE hPipe;
+
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
 	//exemplo: cliente consola pede o username ao utilizador;
@@ -74,9 +76,30 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 
 	if (connection_mode == 0)
-		createLocalConnection();
+		res = createLocalConnection();
 	else if (connection_mode == 1)
-		createRemoteConnection();
+		res = createRemoteConnection();
+
+	if (res) {
+		_tprintf(TEXT("Erro ao criar connections\n"));
+		_tprintf(TEXT("Press Any Key ...\n"));
+		TCHAR tmp;
+		fflush(stdin);
+		tmp = _gettch();
+		return -1;
+	}
+	DWORD n;
+
+	do {
+		_tprintf(TEXT("[Cliente] Frase: "));
+		_fgetts(newMsg.messageInfo, 256, stdin);
+		newMsg.messageInfo[_tcslen(newMsg.messageInfo) - 1] = '\0';
+		if (!WriteFile(hPipe, &newMsg,sizeof(newMsg), &n, NULL)) {
+			_tprintf(TEXT("[ERRO] Escrever no pipe! (WriteFile)\n"));
+			exit(-1);
+		}
+		_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), n);
+	} while (1);
 
 
 	for (int i = 0; i < MAX_BALLS; i++)
@@ -687,33 +710,8 @@ DWORD WINAPI remotePipe(LPVOID param) {
 			GetLastError());
 		pressEnter();
 		return -1;
-	}*/
-}
+	}*/
 
-BOOLEAN createLocalConnection() {
-	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
-	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
-	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
-	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
-	BOOLEAN res = initializeHandles();
-	if (res) {
-		_tprintf(TEXT("Erro ao criar Hnaldes!"));
-		//return 1;
-	}
-	else {
-		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
-	}
-
-	//sessionId = (GetCurrentThreadId() + GetTickCount());
-	//sessionId = GetCurrentThreadId();
-
-	//Message
-	createSharedMemoryMsg();
-	//Game
-	//gameInfo = (game *)malloc(sizeof(game));
-	gameInfo = createSharedMemoryGame();
-
-	return 1;
 }
 
 void sendMessage(msg sendMsg){
@@ -740,5 +738,46 @@ msg receiveMessage() {
 }
 
 BOOLEAN createRemoteConnection() {
+	hPipe = INVALID_HANDLE_VALUE;
+	do {
+		hPipe = CreateFile(
+			INIT_PIPE_NAME, // Nome do pipe
+			GENERIC_READ | // acesso read e write
+			GENERIC_WRITE,
+			0 | FILE_SHARE_READ | FILE_SHARE_WRITE, // sem->com partilha
+			NULL, // atributos de segurança = default
+			OPEN_EXISTING, // É para abrir um pipe já existente
+			0 | FILE_FLAG_OVERLAPPED, // atributos default
+			NULL); // sem ficheiro template		if (hPipe != INVALID_HANDLE_VALUE)
+			break;
 
+		Sleep(1000);
+	} while (1);
+		return 1;
+}
+
+BOOLEAN createLocalConnection() {
+	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
+	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
+	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
+	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
+	BOOLEAN res = initializeHandles();
+	if (res) {
+		_tprintf(TEXT("Erro ao criar Hnaldes!"));
+		//return 1;
+	}
+	else {
+		_tprintf(TEXT("Handles iniciadas com sucesso!\n"));
+	}
+
+	//sessionId = (GetCurrentThreadId() + GetTickCount());
+	//sessionId = GetCurrentThreadId();
+
+	//Message
+	createSharedMemoryMsg();
+	//Game
+	//gameInfo = (game *)malloc(sizeof(game));
+	gameInfo = createSharedMemoryGame();
+
+	return 0;
 }
