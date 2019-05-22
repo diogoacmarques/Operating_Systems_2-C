@@ -1,0 +1,18 @@
+﻿  cliente.c
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(107): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(81): warning C4101: 'newMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(78): warning C4101: 'userLogged': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(79): warning C4101: 'KeyPress': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(82): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(168): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(278): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(303): warning C4098: 'createBonus': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(319): warning C4101: 'userInfo': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(402): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(572): warning C4129: ' ': unrecognized character escape sequence
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(592): warning C4098: 'watchGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(598): warning C4098: 'watchGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(668): warning C4033: 'bonusDrop' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(540): warning C4716: 'BrickThread': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(669): warning C4716: 'bonusDrop': must return a value
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\console\servidor\Debug\cliente.exe
