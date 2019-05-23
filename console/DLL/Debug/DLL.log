@@ -1,1 +1,4 @@
-﻿  DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\console\servidor\Debug\DLL.dll
+﻿  DLL.cpp
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\dll\dll.cpp(121): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\dll\dll.cpp(120): warning C4101: 'str': unreferenced local variable
+  DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\console\servidor\Debug\DLL.dll

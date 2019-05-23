@@ -18,28 +18,31 @@ void usersMove(TCHAR move[TAM]);
 void watchGame();
 void endUser();
 void sendMessage(msg sendMsg);
-msg receiveMessage();
+void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
+DWORD resolveMessage(msg inMsg);
 BOOLEAN createLocalConnection();
 BOOLEAN createRemoteConnection();
-DWORD WINAPI remotePipe(LPVOID param);
+void pressKey();
+DWORD WINAPI pipeConnection(LPVOID param);
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
-DWORD WINAPI receiveMessageThread(LPVOID param);
-DWORD WINAPI receiveBroadcast(LPVOID param);
+DWORD WINAPI localConnection(LPVOID param);
 DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI bonusDrop(LPVOID param);
 
 DWORD user_id;
 
-HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTreceiveMessage, hTBroadcast,hTBrick, hTUserOutput, hTBonus[MAX_BONUS_AT_TIME];
+HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTBrick, hTBonus[MAX_BONUS_AT_TIME];
+
+HANDLE newLogin;
 
 HANDLE  messageEvent;
 
 pgame gameInfo;
 
 DWORD localGameStatus = 0;//0 = no game | 1 = playing | 2 = watching
-HANDLE messageEventBroadcast;
 
+HANDLE hTMsgConnection;//thread responsible for incoming messages(local and remote)
 DWORD connection_mode = -1;
 
 HANDLE hPipe;
@@ -74,6 +77,12 @@ int _tmain(int argc, LPTSTR argv[]) {
 		}
 	} while (1);
 
+	user_id = findAvailableHandle();
+	if (user_id == -1) {
+		_tprintf(TEXT("There is no more space\n"));
+		pressKey();
+		return 1;
+	}
 
 	if (connection_mode == 0)
 		res = createLocalConnection();
@@ -82,32 +91,27 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	if (res) {
 		_tprintf(TEXT("Erro ao criar connections\n"));
-		_tprintf(TEXT("Press Any Key ...\n"));
-		TCHAR tmp;
-		fflush(stdin);
-		tmp = _gettch();
+		pressKey();
 		return -1;
 	}
-	DWORD n;
 
-	do {
-		_tprintf(TEXT("[Cliente] Frase: "));
-		_fgetts(newMsg.messageInfo, 256, stdin);
-		newMsg.messageInfo[_tcslen(newMsg.messageInfo) - 1] = '\0';
-		if (!WriteFile(hPipe, &newMsg,sizeof(newMsg), &n, NULL)) {
-			_tprintf(TEXT("[ERRO] Escrever no pipe! (WriteFile)\n"));
-			exit(-1);
-		}
-		_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), n);
-	} while (1);
-
+	newLogin = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (newLogin == NULL) {
+		_tprintf(TEXT("Erro ao criar event newLogin. Erro = %d\n"),GetLastError());
+	}
 
 	for (int i = 0; i < MAX_BALLS; i++)
 		hTBola[i] == INVALID_HANDLE_VALUE;
+	msg tmpMsg;
+	tmpMsg.codigoMsg = -9999;
+	tmpMsg.from = user_id;
+	tmpMsg.to = 254;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("initClientProg"));
+	sendMessage(tmpMsg);
 
 	do {
 		
-		_tprintf(TEXT("--Welcome to Client[%d]--\n"), GetCurrentThreadId());
+		_tprintf(TEXT("--Welcome to Client[%d]--\n"), user_id);
 		_tprintf(TEXT("'exit' - Leave\n"));
 		_tprintf(TEXT("LOGIN:"));
 		_tscanf_s(TEXT("%s"), str, MAX_NAME_LENGTH);
@@ -117,38 +121,37 @@ int _tmain(int argc, LPTSTR argv[]) {
 			if (str[i] == ':')
 				str[i] = '\0';
 		//_tprintf(TEXT("Trying login with:%s"),str);
-		res = Login(str);
-		if (!res) {
-			_tprintf(TEXT("Login nao enviado"));
-			exit(-1);
-		}
-		else {
-			_tprintf(TEXT("Login enviado com sucesso\n"));
-		}
-
-		hTBroadcast = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveBroadcast, NULL, 0, NULL);
-		if (hTBroadcast == NULL) {
-			_tprintf(TEXT("Erro ao criar broadcast thread!\n"));
-			return -1;
-		}
-		WaitForSingleObject(hTBroadcast, INFINITE);
+		LoginUser(str);
+		WaitForSingleObject(newLogin,INFINITE);
 	} while (1);
 
 	system("cls");
 	_tprintf(TEXT("3 seconds:end of user....\n"));
+	//broadcast thread
+	TerminateThread(hTMsgConnection, 1);
+	CloseHandle(hTMsgConnection);
 	closeSharedMemoryMsg();
 	closeSharedMemoryGame();
 	Sleep(3000);
 	return 0;
 }
 
-DWORD WINAPI receiveMessageThread(LPVOID param) {
+DWORD WINAPI localConnection(LPVOID param) {
 	msg newMsg;
 	int quant = 0;
+	DWORD resp;
 
 	do {
 		WaitForSingleObject(messageEvent, INFINITE);
-		newMsg = receiveMessage();
+		newMsg = receiveMessageDLL();
+		resp = resolveMessage(newMsg);
+
+	} while (1);
+
+	return;
+	do {
+		WaitForSingleObject(messageEvent, INFINITE);
+		newMsg = receiveMessageDLL();
 		gotoxy(0, 0);
 		_tprintf(TEXT("[%d]NewMsg(%d):%s                \n-from:%d                            \n-to:%d                         \n                             "), quant++, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
 		if (newMsg.codigoMsg == 2) {//end of user
@@ -161,105 +164,84 @@ DWORD WINAPI receiveMessageThread(LPVOID param) {
 	} while (1);
 }
 
-DWORD WINAPI receiveBroadcast(LPVOID param) {
-	msg inMsg;
+
+
+DWORD resolveMessage(msg inMsg) {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	BOOLEAN logged = 0;
-	do{
-		//_tprintf(TEXT("Waiting for message on Broadcast thread\n"));
-		WaitForSingleObject(messageEventBroadcast, INFINITE);
-		inMsg = receiveMessage();
-		//_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
-		if (inMsg.from != 254) {
-			_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
-			_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg,inMsg.to, inMsg.from, inMsg.messageInfo);
-			Sleep(3000);
-			return 0;
-		}
-		
+	_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+	if (inMsg.from != 254) {
+		_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
+		_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+		Sleep(3000);
+		return 0;
+	}
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0, 0);
+	//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
+	//ReleaseMutex(hStdoutMutex);
 
-		//WaitForSingleObject(hStdoutMutex, INFINITE);
-		//gotoxy(0, 0);
-		//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
-		//ReleaseMutex(hStdoutMutex);
-		
-		if (inMsg.codigoMsg == 1 && !logged) {//successful login
-			logged = 1;
-			//system("cls");
-			_tcscpy_s(str, TAM, TEXT("messageEventClient"));
-			//_itot_s(inMsg.number, tmp, TAM, 10);
-			_tcscat_s(str, TAM, inMsg.messageInfo);
-			_tprintf(TEXT("(Client) HANDLE = (%s)\n"), str);
-			messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
-			user_id = _tstoi(inMsg.messageInfo);
-			_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\nWaiting for server to start game..."), inMsg.messageInfo);
-
-			hTreceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, NULL);
-			if (hTreceiveMessage == NULL) {
-				_tprintf(TEXT("Erro ao criar thread para receber mensagens!\n"));
-				return -1;
-			}
-
-		}
-		else if (inMsg.codigoMsg == -1 && !logged){
-			_tprintf(TEXT("Server refused login with %s\nPress Any Key ..."), inMsg.messageInfo);
-			TCHAR tmp;
-			fflush(stdin);
-			tmp = _gettch();
+	if (inMsg.codigoMsg == 1 && !logged) {//successful login
+		logged = 1;
+		_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\nWaiting for server to start game..."), inMsg.messageInfo);
+	}
+	else if (inMsg.codigoMsg == -1 && !logged) {
+		_tprintf(TEXT("Server refused login with %s\n"), inMsg.messageInfo);
+		pressKey();
+		endUser();
+		return -1;
+	}
+	else if (inMsg.codigoMsg == -100) {
+		_tprintf(TEXT("There is no game created by the server yet\n"));
+		//pressKey();
+		endUser();
+		return -1;
+	}
+	else if (inMsg.codigoMsg == 100) {//new game
+		_tprintf(TEXT("GAME created by server...\n"));
+		localGameStatus = 1;
+		hidecursor();
+		usersMove(TEXT("init"));
+		hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
+		if (hTUserInput == NULL) {
+			_tprintf(TEXT("Erro ao criar thread para o utilizador escrever!\n"));
 			return -1;
 		}
-		else if (inMsg.codigoMsg == -100) {
-			_tprintf(TEXT("There is no game created by the server yet\nPress Any Key ...\n"));
-			TCHAR tmp;
-			fflush(stdin);
-			tmp = _gettch();
+	}
+	else if (inMsg.codigoMsg == 101) {//new ball
+		DWORD tmp = _tstoi(inMsg.messageInfo);
+		//_tprintf(TEXT("creating %d balls thread para o utilizador!\n"),tmp);
+		createBalls(tmp);
+	}
+	else if (inMsg.codigoMsg == 102) {//create bricks
+		hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);
+		if (hTBrick == NULL) {
+			_tprintf(TEXT("Erro ao criar thread para desenhar bricks!\n"));
 			return -1;
 		}
-		else if (inMsg.codigoMsg == 100) {//new game
-			_tprintf(TEXT("GAME created by server...\n"));
-			localGameStatus = 1;
-			hidecursor();
-			usersMove(TEXT("init"));
-			hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
-			if (hTUserInput == NULL) {
-				_tprintf(TEXT("Erro ao criar thread para o utilizador escrever!\n"));
-				return -1;
-			}
+	}
+	else if (inMsg.codigoMsg == 103) {
+		int tmp = _tstoi(inMsg.messageInfo);
+		createBonus(tmp);
+	}
+	else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
+		_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
+		TCHAR resp;
+		fflush(stdin);
+		resp = _gettch();
+		_tprintf(TEXT("\n"));
+		if (resp == 'n' || resp == 'N') {
+			return -1;
 		}
-		else if (inMsg.codigoMsg == 101) {//new ball
-			DWORD tmp = _tstoi(inMsg.messageInfo);
-			//_tprintf(TEXT("creating %d balls thread para o utilizador!\n"),tmp);
-			createBalls(tmp);
-		}
-		else if (inMsg.codigoMsg == 102) {//create bricks
-			hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);
-			if (hTBrick == NULL) {
-				_tprintf(TEXT("Erro ao criar thread para desenhar bricks!\n"));
-				return -1;
-			}			
-		}
-		else if (inMsg.codigoMsg == 103) {
-			int tmp = _tstoi(inMsg.messageInfo);
-			createBonus(tmp);
-		}
-		else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
-			_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
-			TCHAR resp;
-			fflush(stdin);
-			resp = _gettch();
-			_tprintf(TEXT("\n"));
-			if (resp == 'n' || resp == 'N') {
-				return -1;
-			}
-			watchGame();
-		}
-		else if (inMsg.codigoMsg == 200) {
-			usersMove(inMsg.messageInfo);
-		}else if (inMsg.codigoMsg == -999) {
-			endUser();
-		}
-	} while (1);
+		watchGame();
+	}
+	else if (inMsg.codigoMsg == 200) {
+		usersMove(inMsg.messageInfo);
+	}
+	else if (inMsg.codigoMsg == -999) {
+		endUser();
+	}
 }
 
 void createBalls(DWORD num) {
@@ -596,14 +578,6 @@ void watchGame() {
 }
 
 void endUser() {
-	//broadcast thread
-	TerminateThread(hTBroadcast, 1);
-	CloseHandle(hTBroadcast);
-
-	//message thread
-	TerminateThread(hTreceiveMessage, 1);
-	CloseHandle(hTreceiveMessage);
-
 	//brick thread
 	TerminateThread(hTBrick, 1);
 	CloseHandle(hTBrick);
@@ -616,6 +590,7 @@ void endUser() {
 	}
 
 	localGameStatus = 0;
+	SetEvent(newLogin);
 }
 
 DWORD WINAPI bonusDrop(LPVOID param) {
@@ -662,108 +637,171 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 	return;
 }
 
-DWORD WINAPI remotePipe(LPVOID param) {
-	HANDLE hPipe /*, hPipeDup*/;
-	BOOL fSuccess = FALSE;
-	DWORD cbWritten, dwMode;
-	HANDLE hThread;
-	DWORD dwThreadId = 0;
-
-	/*while (1) { // Tenta abrir o pipe repetidamente em ciclo
-		hPipe = CreateFile(
-			INIT_PIPE_NAME, // Nome do pipe
-			GENERIC_READ | // acesso read e write
-			GENERIC_WRITE,
-			0 | FILE_SHARE_READ | FILE_SHARE_WRITE, // sem->com partilha
-			NULL, // atributos de segurança = default
-			OPEN_EXISTING, // É para abrir um pipe já existente
-			0 | FILE_FLAG_OVERLAPPED, // atributos default
-			NULL); // sem ficheiro template
-
-		if (hPipe != INVALID_HANDLE_VALUE)
-			break;
-		if (GetLastError() != ERROR_PIPE_BUSY) {
-			_tprintf(TEXT("\nCreate file deu erro e não foi BUSY. Erro = %d\n"),
-				GetLastError());
-			pressEnter();
-			return -1;
-		}
-		// Se chegou aqui é porque todas as instâncias
-		// do pipe estão ocupadas. Remédio: aguardar que uma
-		// fique livre com um timeout
-		// Aguarda por instância no máximo de 30 segs (podia ser outro intervalo de tempo.
-		if (!WaitNamedPipe(INIT_PIPE_NAME, 30000)) {
-			_tprintf(TEXT("Esperei por uma instância durante 30 segundos. Desisto. Sair"));
-			return -1;
-		}
-	} // Fim do ciclo em que tenta abrir a instância do pipe
-
-	dwMode = PIPE_READMODE_MESSAGE;
-	fSuccess = SetNamedPipeHandleState(
-		hPipe, // handle para o pipe
-		&dwMode, // Novo modo do pipe
-		NULL, // Não é para mudar max. bytes
-		NULL); // Não é para mudar max. timeout
-
-	if (!fSuccess) {
-		_tprintf(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"),
-			GetLastError());
-		pressEnter();
-		return -1;
-	}*/
-
-}
-
 void sendMessage(msg sendMsg){
-	if (connection_mode == 0)
-		sendMessageDLL(sendMsg);
-	else if (connection_mode == 1)
-		return;
-		//sendMessagePipe(sendMsg);
-}
+	HANDLE WriteReady;
+	OVERLAPPED OverlWr = { 0 };
+	DWORD bytesWritten;
+	BOOLEAN fSuccess;
 
-msg receiveMessage() {
-	msg inMsg;
+
 	if (connection_mode == 0) {
-		inMsg = receiveMessageDLL();
-		return inMsg;
-	}
+		sendMsg.connection = 0;
+		sendMessageDLL(sendMsg);
+	}		
 	else if (connection_mode == 1) {
-		//inMsg receiveMessagePipe();
-		inMsg.codigoMsg = -99999999;
-		return inMsg;
-	}
+		sendMsg.connection = 1;
+		WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (WriteReady == NULL) {
+			_tprintf(TEXT("Erro ao criar writeRead Event. Erro = %d\n"), GetLastError());
+			return 0;
+		}
 
-	return;
+		_tprintf(TEXT("Ligaçao establecida...\n"));
+
+		ZeroMemory(&OverlWr, sizeof(OverlWr));
+		ResetEvent(WriteReady);
+		OverlWr.hEvent = WriteReady;
+
+		fSuccess = WriteFile(
+			hPipe,
+			&sendMsg,
+			sizeof(msg),
+			&bytesWritten,
+			&OverlWr
+		);
+
+		WaitForSingleObject(WriteReady, INFINITE);
+		_tprintf(TEXT("Write concluido...\n"));
+
+		GetOverlappedResult(hPipe, &OverlWr, &bytesWritten, FALSE);
+		if (bytesWritten < sizeof(msg)) {
+			_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
+		}
+
+		_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
+
+	}
 }
 
 BOOLEAN createRemoteConnection() {
-	hPipe = INVALID_HANDLE_VALUE;
-	do {
-		hPipe = CreateFile(
-			INIT_PIPE_NAME, // Nome do pipe
-			GENERIC_READ | // acesso read e write
-			GENERIC_WRITE,
-			0 | FILE_SHARE_READ | FILE_SHARE_WRITE, // sem->com partilha
-			NULL, // atributos de segurança = default
-			OPEN_EXISTING, // É para abrir um pipe já existente
-			0 | FILE_FLAG_OVERLAPPED, // atributos default
-			NULL); // sem ficheiro template		if (hPipe != INVALID_HANDLE_VALUE)
-			break;
+	HANDLE hPipeTmp;
+	BOOL fSuccess = FALSE;
+	DWORD dwMode;
+	DWORD dwThreadId = 0;
+	while (1) {
 
-		Sleep(1000);
-	} while (1);
-		return 1;
+		_tprintf(TEXT("CreateFile...\n"));
+		hPipeTmp = CreateFile(
+			INIT_PIPE_NAME,
+			GENERIC_READ | GENERIC_WRITE,
+			0 | FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			OPEN_EXISTING,
+			0 | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+
+		if (hPipeTmp != INVALID_HANDLE_VALUE) {
+		_tprintf(TEXT("I got a valid hPipe\n"));
+			break;
+		}	
+
+
+		if (GetLastError() != ERROR_PIPE_BUSY) {
+			_tprintf(TEXT("Deu erro e nao foi de busy. Erro = %d\n"),GetLastError());
+			return 1;
+		}
+
+
+
+		if (!WaitNamedPipe(INIT_PIPE_NAME, 10000)) {
+			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
+			return FALSE;
+		}
+
+		}
+	
+	hPipe = hPipeTmp;
+	dwMode = PIPE_READMODE_MESSAGE;
+	fSuccess = SetNamedPipeHandleState(
+		hPipe,
+		&dwMode,
+		NULL,
+		NULL
+	);
+
+	if (!fSuccess) {
+		_tprintf(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"),GetLastError());
+		return -1;
+	}
+
+	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeConnection, NULL, 0, NULL);
+	if (hTMsgConnection == NULL) {
+		_tprintf(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
+		return 1;
+	}
+
+	return 0;
+}
+
+DWORD WINAPI pipeConnection(LPVOID param) {
+	msg inMsg;
+	DWORD resp;
+	DWORD bytesRead = 0;
+	BOOLEAN fSuccess = FALSE;
+	
+	HANDLE ReadReady;
+	OVERLAPPED OverlRd = { 0 };
+
+	ReadReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (ReadReady == NULL) {
+		_tprintf(TEXT("Erro na criãção do event ReadReady. Erro = %d\n"), GetLastError());
+		return;
+	}
+	_tprintf(TEXT("Thread Reader - a receber mensagens\n"));
+
+	while (1) {
+		ZeroMemory(&OverlRd, sizeof(OverlRd));
+		OverlRd.hEvent = ReadReady;
+		ResetEvent(ReadReady);
+
+		fSuccess = ReadFile(
+			hPipe,
+			&inMsg,
+			sizeof(msg),
+			&bytesRead,
+			&OverlRd
+		);
+
+		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
+		_tprintf(TEXT("Read Done...\n"));
+
+		GetOverlappedResult(hPipe, &OverlRd, &bytesRead, FALSE);
+		if (bytesRead < sizeof(msg)) {
+			_tprintf(TEXT("Read File failed... | Erro = %d\n"), GetLastError());
+		}
+
+		_tprintf(TEXT("I got a message from pipe:\n"));
+		_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+		resp = resolveMessage(inMsg);
+	}
 }
 
 BOOLEAN createLocalConnection() {
-	messageEventBroadcast = CreateEvent(NULL, TRUE, FALSE, MESSAGE_BROADCAST_EVENT_NAME);
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
+	_itot_s(user_id, tmp, TAM, 10);
+	_tcscat_s(str, TAM, tmp);
+	_tprintf(TEXT("HANDLE = (%s)\n"), str);
+	messageEvent = CreateEvent(NULL, TRUE, FALSE, str);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
 	BOOLEAN res = initializeHandles();
 	if (res) {
-		_tprintf(TEXT("Erro ao criar Hnaldes!"));
+		_tprintf(TEXT("Erro ao criar Handles!\n"));
 		//return 1;
 	}
 	else {
@@ -779,5 +817,29 @@ BOOLEAN createLocalConnection() {
 	//gameInfo = (game *)malloc(sizeof(game));
 	gameInfo = createSharedMemoryGame();
 
+	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)localConnection, NULL, 0, NULL);
+	if (hTMsgConnection == NULL) {
+		_tprintf(TEXT("Erro na criãção da thread para local message thread. Erro = %d\n"), GetLastError());
+		return 1;
+	}
+
 	return 0;
+}
+
+
+void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
+	msg newMsg;
+	newMsg.from = user_id;
+	newMsg.to = 254;//login e sempre para o servidor
+	newMsg.codigoMsg = 1;//login
+	_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, user);
+	sendMessage(newMsg);
+	return 1;
+}
+
+void pressKey() {
+	_tprintf(TEXT("Press Any Key ...\n"));
+	TCHAR tmp;
+	fflush(stdin);
+	tmp = _gettch();
 }

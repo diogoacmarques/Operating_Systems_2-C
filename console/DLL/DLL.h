@@ -46,6 +46,8 @@
 #define BALL_EVENT_NAME TEXT("../../ballEvent")
 #define USER_MOVE_EVENT_NAME TEXT("../../userMoveEvent")
 #define BONUS_EVENT_NAME TEXT("../../bonusEvent")
+//local
+#define LOCAL_CONNECTION_NAME TEXT("../../localMessage")
 //Pipe
 #define MAX_PIPES 5
 #define INIT_PIPE_NAME  TEXT("\\\\.\\pipe\\initPipeArknoid")
@@ -58,7 +60,7 @@
 
 typedef struct Message {
 	DWORD codigoMsg, from, to;
-	DWORD connection_mode;
+	BOOLEAN connection;
 	TCHAR messageInfo[TAM];
 } msg, *pmsg;
 
@@ -119,6 +121,8 @@ typedef struct Player {
 	DWORD score;
 	int size;
 	int posx, posy;
+	DWORD connection_mode;
+	HANDLE hConnection;
 }user;
 
 typedef struct {
@@ -137,6 +141,8 @@ HANDLE messageEventClient[MAX_USERS];
 
 HANDLE messageBroadcastDll;
 HANDLE messageServerDll;
+
+HANDLE hClients[MAX_USERS];
 
 
 
@@ -168,9 +174,11 @@ extern "C"
 	DLL_IMP_API void closeSharedMemoryGame(void);
 
 	//functions
+	DLL_IMP_API int findAvailableHandle(void);
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
 	DLL_IMP_API void createHandles(void);
 	DLL_IMP_API int initializeHandles(void);
+
 
 #ifdef __cplusplus
 }
