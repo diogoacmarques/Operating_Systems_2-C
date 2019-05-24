@@ -19,6 +19,7 @@ void watchGame();
 void endUser();
 void sendMessage(msg sendMsg);
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
+TCHAR* getLocalName(DWORD num);
 DWORD resolveMessage(msg inMsg);
 BOOLEAN createLocalConnection();
 BOOLEAN createRemoteConnection();
@@ -31,10 +32,11 @@ DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI bonusDrop(LPVOID param);
 
 DWORD user_id;
+DWORD client_id;
 
 HANDLE hTBola[MAX_BALLS],hTUserInput,hStdoutMutex,hTBrick, hTBonus[MAX_BONUS_AT_TIME];
 
-HANDLE newLogin;
+HANDLE newClient;
 
 HANDLE  messageEvent;
 
@@ -46,6 +48,10 @@ HANDLE hTMsgConnection;//thread responsible for incoming messages(local and remo
 DWORD connection_mode = -1;
 
 HANDLE hPipe;
+
+HANDLE hResolveMessageMutex;
+
+BOOLEAN canSendDLL;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -77,11 +83,11 @@ int _tmain(int argc, LPTSTR argv[]) {
 		}
 	} while (1);
 
-	user_id = findAvailableHandle();
-	if (user_id == -1) {
-		_tprintf(TEXT("There is no more space\n"));
-		pressKey();
-		return 1;
+	canSendDLL = TRUE;
+	hResolveMessageMutex = CreateMutex(NULL, FALSE, NULL);
+	newClient = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (newClient == NULL || hResolveMessageMutex == NULL) {
+		_tprintf(TEXT("Erro ao criar event newClient ou WriteGame. Erro = %d\n"), GetLastError());
 	}
 
 	if (connection_mode == 0)
@@ -95,22 +101,13 @@ int _tmain(int argc, LPTSTR argv[]) {
 		return -1;
 	}
 
-	newLogin = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (newLogin == NULL) {
-		_tprintf(TEXT("Erro ao criar event newLogin. Erro = %d\n"),GetLastError());
-	}
-
 	for (int i = 0; i < MAX_BALLS; i++)
 		hTBola[i] == INVALID_HANDLE_VALUE;
-	msg tmpMsg;
-	tmpMsg.codigoMsg = -9999;
-	tmpMsg.from = user_id;
-	tmpMsg.to = 254;
-	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("initClientProg"));
-	sendMessage(tmpMsg);
+
 
 	do {
-		
+		WaitForSingleObject(newClient, INFINITE);
+		//system("cls");
 		_tprintf(TEXT("--Welcome to Client[%d]--\n"), user_id);
 		_tprintf(TEXT("'exit' - Leave\n"));
 		_tprintf(TEXT("LOGIN:"));
@@ -122,7 +119,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 				str[i] = '\0';
 		//_tprintf(TEXT("Trying login with:%s"),str);
 		LoginUser(str);
-		WaitForSingleObject(newLogin,INFINITE);
+
 	} while (1);
 
 	system("cls");
@@ -144,33 +141,42 @@ DWORD WINAPI localConnection(LPVOID param) {
 	do {
 		WaitForSingleObject(messageEvent, INFINITE);
 		newMsg = receiveMessageDLL();
+		canSendDLL = TRUE;
+
+		WaitForSingleObject(hResolveMessageMutex, INFINITE);
 		resp = resolveMessage(newMsg);
+		ReleaseMutex(hResolveMessageMutex);
 
 	} while (1);
 
 	return;
-	do {
-		WaitForSingleObject(messageEvent, INFINITE);
-		newMsg = receiveMessageDLL();
-		gotoxy(0, 0);
-		_tprintf(TEXT("[%d]NewMsg(%d):%s                \n-from:%d                            \n-to:%d                         \n                             "), quant++, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
-		if (newMsg.codigoMsg == 2) {//end of user
-			endUser();
-			return 0;
-		}
-		else if (newMsg.codigoMsg == 123) {
-			_tprintf(TEXT("----------TESTES--------------\n"));
-		}
-	} while (1);
+	//do {
+	//	WaitForSingleObject(messageEvent, INFINITE);
+	//	newMsg = receiveMessageDLL();
+	//	gotoxy(0, 0);
+	//	_tprintf(TEXT("[%d]NewMsg(%d):%s                \n-from:%d                            \n-to:%d                         \n                             "), quant++, newMsg.codigoMsg, newMsg.messageInfo, newMsg.from, newMsg.to);
+	//	if (newMsg.codigoMsg == 2) {//end of user
+	//		endUser();
+	//		return 0;
+	//	}
+	//	else if (newMsg.codigoMsg == 123) {
+	//		_tprintf(TEXT("----------TESTES--------------\n"));
+	//	}
+	//} while (1);
 }
 
-
-
 DWORD resolveMessage(msg inMsg) {
+	//_tprintf(TEXT("\n\nCodigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+	if (inMsg.codigoMsg == 9999) {
+		_tprintf(TEXT("New client allowed\n"));
+		client_id = _tstoi(inMsg.messageInfo);
+		SetEvent(newClient);
+		//ResetEvent(newClient);
+		return;
+	}
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	BOOLEAN logged = 0;
-	_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
 	if (inMsg.from != 254) {
 		_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
 		_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
@@ -194,7 +200,7 @@ DWORD resolveMessage(msg inMsg) {
 	}
 	else if (inMsg.codigoMsg == -100) {
 		_tprintf(TEXT("There is no game created by the server yet\n"));
-		//pressKey();
+		pressKey();
 		endUser();
 		return -1;
 	}
@@ -294,6 +300,7 @@ void createBonus(DWORD id) {
 DWORD WINAPI UserThread(LPVOID param){
 	Sleep(1000);
 	user userInfo = gameInfo->nUsers[user_id];
+
 	//gotoxy(0, 10);
 	//_tprintf(TEXT("I have the id number:%d\n"), user_id);
 	//_tprintf(TEXT("my name is %s\n"), userInfo.name);
@@ -304,7 +311,7 @@ DWORD WINAPI UserThread(LPVOID param){
 	
 	while(1) {
 		gameMsg.codigoMsg = 200;
-		gameMsg.from = user_id;
+		gameMsg.from = client_id;
 		gameMsg.to = 254;
 		fflush(stdin);
 		KeyPress = _gettch();
@@ -395,6 +402,7 @@ void usersMove(TCHAR move[TAM]) {
 	user_id = _tstoi(usr);
 	if (user_id < 0 || user_id > MAX_USERS) {
 		_tprintf(TEXT("Invalido->From (%s) to user[%d]->(%s)\n"),move,user_id,direction);
+		Sleep(2000);
 		return;
 	}
 		
@@ -430,7 +438,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		WaitForSingleObject(updateBalls, INFINITE);
 		WaitForSingleObject(hStdoutMutex, INFINITE);
 		gotoxy(0, 0);
-		_tprintf(TEXT("[%d]Bola[%d]-Updated\n"),count++, id);
+		//_tprintf(TEXT("[%d]Bola[%d]-Updated\n"),count++, id);
 		ReleaseMutex(hStdoutMutex);
 		
 		ballInfo = gameInfo->nBalls[id];
@@ -579,8 +587,11 @@ void watchGame() {
 
 void endUser() {
 	//brick thread
-	TerminateThread(hTBrick, 1);
-	CloseHandle(hTBrick);
+	if (hTBrick != NULL) {
+		TerminateThread(hTBrick, 1);
+		CloseHandle(hTBrick);
+	}
+	hTBrick = NULL;
 
 	//ball thread
 	for (int i = 0; i < gameInfo->numBalls; i++){
@@ -590,7 +601,7 @@ void endUser() {
 	}
 
 	localGameStatus = 0;
-	SetEvent(newLogin);
+	SetEvent(newClient);
 }
 
 DWORD WINAPI bonusDrop(LPVOID param) {
@@ -638,6 +649,7 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 }
 
 void sendMessage(msg sendMsg){
+	//_tprintf(TEXT("Sending -> Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), sendMsg.codigoMsg, sendMsg.to, sendMsg.from, sendMsg.messageInfo);
 	HANDLE WriteReady;
 	OVERLAPPED OverlWr = { 0 };
 	DWORD bytesWritten;
@@ -646,7 +658,10 @@ void sendMessage(msg sendMsg){
 
 	if (connection_mode == 0) {
 		sendMsg.connection = 0;
-		sendMessageDLL(sendMsg);
+		if (canSendDLL) {
+			sendMessageDLL(sendMsg);
+			canSendDLL = FALSE;
+		}			
 	}		
 	else if (connection_mode == 1) {
 		sendMsg.connection = 1;
@@ -662,6 +677,7 @@ void sendMessage(msg sendMsg){
 		ResetEvent(WriteReady);
 		OverlWr.hEvent = WriteReady;
 
+	
 		fSuccess = WriteFile(
 			hPipe,
 			&sendMsg,
@@ -792,10 +808,10 @@ BOOLEAN createLocalConnection() {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
-	_itot_s(user_id, tmp, TAM, 10);
+	_itot_s(GetCurrentThreadId(), tmp, TAM, 10);
 	_tcscat_s(str, TAM, tmp);
 	_tprintf(TEXT("HANDLE = (%s)\n"), str);
-	messageEvent = CreateEvent(NULL, TRUE, FALSE, str);
+	messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
@@ -823,13 +839,20 @@ BOOLEAN createLocalConnection() {
 		return 1;
 	}
 
+	msg tmpMsg;
+	tmpMsg.codigoMsg = -9999;
+	tmpMsg.from = user_id;
+	tmpMsg.to = 254;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
+	sendMessage(tmpMsg); // lets server know of new client
+
 	return 0;
 }
 
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	msg newMsg;
-	newMsg.from = user_id;
+	newMsg.from = client_id;
 	newMsg.to = 254;//login e sempre para o servidor
 	newMsg.codigoMsg = 1;//login
 	_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, user);
@@ -842,4 +865,14 @@ void pressKey() {
 	TCHAR tmp;
 	fflush(stdin);
 	tmp = _gettch();
+}
+
+TCHAR* getLocalName(DWORD num) {
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
+	_itot_s(num, tmp, TAM, 10);
+	_tcscat_s(str, TAM, tmp);
+
+	return *str;
 }

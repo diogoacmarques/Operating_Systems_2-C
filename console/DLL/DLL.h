@@ -15,9 +15,10 @@
 #define MAX_MSG 50
 #define _MSECOND 10000
 //game
+#define MAX_CLIENTS 10
 #define MAX_LEVELS 5
 //User
-#define MAX_USERS 20
+#define MAX_USERS 5
 #define MAX_NAME_LENGTH 250
 #define MAX_INIT_LIFES 3
 
@@ -35,6 +36,8 @@
 
 #define MAX_BONUS_AT_TIME 10
 
+
+#define USE_MSG_MUTEX TEXT("../../writeMsgMutex")
 #define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
 #define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
 #define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
@@ -142,7 +145,7 @@ HANDLE messageEventClient[MAX_USERS];
 HANDLE messageBroadcastDll;
 HANDLE messageServerDll;
 
-HANDLE hClients[MAX_USERS];
+HANDLE hClients[MAX_CLIENTS];
 
 
 

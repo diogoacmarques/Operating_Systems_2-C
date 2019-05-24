@@ -22,7 +22,7 @@ int startGame();
 void sendMessage(msg sendMsg);
 void sendMessagePipe(msg sendMsg);
 DWORD resolveMessage(msg inMsg);
-void createHandle(DWORD connection);
+DWORD createHandle(msg newMsg);
 
 void createBalls(DWORD num);
 void createBonus(DWORD id);
@@ -54,9 +54,8 @@ pgame gameInfo;
 HANDLE messageEventServer;
 
 HANDLE hPipeClient;
-HANDLE pipeMutex;
 
-user tmp_user;
+HANDLE hResolveMessageMutex;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
@@ -69,14 +68,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 	_setmode(_fileno(stdin), _O_WTEXT);
 	_setmode(_fileno(stdout), _O_WTEXT);
 #endif
-
-
-
-	HANDLE hMainPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipe, NULL, 0, NULL);
-	if (hMainPipe == NULL) {
-		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
-		return -1;
-	}
 
 	HANDLE checkExistingServer = CreateEvent(NULL, FALSE, FALSE, CHECK_SERVER_EVENT);
 	//if(checkExistingServer == )
@@ -107,13 +98,27 @@ int _tmain(int argc, LPTSTR argv[]) {
 		_tprintf(TEXT("Erro ao iniciar as variaveis!"));
 	}
 
+	hResolveMessageMutex = CreateMutex(NULL, FALSE, NULL);
+	if (hResolveMessageMutex == NULL) {
+		_tprintf(TEXT("Erro ao criar hResolveMessageMutex. Erro = %d!"),GetLastError());
+		return -1;
+	}
+
+	//pipes
+	HANDLE hMainPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipe, NULL, 0, NULL);
+	if (hMainPipe == NULL) {
+		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
+		return -1;
+	}
+	//memory
 	hTReceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, &threadId);
 	if (hTReceiveMessage == NULL) {
 		_tprintf(TEXT("Erro ao criar thread ReceiveMessage!"));
 		return -1;
 	}
 
-	msg tmpMsg;
+	msg tmpMsg;//tests
+	user tmp_user;
 	tmp_user.score = -1;
 	_tcscpy_s(tmp_user.name, MAX_NAME_LENGTH, TEXT("just checking"));
 	registry(tmp_user); //Creates/Checks TOP 10
@@ -191,30 +196,40 @@ DWORD WINAPI receiveMessageThread() {//local communication
 	do {
 		WaitForSingleObject(messageEventServer, INFINITE);
 		inMsg = receiveMessageDLL();
-		tmp_user.connection_mode = 0;
+		WaitForSingleObject(hResolveMessageMutex, INFINITE);
 		resolveMessage(inMsg);
+		ReleaseMutex(hResolveMessageMutex);
 	} while (1);
 	
 }
 
 DWORD resolveMessage(msg inMsg){
 
+	DWORD num;
 	TCHAR tmp[TAM];
-	boolean flag = 1;
+	boolean flag;
 	int quant = 0;
 	msg outMsg;
 	outMsg.from = 254;	
 	outMsg.connection = inMsg.connection;
 	quant++;
-	_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
+	//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
 	//init
 	if (inMsg.codigoMsg == -9999) {
-		createHandle(inMsg.connection);
+		num = createHandle(inMsg);
+		if (num>=0) {//success
+			outMsg.codigoMsg = 9999;
+			outMsg.to = num;
+			_itot_s(num, tmp, TAM, 10);//translates num to str
+			_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys user_id to messageInfo
+			sendMessage(outMsg);
+		}
 		return;
 	}
 
 	//user
 	if (inMsg.codigoMsg == 1) {//login de utilizador
+		flag = 1;
 		_tprintf(TEXT("User %s is trying to login\n"), inMsg.messageInfo);
 		if (gameInfo->gameStatus == -1) {
 			//_tprintf(TEXT("User(%s) tried to login with no game created\n"), newMsg.messageInfo);
@@ -281,6 +296,7 @@ DWORD resolveMessage(msg inMsg){
 		gameInfo->numUsers--;
 		outMsg.to = inMsg.from;
 		outMsg.codigoMsg = 2;
+		_tcscpy_s(outMsg.messageInfo, TAM, TEXT("ended user"));
 		sendMessage(outMsg);
 
 		if (gameInfo->numUsers == 0) {//closing game
@@ -313,16 +329,23 @@ DWORD resolveMessage(msg inMsg){
 	}
 	else if (inMsg.codigoMsg == 200) {//user trying to move
 		_tprintf(TEXT("[%d]-%s\n"), inMsg.from, inMsg.messageInfo);
+		//_tprintf(TEXT("\n\nIN->Codigo:(%d)\tDirection:(%s)\tFrom:%d\tTo:%d\n"), inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
+
+		if (_tcscmp(inMsg.messageInfo, TEXT("right")) != 0 && _tcscmp(inMsg.messageInfo, TEXT("left")) != 0) {
+			_tprintf(TEXT("Erro!\n"));
+			Sleep(3000);
+		}
+
 		int res = moveUser(inMsg.from, inMsg.messageInfo);
 		if (!res) {
-			TCHAR tmp[TAM];
 			outMsg.codigoMsg = 200;
 			outMsg.to = 255;
-			_itot_s(inMsg.from, tmp, TAM, 10);//translates user_id num to str
-			_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys user_id to messageInfo
+			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
+			//_tprintf(TEXT("outMsg:(%s)\t"), outMsg.messageInfo);
 			_tcscat_s(outMsg.messageInfo, TAM, TEXT(":"));//adds ':'
-			_tcscat_s(outMsg.messageInfo, TAM, outMsg.messageInfo);//adds direction
-			//_tprintf(TEXT("Sending:(%s)\n"), tmpMsg.messageInfo);
+			//_tprintf(TEXT("outMsg2:(%s)\t"), outMsg.messageInfo);
+			_tcscat_s(outMsg.messageInfo, TAM, inMsg.messageInfo);//adds direction
+			//_tprintf(TEXT("outMsg.messageInfo:(%s)\n"), outMsg.messageInfo);
 			sendMessage(outMsg);
 		}
 		//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
@@ -332,7 +355,6 @@ DWORD resolveMessage(msg inMsg){
 		outMsg.to = inMsg.from;
 		sendMessage(outMsg);
 	}
-
 }
 
 int startGame() {
@@ -895,6 +917,7 @@ BOOLEAN insertSetting(TCHAR setting[TAM],DWORD value) {
 }
 
 void checkSettings() {
+	DWORD c = 0;
 	system("cls");
 	if (_tcscmp(gameInfo->myconfig.file, TEXT("none")) != 0)
 		_tprintf(TEXT("FILE:%s\n"), gameInfo->myconfig.file);
@@ -927,6 +950,12 @@ void checkSettings() {
 	fflush(stdin);
 	tmp = _gettch();
 	system("cls");
+	//CLIENTS
+	_tprintf(TEXT("------------------------------CLIENTS------------------------------\n"));
+	for (int i = 0; i < MAX_USERS; i++)
+		if (hClients[i] != NULL)
+			c++;
+	_tprintf(TEXT("There are %d clients\n"), c);
 	//GAME
 	_tprintf(TEXT("------------------------------GAME------------------------------\n"));
 	_tprintf(TEXT("gameStatus:%d\n"), gameInfo->gameStatus);
@@ -1155,10 +1184,7 @@ DWORD WINAPI connectPipe(LPVOID param) {
 
 	DWORD nSent;
 
-	msg buf;
-
-	pipeMutex = CreateMutex(NULL, FALSE, NULL);
-	if (pipeMutex == NULL) { return 0; }		
+	msg buf;	
 
 	do {
 
@@ -1247,9 +1273,9 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 			_tprintf(TEXT("\nReadFile não leu os dados todos. Erro = %d"),GetLastError()); // acrescentar lógica de encerrar a thread cliente
 
 		//processa info recebida
-		//_tprintf(TEXT("\n[PIPE]-Codigo[%d]-Info:%s-From:%d-To:%d\n"), inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
-		tmp_user.connection_mode = 1;
+		WaitForSingleObject(hResolveMessageMutex,INFINITE);
 		resp = resolveMessage(inMsg);
+		ReleaseMutex(hResolveMessageMutex);
 	}
 
 	//end client
@@ -1263,24 +1289,25 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 
 void sendMessage(msg sendMsg) {
 	if (sendMsg.to == 255) {
-		for(int i = 0;i<MAX_USERS;i++)
+		for(int i = 0;i<MAX_CLIENTS;i++)
 			if (hClients[i] != NULL) {
 				sendMessageDLL(sendMsg);
 				SetEvent(hClients[i]);
 			}
+
 	}
 	else {
 		if (sendMsg.connection == 0) {
-			_tprintf(TEXT("Responding via DLL"));
+			_tprintf(TEXT("Responding via DLL\n"));
 			sendMessageDLL(sendMsg);
 			SetEvent(hClients[sendMsg.to]);
 		}
 		else {
-			_tprintf(TEXT("Responding via PIPE"));
+			_tprintf(TEXT("Responding via PIPE\n"));
 			sendMessagePipe(sendMsg);
 		}
 	}
-			
+	//_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
 	//if (sendMsg.codigoMsg < 0)
 		//hClients[sendMsg.to] = NULL;//if invalid resets handle
 }
@@ -1347,18 +1374,16 @@ void sendMessagePipe(msg sendMsg){
 	return;
 }
 
-void createHandle(DWORD connection) {
+DWORD createHandle(msg newMsg) {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	DWORD flag = 1;
 	int i;
 	for (i = 0; i < MAX_USERS; i++) {
-		_tprintf(TEXT("checking handle %d\n"),i);
 		if (hClients[i] == NULL) {
 			flag = 0;
 			break;
 		}
-			
 	}
 	
 	if (flag) {
@@ -1366,19 +1391,14 @@ void createHandle(DWORD connection) {
 		return;
 	}
 
-	if (connection == 0) {
-		_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
-		_itot_s(i, tmp, TAM, 10);
-		_tcscat_s(str, TAM, tmp);
-		_tprintf(TEXT("Local handle[%d]:%s\n"), i, str);
-		hClients[i] = CreateEvent(NULL, FALSE, FALSE, str);
-		//tmp_user.hConnection = hClients[i];
-	}else if(connection==1){
-		//tmp_user.hConnection = ;
+	if (newMsg.connection == 0) {
+		hClients[i] = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
+		return i;
+	}else if(newMsg.connection==1){
 		hClients[i] = hPipeClient;
 		_tprintf(TEXT("remote handle[%d]\n"), i);
+		return i;
 	}
 
-	
-
+	return -1;
 }
