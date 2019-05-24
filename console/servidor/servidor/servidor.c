@@ -9,7 +9,7 @@
 
 #include "DLL.h"
 
-#define BUFSIZE 2048
+#define BUFSIZE 10000
 
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
@@ -20,9 +20,11 @@ DWORD WINAPI remoteUserPipe(LPVOID param);
 void createGame();
 int startGame();
 void sendMessage(msg sendMsg);
-void sendMessagePipe(msg sendMsg);
+void sendMessagePipe(msg sendMsg, HANDLE hPipe);
 DWORD resolveMessage(msg inMsg);
 DWORD createHandle(msg newMsg);
+
+
 
 void createBalls(DWORD num);
 void createBonus(DWORD id);
@@ -56,6 +58,11 @@ HANDLE messageEventServer;
 HANDLE hPipeClient;
 
 HANDLE hResolveMessageMutex;
+
+
+comuciationHandle clientsInfo[MAX_CLIENTS];
+
+HANDLE updateGame;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
@@ -107,6 +114,12 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//pipes
 	HANDLE hMainPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipe, NULL, 0, NULL);
 	if (hMainPipe == NULL) {
+		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
+		return -1;
+	}
+	//thread that updates users game
+	HANDLE hUpdateGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)updateGamePipe, NULL, 0, NULL);
+	if (updateGamePipe == NULL) {
 		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
 		return -1;
 	}
@@ -274,7 +287,7 @@ DWORD resolveMessage(msg inMsg){
 			gameInfo->nUsers[gameInfo->numUsers].user_id = gameInfo->numUsers;
 			_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
 			outMsg.codigoMsg = 1;//sucesso
-			gameInfo->nUsers[gameInfo->numUsers].hConnection = hClients[inMsg.from];
+			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClient;
 			_itot_s(gameInfo->numUsers++, tmp, TAM, 10);
 			_tcscpy_s(outMsg.messageInfo, TAM, tmp);
 			outMsg.to = inMsg.from;
@@ -361,6 +374,10 @@ int startGame() {
 	int i;
 	msg tmpMsg;
 
+	for (i = 0; i < gameInfo->numUsers; i++) {
+		userInit(i);
+	}
+
 	_tprintf(TEXT("Game started!\n"));
 	gameInfo->gameStatus = 1;
 	tmpMsg.codigoMsg = 100;//new game
@@ -368,11 +385,7 @@ int startGame() {
 	tmpMsg.to = 255; //broadcast
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("game started"));
 	sendMessage(tmpMsg);
-
-	for (i = 0; i < gameInfo->numUsers; i++) {
-		userInit(i);
-	}
-
+	_tprintf(TEXT("sent Game started!\n"));
 	//_tprintf(TEXT("out of start game!\n"));
 }
 
@@ -387,7 +400,7 @@ void userInit(DWORD id){
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 2;
 	gameInfo->nUsers[id].lifes = gameInfo->myconfig.inital_lifes;
 	
-	_tprintf(TEXT("(THREAD)User[%d]->%s | pos(%d,%d)\n"), id, gameInfo->nUsers[id].name, gameInfo->nUsers[id].posx, gameInfo->nUsers[id].posy);
+	//f_tprintf(TEXT("(User[%d]->%s | pos(%d,%d)\n"), id, gameInfo->nUsers[id].name, gameInfo->nUsers[id].posx, gameInfo->nUsers[id].posy);
 
 	return 0;
 }
@@ -789,8 +802,7 @@ int startVars() {
 	//end of default config
 
 	for (i = 0; i < MAX_USERS; i++) {
-		hClients[i] = NULL;
-		_tprintf(TEXT("hClient[%d] is now null\n"),i);
+		clientsInfo[i].hClient = NULL;
 	}
 		
 	//Users
@@ -953,7 +965,7 @@ void checkSettings() {
 	//CLIENTS
 	_tprintf(TEXT("------------------------------CLIENTS------------------------------\n"));
 	for (int i = 0; i < MAX_USERS; i++)
-		if (hClients[i] != NULL)
+		if (clientsInfo[i].hClient != NULL)
 			c++;
 	_tprintf(TEXT("There are %d clients\n"), c);
 	//GAME
@@ -1290,21 +1302,24 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 void sendMessage(msg sendMsg) {
 	if (sendMsg.to == 255) {
 		for(int i = 0;i<MAX_CLIENTS;i++)
-			if (hClients[i] != NULL) {
-				sendMessageDLL(sendMsg);
-				SetEvent(hClients[i]);
-			}
-
+			if (clientsInfo[i].hClient != NULL) 
+				if (clientsInfo[i].communication == 0) {
+					sendMessageDLL(sendMsg);
+					SetEvent(clientsInfo[i].hClient);
+				}
+				else 
+					sendMessagePipe(sendMsg, clientsInfo[i].hClient);
+			
 	}
 	else {
-		if (sendMsg.connection == 0) {
+		if (clientsInfo[sendMsg.to].communication == 0) {
 			_tprintf(TEXT("Responding via DLL\n"));
 			sendMessageDLL(sendMsg);
-			SetEvent(hClients[sendMsg.to]);
+			SetEvent(clientsInfo[sendMsg.to].hClient);
 		}
 		else {
 			_tprintf(TEXT("Responding via PIPE\n"));
-			sendMessagePipe(sendMsg);
+			sendMessagePipe(sendMsg, clientsInfo[sendMsg.to].hClient);
 		}
 	}
 	//_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
@@ -1312,21 +1327,11 @@ void sendMessage(msg sendMsg) {
 		//hClients[sendMsg.to] = NULL;//if invalid resets handle
 }
 
-void sendMessagePipe(msg sendMsg){
+void sendMessagePipe(msg sendMsg,HANDLE hPipe){
 	HANDLE WriteReady;
 	OVERLAPPED OverlWr = { 0 };
 	DWORD bytesWritten;
 	BOOLEAN fSuccess;
-
-	DWORD count = 0;
-	DWORD playerId = -1;
-
-	HANDLE hPipeResp;
-
-	if (sendMsg.to == 255)
-		count = MAX_PIPES;
-	else
-		count = 1;
 
 	WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (WriteReady == NULL) {
@@ -1334,53 +1339,36 @@ void sendMessagePipe(msg sendMsg){
 		return 0;
 	}
 
-	_tprintf(TEXT("Ligaçao establecida...\n"));
+	ZeroMemory(&OverlWr, sizeof(OverlWr));
+	ResetEvent(WriteReady);
+	OverlWr.hEvent = WriteReady;
 
-	for (int i = 0; i < count; i++) {
-		
-		if (sendMsg.to == 255) {
-			if (gameInfo->nUsers[i].user_id == -1 || gameInfo->nUsers[i].connection_mode != 1)
-				continue;
-			hPipeResp = hPipeResp = gameInfo->nUsers[i].hConnection;
-		}
-		else
-			hPipeResp = gameInfo->nUsers[sendMsg.to].hConnection;
+	fSuccess = WriteFile(
+		hPipe,
+		&sendMsg,
+		sizeof(msg),
+		&bytesWritten,
+		&OverlWr
+	);
 
+	WaitForSingleObject(WriteReady, INFINITE);
+	_tprintf(TEXT("Write concluido...\n"));
 
-		ZeroMemory(&OverlWr, sizeof(OverlWr));
-		ResetEvent(WriteReady);
-		OverlWr.hEvent = WriteReady;
-
-		fSuccess = WriteFile(
-			hPipeResp,
-			&sendMsg,
-			sizeof(msg),
-			&bytesWritten,
-			&OverlWr
-		);
-
-		WaitForSingleObject(WriteReady, INFINITE);
-		_tprintf(TEXT("Write concluido...\n"));
-
-		GetOverlappedResult(hPipeResp, &OverlWr, &bytesWritten, FALSE);
-		if (bytesWritten < sizeof(msg)) {
-			_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
-		}
-
-		_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
-
+	GetOverlappedResult(hPipe, &OverlWr, &bytesWritten, FALSE);
+	if (bytesWritten < sizeof(msg)) {
+		_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
 	}
-	
+
+	//_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
 	return;
 }
-
 DWORD createHandle(msg newMsg) {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	DWORD flag = 1;
 	int i;
-	for (i = 0; i < MAX_USERS; i++) {
-		if (hClients[i] == NULL) {
+	for (i = 0; i < MAX_CLIENTS; i++) {
+		if (clientsInfo[i].hClient == NULL) {
 			flag = 0;
 			break;
 		}
@@ -1392,13 +1380,64 @@ DWORD createHandle(msg newMsg) {
 	}
 
 	if (newMsg.connection == 0) {
-		hClients[i] = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
+		clientsInfo[i].hClient = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
+		clientsInfo[i].communication = 0;
 		return i;
 	}else if(newMsg.connection==1){
-		hClients[i] = hPipeClient;
+		clientsInfo[i].hClient = hPipeClient;
+		clientsInfo[i].communication = 1;
 		_tprintf(TEXT("remote handle[%d]\n"), i);
 		return i;
 	}
 
 	return -1;
 }
+
+
+DWORD WINAPI updateGamePipe(LPVOID param) {
+
+	HANDLE WriteReady;
+	OVERLAPPED OverlWr = { 0 };
+	DWORD bytesWritten;
+	BOOLEAN fSuccess;
+
+	WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (WriteReady == NULL) {
+		_tprintf(TEXT("Erro ao criar writeRead Event. Erro = %d\n"), GetLastError());
+		return 0;
+	}
+
+	do {
+		WaitForSingleObject(updateGame, INFINITE);
+		for(int i = 0;i<MAX_CLIENTS;i++)
+			if (clientsInfo[i].hClient != NULL && clientsInfo[i].communication == 1) {
+				//sends game
+				//_tprintf(TEXT("This is the size of the game = %d | also there are %d bricks\n"), sizeof(tmp_game),tmp_game.numBricks);
+				ZeroMemory(&OverlWr, sizeof(OverlWr));
+				ResetEvent(WriteReady);
+				OverlWr.hEvent = WriteReady;
+
+				fSuccess = WriteFile(
+					clientsInfo[i].hClient,
+					gameInfo,
+					sizeof(game),
+					&bytesWritten,
+					&OverlWr
+				);
+
+				WaitForSingleObject(WriteReady, INFINITE);
+				_tprintf(TEXT("Sent updated game via pipe...\n"));
+
+				GetOverlappedResult(clientsInfo[i].hClient, &OverlWr, &bytesWritten, FALSE);
+				if (bytesWritten < sizeof(game)) {
+					_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
+				}
+				//sends message that the game is going next
+			}
+		
+	} while (1);
+	
+	return;
+}
+
+

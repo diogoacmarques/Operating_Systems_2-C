@@ -19,7 +19,6 @@ void watchGame();
 void endUser();
 void sendMessage(msg sendMsg);
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
-TCHAR* getLocalName(DWORD num);
 DWORD resolveMessage(msg inMsg);
 BOOLEAN createLocalConnection();
 BOOLEAN createRemoteConnection();
@@ -30,6 +29,9 @@ DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI localConnection(LPVOID param);
 DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI bonusDrop(LPVOID param);
+
+DWORD WINAPI updateGamePipe(LPVOID param);
+
 
 DWORD user_id;
 DWORD client_id;
@@ -48,8 +50,6 @@ HANDLE hTMsgConnection;//thread responsible for incoming messages(local and remo
 DWORD connection_mode = -1;
 
 HANDLE hPipe;
-
-HANDLE hResolveMessageMutex;
 
 BOOLEAN canSendDLL;
 
@@ -84,9 +84,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 	} while (1);
 
 	canSendDLL = TRUE;
-	hResolveMessageMutex = CreateMutex(NULL, FALSE, NULL);
 	newClient = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (newClient == NULL || hResolveMessageMutex == NULL) {
+	if (newClient == NULL) {
 		_tprintf(TEXT("Erro ao criar event newClient ou WriteGame. Erro = %d\n"), GetLastError());
 	}
 
@@ -143,9 +142,7 @@ DWORD WINAPI localConnection(LPVOID param) {
 		newMsg = receiveMessageDLL();
 		canSendDLL = TRUE;
 
-		WaitForSingleObject(hResolveMessageMutex, INFINITE);
 		resp = resolveMessage(newMsg);
-		ReleaseMutex(hResolveMessageMutex);
 
 	} while (1);
 
@@ -362,6 +359,9 @@ DWORD WINAPI UserThread(LPVOID param){
 
 void usersMove(TCHAR move[TAM]) {
 	if (_tcscmp(move, TEXT("init")) == 0) {
+		//_tprintf(TEXT("Iniciating %d players\n"), gameInfo->numUsers);
+		//_tprintf(TEXT("Player 0 pos(%d,%d)\n"), gameInfo->nUsers[0].posx,gameInfo->nUsers[0].posy);
+		//Sleep(5000);
 		system("cls");
 		drawHelp(1);
 		for (int i = 0; i < gameInfo->numUsers; i++) {
@@ -405,7 +405,7 @@ void usersMove(TCHAR move[TAM]) {
 		Sleep(2000);
 		return;
 	}
-		
+
 	user userinfo = gameInfo->nUsers[user_id];
 	if (_tcscmp(direction, TEXT("left")) == 0) {
 		WaitForSingleObject(hStdoutMutex, INFINITE);
@@ -736,8 +736,10 @@ BOOLEAN createRemoteConnection() {
 			return FALSE;
 		}
 
-		}
+	}
 	
+	gameInfo = (pgame)malloc(sizeof(game));
+
 	hPipe = hPipeTmp;
 	dwMode = PIPE_READMODE_MESSAGE;
 	fSuccess = SetNamedPipeHandleState(
@@ -757,6 +759,14 @@ BOOLEAN createRemoteConnection() {
 		_tprintf(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
 		return 1;
 	}
+
+
+	msg tmpMsg;
+	tmpMsg.codigoMsg = -9999;
+	tmpMsg.from = user_id;
+	tmpMsg.to = 254;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("remoteClient"));
+	sendMessage(tmpMsg); // lets server know of new client
 
 	return 0;
 }
@@ -791,15 +801,16 @@ DWORD WINAPI pipeConnection(LPVOID param) {
 		);
 
 		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
-		_tprintf(TEXT("Read Done...\n"));
+		//_tprintf(TEXT("Read Done...\n"));
 
 		GetOverlappedResult(hPipe, &OverlRd, &bytesRead, FALSE);
 		if (bytesRead < sizeof(msg)) {
 			_tprintf(TEXT("Read File failed... | Erro = %d\n"), GetLastError());
 		}
 
-		_tprintf(TEXT("I got a message from pipe:\n"));
-		_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+		//_tprintf(TEXT("I got a message from pipe:\n"));
+		//_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+
 		resp = resolveMessage(inMsg);
 	}
 }
@@ -867,12 +878,31 @@ void pressKey() {
 	tmp = _gettch();
 }
 
-TCHAR* getLocalName(DWORD num) {
-	TCHAR str[TAM];
-	TCHAR tmp[TAM];
-	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
-	_itot_s(num, tmp, TAM, 10);
-	_tcscat_s(str, TAM, tmp);
 
-	return *str;
+DWORD WINAPI updateGamePipe(LPVOID param) {
+	DWORD bytesRead = 0;
+	BOOLEAN fSuccess = FALSE;
+	HANDLE ReadReady;
+	OVERLAPPED OverlRd = { 0 };
+
+	do {
+		ZeroMemory(&OverlRd, sizeof(OverlRd));
+		OverlRd.hEvent = ReadReady;
+		ResetEvent(ReadReady);
+
+		fSuccess = ReadFile(
+			hPipe,
+			gameInfo,
+			sizeof(game),
+			&bytesRead,
+			&OverlRd
+		);
+
+		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
+
+		GetOverlappedResult(hPipe, &OverlRd, &bytesRead, FALSE);
+		if (bytesRead < sizeof(game)) {
+			_tprintf(TEXT("Read File failed... | Erro = %d\n"), GetLastError());
+		}
+	} while (1);
 }

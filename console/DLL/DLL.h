@@ -59,7 +59,10 @@
 #define CHECK_SERVER_EVENT TEXT("../../arknoidServer")//this event only exists to check if a server is running
 
 
-
+typedef struct handles {
+	HANDLE hClient;
+	DWORD communication;
+} comuciationHandle;
 
 typedef struct Message {
 	DWORD codigoMsg, from, to;
@@ -144,10 +147,6 @@ HANDLE messageEventClient[MAX_USERS];
 
 HANDLE messageBroadcastDll;
 HANDLE messageServerDll;
-
-HANDLE hClients[MAX_CLIENTS];
-
-
 
 //Definir uma constante para facilitar a leitura do protótipo da função
 //Este .h deve ser incluído no projeto que o vai usar (modo implícito)
