@@ -23,14 +23,13 @@ DWORD resolveMessage(msg inMsg);
 BOOLEAN createLocalConnection();
 BOOLEAN createRemoteConnection();
 void pressKey();
+DWORD WINAPI receiveGamePipe(LPVOID param);
 DWORD WINAPI pipeConnection(LPVOID param);
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI UserThread(LPVOID param);
 DWORD WINAPI localConnection(LPVOID param);
 DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI bonusDrop(LPVOID param);
-
-DWORD WINAPI updateGamePipe(LPVOID param);
 
 
 DWORD user_id;
@@ -47,11 +46,16 @@ pgame gameInfo;
 DWORD localGameStatus = 0;//0 = no game | 1 = playing | 2 = watching
 
 HANDLE hTMsgConnection;//thread responsible for incoming messages(local and remote)
+HANDLE hTGameConnection;
 DWORD connection_mode = -1;
 
 HANDLE hPipe;
 
 BOOLEAN canSendDLL;
+
+HANDLE gameReady;
+
+HANDLE xy;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -84,8 +88,10 @@ int _tmain(int argc, LPTSTR argv[]) {
 	} while (1);
 
 	canSendDLL = TRUE;
+	xy = CreateMutex(NULL, FALSE, NULL);
+	gameReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	newClient = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (newClient == NULL) {
+	if (newClient == NULL || gameReady == NULL) {
 		_tprintf(TEXT("Erro ao criar event newClient ou WriteGame. Erro = %d\n"), GetLastError());
 	}
 
@@ -167,8 +173,15 @@ DWORD resolveMessage(msg inMsg) {
 	if (inMsg.codigoMsg == 9999) {
 		_tprintf(TEXT("New client allowed\n"));
 		client_id = _tstoi(inMsg.messageInfo);
+		_tprintf(TEXT("initianting receiveGamePipe thread\n"));
+		//thread responsible for game updates
+		hTGameConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveGamePipe, NULL, 0, NULL);
+		if (hTGameConnection == NULL) {
+			_tprintf(TEXT("Erro na criãção da thread para remotePipe for game. Erro = %d\n"), GetLastError());
+			pressKey();
+			return 1;
+		}
 		SetEvent(newClient);
-		//ResetEvent(newClient);
 		return;
 	}
 	TCHAR str[TAM];
@@ -205,6 +218,7 @@ DWORD resolveMessage(msg inMsg) {
 		_tprintf(TEXT("GAME created by server...\n"));
 		localGameStatus = 1;
 		hidecursor();
+		system("cls");
 		usersMove(TEXT("init"));
 		hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UserThread, NULL, 0, NULL);
 		if (hTUserInput == NULL) {
@@ -362,7 +376,7 @@ void usersMove(TCHAR move[TAM]) {
 		//_tprintf(TEXT("Iniciating %d players\n"), gameInfo->numUsers);
 		//_tprintf(TEXT("Player 0 pos(%d,%d)\n"), gameInfo->nUsers[0].posx,gameInfo->nUsers[0].posy);
 		//Sleep(5000);
-		system("cls");
+		//system("cls");
 		drawHelp(1);
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			//gotoxy(0, i);
@@ -376,7 +390,11 @@ void usersMove(TCHAR move[TAM]) {
 		return;
 	}
 
-	//this trhreads displays users barreiras
+	if (connection_mode == 1) {
+		WaitForSingleObject(gameReady, INFINITE);//waits for info to come from pipe
+	}
+
+	//this function displays users barreiras
 	BOOLEAN flag = 0;
 	DWORD user_id, j = 0;
 	TCHAR usr[TAM];
@@ -423,7 +441,12 @@ void usersMove(TCHAR move[TAM]) {
 		_tprintf(TEXT("%d"), user_id);
 		ReleaseMutex(hStdoutMutex);
 	}
-	//_tprintf(TEXT("im out\n"));
+
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0, 15);
+	//_tprintf(TEXT("User[%d]-pos(%d,%d)"),user_id, userinfo.posx, userinfo.posy);
+	//ReleaseMutex(hStdoutMutex);
+
 	return;
 }
 
@@ -433,42 +456,54 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	ball ballInfo;
 	hidecursor();
 	DWORD count = 0;
+	BOOLEAN flag;
 	//_tprintf(TEXT("Bola[%d]-Created\n"),id);
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(gameInfo->myconfig.limx - 10, gameInfo->myconfig.limy - 1);
+	if (localGameStatus == 1) {
+		_tprintf(TEXT("[PLAYING]"));
+	}
+	else if (localGameStatus == 2) {
+		_tprintf(TEXT("[WATCHING]"));
+	}
+	ReleaseMutex(hStdoutMutex);
+
 	do {
-		WaitForSingleObject(updateBalls, INFINITE);
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-		gotoxy(0, 0);
-		//_tprintf(TEXT("[%d]Bola[%d]-Updated\n"),count++, id);
-		ReleaseMutex(hStdoutMutex);
-		
+		if(connection_mode == 0)
+			WaitForSingleObject(updateBalls, INFINITE);
+		else if(connection_mode == 1)
+			WaitForSingleObject(gameReady, INFINITE);
+					
 		ballInfo = gameInfo->nBalls[id];
-		oposx = posx;
-		oposy = posy;
 
-		posx = ballInfo.posx;
-		posy = ballInfo.posy;
-	
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-		gotoxy(oposx, oposy);
-		_tprintf(TEXT(" "));
-		ReleaseMutex(hStdoutMutex);
+		if (ballInfo.posx == posx && ballInfo.posy == posy) {
+			flag = FALSE;
+		}
+		else {
+			flag = TRUE;
+		}
+			
+		if (flag) {
+			oposx = posx;
+			oposy = posy;
 
-		posx = ballInfo.posx;
-		posy = ballInfo.posy;
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-		gotoxy(gameInfo->myconfig.limx - 10, gameInfo->myconfig.limy - 1);
-		if (localGameStatus == 1) {
-			_tprintf(TEXT("[PLAYING]"));
+			posx = ballInfo.posx;
+			posy = ballInfo.posy;
+
+			WaitForSingleObject(hStdoutMutex, INFINITE);
+			gotoxy(oposx, oposy);
+			_tprintf(TEXT(" "));
+			ReleaseMutex(hStdoutMutex);
+
+			posx = ballInfo.posx;
+			posy = ballInfo.posy;
+			WaitForSingleObject(hStdoutMutex, INFINITE);
+			gotoxy(posx, posy);
+			_tprintf(TEXT("%d"), id);
+			gotoxy(0, gameInfo->myconfig.limy - 1);
+			_tprintf(TEXT("LIFES:%d  SCORE:%d      BALL(%d,%d)   Speed=%d        "), gameInfo->nUsers[user_id].lifes, gameInfo->nUsers[user_id].score, posx, posy, gameInfo->nBalls[0].speed);
+			ReleaseMutex(hStdoutMutex);
 		}
-		else if(localGameStatus == 2){
-			_tprintf(TEXT("[WATCHING]"));
-		}
-		gotoxy(posx, posy);
-		_tprintf(TEXT("%d"),id);
-		gotoxy(0, gameInfo->myconfig.limy-1);		
-		_tprintf(TEXT("LIFES:%d  SCORE:%d      BALL(%d,%d)   Speed=%d        "), gameInfo->nUsers[user_id].lifes,gameInfo->nUsers[user_id].score,posx,posy,gameInfo->nBalls[0].speed);
-		//_tprintf(TEXT("Bola[%d]-(%d,%d)\n"), id, ballInfo.posx, ballInfo.posy);
-		ReleaseMutex(hStdoutMutex);
 	} while (ballInfo.status);
 	WaitForSingleObject(hStdoutMutex, INFINITE);
 	gotoxy(posx, posy);
@@ -480,7 +515,15 @@ DWORD WINAPI BolaThread(LPVOID param) {
 }
 
 DWORD WINAPI BrickThread(LPVOID param) {
+	//_tprintf(TEXT("should create %d bricks"), gameInfo->numBricks);
 	brick localBricks[MAX_BRICKS];
+
+	do {
+		WaitForSingleObject(gameReady, INFINITE);
+		if (gameInfo->numBricks > 0 && gameInfo->numBricks < MAX_BRICKS)
+			break;
+	} while (1);
+	
 	int numBricks = gameInfo->numBricks;
 	//draws intially all bricks
 	for (int i = 0; i < numBricks; i++) {
@@ -563,9 +606,9 @@ void drawHelp(BOOLEAN num) {
 void watchGame() {
 	localGameStatus = 2;
 	hidecursor();
-	WaitForSingleObject(hStdoutMutex, INFINITE);
-	gotoxy(0,0);
-	ReleaseMutex(hStdoutMutex);
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0,0);
+	//ReleaseMutex(hStdoutMutex);
 	usersMove(TEXT("init"));
 	
 	if (gameInfo->numBalls > 0)
@@ -671,7 +714,7 @@ void sendMessage(msg sendMsg){
 			return 0;
 		}
 
-		_tprintf(TEXT("Ligaçao establecida...\n"));
+		//_tprintf(TEXT("Ligaçao establecida...\n"));
 
 		ZeroMemory(&OverlWr, sizeof(OverlWr));
 		ResetEvent(WriteReady);
@@ -687,14 +730,13 @@ void sendMessage(msg sendMsg){
 		);
 
 		WaitForSingleObject(WriteReady, INFINITE);
-		_tprintf(TEXT("Write concluido...\n"));
 
 		GetOverlappedResult(hPipe, &OverlWr, &bytesWritten, FALSE);
 		if (bytesWritten < sizeof(msg)) {
 			_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
 		}
 
-		_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
+		//_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
 
 	}
 }
@@ -708,7 +750,7 @@ BOOLEAN createRemoteConnection() {
 
 		_tprintf(TEXT("CreateFile...\n"));
 		hPipeTmp = CreateFile(
-			INIT_PIPE_NAME,
+			INIT_PIPE_MSG_NAME,
 			GENERIC_READ | GENERIC_WRITE,
 			0 | FILE_SHARE_READ | FILE_SHARE_WRITE,
 			NULL,
@@ -730,20 +772,16 @@ BOOLEAN createRemoteConnection() {
 		}
 
 
-
-		if (!WaitNamedPipe(INIT_PIPE_NAME, 10000)) {
+		if (!WaitNamedPipe(INIT_PIPE_MSG_NAME, 10000)) {
 			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
 			return FALSE;
 		}
 
 	}
 	
-	gameInfo = (pgame)malloc(sizeof(game));
-
-	hPipe = hPipeTmp;
 	dwMode = PIPE_READMODE_MESSAGE;
 	fSuccess = SetNamedPipeHandleState(
-		hPipe,
+		hPipeTmp,
 		&dwMode,
 		NULL,
 		NULL
@@ -754,20 +792,22 @@ BOOLEAN createRemoteConnection() {
 		return -1;
 	}
 
-	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeConnection, NULL, 0, NULL);
+	_tprintf(TEXT("initianting pipeConnection thread\n"));
+	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeConnection, (LPVOID)hPipeTmp, 0, NULL);
 	if (hTMsgConnection == NULL) {
 		_tprintf(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
 		return 1;
 	}
 
-
+	Sleep(250);
+	_tprintf(TEXT("sending message ...\n"));
 	msg tmpMsg;
 	tmpMsg.codigoMsg = -9999;
 	tmpMsg.from = user_id;
 	tmpMsg.to = 254;
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("remoteClient"));
 	sendMessage(tmpMsg); // lets server know of new client
-
+	_tprintf(TEXT("message sent sending message ...\n"));
 	return 0;
 }
 
@@ -776,7 +816,7 @@ DWORD WINAPI pipeConnection(LPVOID param) {
 	DWORD resp;
 	DWORD bytesRead = 0;
 	BOOLEAN fSuccess = FALSE;
-	
+	hPipe = ((DWORD)param);
 	HANDLE ReadReady;
 	OVERLAPPED OverlRd = { 0 };
 
@@ -810,6 +850,10 @@ DWORD WINAPI pipeConnection(LPVOID param) {
 
 		//_tprintf(TEXT("I got a message from pipe:\n"));
 		//_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+		//WaitForSingleObject(hStdoutMutex, INFINITE);
+		//gotoxy(0, 13);
+		//_tprintf(TEXT("MSG->COD(%d)-'%s'"), inMsg.codigoMsg,inMsg.messageInfo);
+		//ReleaseMutex(hStdoutMutex);
 
 		resp = resolveMessage(inMsg);
 	}
@@ -826,6 +870,10 @@ BOOLEAN createLocalConnection() {
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
+	if (messageEvent == NULL || updateBalls == NULL || updateBonus == NULL || hStdoutMutex == NULL) {
+		_tprintf(TEXT("Erro ao criar recursos!\n"));
+		return 0;
+	}
 	BOOLEAN res = initializeHandles();
 	if (res) {
 		_tprintf(TEXT("Erro ao criar Handles!\n"));
@@ -860,7 +908,6 @@ BOOLEAN createLocalConnection() {
 	return 0;
 }
 
-
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	msg newMsg;
 	newMsg.from = client_id;
@@ -878,31 +925,94 @@ void pressKey() {
 	tmp = _gettch();
 }
 
+DWORD WINAPI receiveGamePipe(LPVOID param) {
 
-DWORD WINAPI updateGamePipe(LPVOID param) {
-	DWORD bytesRead = 0;
-	BOOLEAN fSuccess = FALSE;
+	HANDLE gamePipe;
+	BOOLEAN res;
+	DWORD bytesRead, dwMode;
 	HANDLE ReadReady;
+	BOOLEAN fSuccess = FALSE;
 	OVERLAPPED OverlRd = { 0 };
 
-	do {
+
+	//from here
+	while (1) {
+		_tprintf(TEXT("Create file for game\n"));
+		gamePipe = CreateFile(
+			INIT_PIPE_GAME_NAME,
+			GENERIC_READ,
+			0,
+			NULL,
+			OPEN_EXISTING,
+			0 | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+
+		if (gamePipe != INVALID_HANDLE_VALUE) {
+			_tprintf(TEXT("I got a valid hPipe\n"));
+			break;
+		}
+
+
+		if (GetLastError() != ERROR_PIPE_BUSY) {
+			_tprintf(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
+			return;
+		}
+
+
+		if (!WaitNamedPipe(INIT_PIPE_GAME_NAME, 10000)) {
+			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
+			return;
+		}
+
+	}
+
+	gameInfo = (pgame)malloc(sizeof(game));
+
+	ReadReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (ReadReady == NULL) {
+		_tprintf(TEXT("Erro na criãção do event ReadReady. Erro = %d\n"), GetLastError());
+		return;
+	}
+	//to here
+
+	int quant = 0;
+
+	while (1) {
+		//_tprintf(TEXT("Waiting to receive game..\n"));
 		ZeroMemory(&OverlRd, sizeof(OverlRd));
 		OverlRd.hEvent = ReadReady;
 		ResetEvent(ReadReady);
 
 		fSuccess = ReadFile(
-			hPipe,
+			gamePipe,
 			gameInfo,
 			sizeof(game),
 			&bytesRead,
 			&OverlRd
 		);
 
-		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
+		WaitForSingleObject(ReadReady, INFINITE);//sssswait for read to be complete
+		//_tprintf(TEXT("Read Done...\n"));
 
 		GetOverlappedResult(hPipe, &OverlRd, &bytesRead, FALSE);
 		if (bytesRead < sizeof(game)) {
 			_tprintf(TEXT("Read File failed... | Erro = %d\n"), GetLastError());
 		}
-	} while (1);
+
+		SetEvent(gameReady);
+		ResetEvent(gameReady);
+
+		//WaitForSingleObject(hStdoutMutex,INFINITE);
+		//gotoxy(0, 10);
+		//_tprintf(TEXT("GameStatus = %d\n"),gameInfo->gameStatus);
+		//_tprintf(TEXT("[%d]Udated\n->Bricks:%d\n->Player_0:(%d,%d)"),quant++,gameInfo->numBricks,gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
+		//ReleaseMutex(hStdoutMutex);
+		
+	}
+
+	CloseHandle(gamePipe);
+	Sleep(200);
+	return 0;
 }

@@ -9,13 +9,17 @@
 
 #include "DLL.h"
 
-#define BUFSIZE 10000
+#define BUFSIZE_MSG sizeof(msg)
+#define BUFSIZE_GAME sizeof(game)
+
 
 DWORD WINAPI BolaThread(LPVOID param);
 DWORD WINAPI receiveMessageThread();
 DWORD WINAPI bonusDrop(LPVOID param);
-DWORD WINAPI connectPipe(LPVOID param);
-DWORD WINAPI remoteUserPipe(LPVOID param);
+DWORD WINAPI connectPipeMsg(LPVOID param);//thread waiting for users to join msg pipe
+DWORD WINAPI connectPipeGame(LPVOID param);//thread waiting for users to join game pipe
+DWORD WINAPI remoteUserPipe(LPVOID param);//thread listening for every remote pipe
+DWORD WINAPI updateGamePipe(LPVOID param);//thread seding game updates for every connected pipe
 
 void createGame();
 int startGame();
@@ -79,6 +83,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	HANDLE checkExistingServer = CreateEvent(NULL, FALSE, FALSE, CHECK_SERVER_EVENT);
 	//if(checkExistingServer == )
 		//return 0;
+	updateGame = CreateEvent(NULL,FALSE,FALSE,NULL);
 	messageEventServer = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
@@ -112,17 +117,19 @@ int _tmain(int argc, LPTSTR argv[]) {
 	}
 
 	//pipes
-	HANDLE hMainPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipe, NULL, 0, NULL);
+	//msg init pipe
+	HANDLE hMainPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipeMsg, NULL, 0, NULL);
 	if (hMainPipe == NULL) {
 		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
 		return -1;
 	}
-	//thread that updates users game
-	HANDLE hUpdateGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)updateGamePipe, NULL, 0, NULL);
-	if (updateGamePipe == NULL) {
+	//game init pipe
+	HANDLE hUpdateGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipeGame, NULL, 0, NULL);
+	if (hUpdateGame == NULL) {
 		_tprintf(TEXT("Erro ao criar thread hMainPipe!"));
 		return -1;
 	}
+
 	//memory
 	hTReceiveMessage = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveMessageThread, NULL, 0, &threadId);
 	if (hTReceiveMessage == NULL) {
@@ -152,6 +159,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 		
 		switch (KeyPress) {
 		case '0'://tests
+			SetEvent(updateGame);
+			break;
 			_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("this is a test"));
 			tmpMsg.codigoMsg = -12345;
 			tmpMsg.from = 254;
@@ -172,11 +181,9 @@ int _tmain(int argc, LPTSTR argv[]) {
 				_tprintf(TEXT("Game isnt created yet!\n"));
 			}
 			else if (gameInfo->numUsers > 0 && gameInfo->gameStatus == 0) {
-				_tprintf(TEXT("Game is starting!\n"));
-				startGame();
+				_tprintf(TEXT("Game is starting!\n"));			
 				//build bricks here
-				Sleep(1000);
-				assignBrick(gameInfo->myconfig.initial_bricks);
+				startGame();
 			}
 			else {
 				_tprintf(TEXT("No users playing have joined in.\n"));
@@ -236,6 +243,7 @@ DWORD resolveMessage(msg inMsg){
 			_itot_s(num, tmp, TAM, 10);//translates num to str
 			_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys user_id to messageInfo
 			sendMessage(outMsg);
+			//SetEvent(updateGame);//sends client the game
 		}
 		return;
 	}
@@ -287,7 +295,7 @@ DWORD resolveMessage(msg inMsg){
 			gameInfo->nUsers[gameInfo->numUsers].user_id = gameInfo->numUsers;
 			_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
 			outMsg.codigoMsg = 1;//sucesso
-			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClient;
+			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClientMsg;
 			_itot_s(gameInfo->numUsers++, tmp, TAM, 10);
 			_tcscpy_s(outMsg.messageInfo, TAM, tmp);
 			outMsg.to = inMsg.from;
@@ -351,6 +359,7 @@ DWORD resolveMessage(msg inMsg){
 
 		int res = moveUser(inMsg.from, inMsg.messageInfo);
 		if (!res) {
+			SetEvent(updateGame);//update pipe
 			outMsg.codigoMsg = 200;
 			outMsg.to = 255;
 			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
@@ -380,12 +389,16 @@ int startGame() {
 
 	_tprintf(TEXT("Game started!\n"));
 	gameInfo->gameStatus = 1;
+	SetEvent(updateGame);
+	Sleep(250);
 	tmpMsg.codigoMsg = 100;//new game
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255; //broadcast
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("game started"));
 	sendMessage(tmpMsg);
 	_tprintf(TEXT("sent Game started!\n"));
+	Sleep(1000);
+	assignBrick(gameInfo->myconfig.initial_bricks);
 	//_tprintf(TEXT("out of start game!\n"));
 }
 
@@ -617,8 +630,9 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		if (gameInfo->nBalls[id].status != 0)//if is to end
 			gameInfo->nBalls[id].status = 1;		
 
-		SetEvent(updateBalls);
+		SetEvent(updateBalls);//local
 		ResetEvent(updateBalls);
+		SetEvent(updateGame);//pipe
 		
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
@@ -699,7 +713,6 @@ void assignBrick(DWORD num) {
 	}
 
 	gameInfo->numBricks = num;
-
 	localNumBricks = gameInfo->numBricks;
 	msg tmpMsg;
 	TCHAR tmp[TAM];
@@ -709,6 +722,7 @@ void assignBrick(DWORD num) {
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255;
 	sendMessage(tmpMsg);
+	SetEvent(updateGame);
 	return;
 }
 
@@ -802,7 +816,8 @@ int startVars() {
 	//end of default config
 
 	for (i = 0; i < MAX_USERS; i++) {
-		clientsInfo[i].hClient = NULL;
+		clientsInfo[i].hClientMsg = NULL;
+		clientsInfo[i].hClientGame = NULL;
 	}
 		
 	//Users
@@ -965,7 +980,7 @@ void checkSettings() {
 	//CLIENTS
 	_tprintf(TEXT("------------------------------CLIENTS------------------------------\n"));
 	for (int i = 0; i < MAX_USERS; i++)
-		if (clientsInfo[i].hClient != NULL)
+		if (clientsInfo[i].hClientMsg != NULL)
 			c++;
 	_tprintf(TEXT("There are %d clients\n"), c);
 	//GAME
@@ -1142,8 +1157,9 @@ DWORD WINAPI bonusDrop(LPVOID param){
 				_tprintf(TEXT("cheking user [%s]!\n"),gameInfo->nUsers[i].name);
 				if (gameInfo->nBricks[id].brinde.posx >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size)) {
 					gameInfo->nBricks[id].brinde.status = 0;
-					SetEvent(updateBonus);
+					SetEvent(updateBonus);//update local
 					ResetEvent(updateBonus);
+					SetEvent(updateGame);//update pipe
 					_tprintf(TEXT("%s caught the bonus[%d]!\n"), gameInfo->nUsers[i].name, id);
 					addBonus(id,i);
 					return;
@@ -1153,15 +1169,17 @@ DWORD WINAPI bonusDrop(LPVOID param){
 		}
 	
 		gameInfo->nBricks[id].brinde.posy++; 
-		SetEvent(updateBonus);
-		ResetEvent(updateBonus);		
+		SetEvent(updateBonus);//update local
+		ResetEvent(updateBonus);	
+		SetEvent(updateGame);//update pipe
 	} while (gameInfo->nBricks[id].brinde.posy < gameInfo->myconfig.limy - 1);
 	
 	
 	_tprintf(TEXT("End of bonus[%d]!\n"), id);
 	gameInfo->nBricks[id].brinde.status = 0;
-	SetEvent(updateBonus);
+	SetEvent(updateBonus);//update local
 	ResetEvent(updateBonus);
+	SetEvent(updateGame);//update pipe
 
 	return 0;
 }
@@ -1188,9 +1206,8 @@ void addBonus(DWORD user_id,DWORD brick_id) {
 	}
 }
 
-DWORD WINAPI connectPipe(LPVOID param) {
+DWORD WINAPI connectPipeMsg(LPVOID param) {
 	BOOLEAN fConnected = 0;
-	int i;
 	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
 	HANDLE hThread;
 
@@ -1200,14 +1217,14 @@ DWORD WINAPI connectPipe(LPVOID param) {
 
 	do {
 
-		hPipeInit = CreateNamedPipe(INIT_PIPE_NAME,
+		hPipeInit = CreateNamedPipe(INIT_PIPE_MSG_NAME,
 			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_MESSAGE | // tipo de pipe = message
 			PIPE_READMODE_MESSAGE | // com modo message-read e
 			PIPE_WAIT, // bloqueante (não usar PIPE_NOWAIT nem mesmo em Asyncr)
 			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
-			BUFSIZE, // tam buffer output
-			BUFSIZE, // tam buffer input
+			BUFSIZE_MSG, // tam buffer output
+			BUFSIZE_MSG, // tam buffer input
 			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
 			NULL);
 
@@ -1243,15 +1260,16 @@ DWORD WINAPI connectPipe(LPVOID param) {
 }
 
 DWORD WINAPI remoteUserPipe(LPVOID param) {
-	msg inMsg, outMsg;
+	msg inMsg;
 	DWORD cbBytesRead, cbReplyBytes, cbWritten,resp;
 	BOOLEAN fSuccess;
 	HANDLE hPipe = (HANDLE)param; // a informação enviada à thread é o handle do pipe
-	hPipeClient = hPipe;
 	if (hPipe == NULL) {
 		_tprintf(TEXT("\nErro – o handle enviado no param da thread é nulo"));
 		return -1;
 	}
+
+	hPipeClient = hPipe;
 
 	HANDLE ReadReady;
 	OVERLAPPED OverlRd = { 0 };
@@ -1302,27 +1320,28 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 void sendMessage(msg sendMsg) {
 	if (sendMsg.to == 255) {
 		for(int i = 0;i<MAX_CLIENTS;i++)
-			if (clientsInfo[i].hClient != NULL) 
+			if (clientsInfo[i].hClientMsg != NULL) 
 				if (clientsInfo[i].communication == 0) {
 					sendMessageDLL(sendMsg);
-					SetEvent(clientsInfo[i].hClient);
+					SetEvent(clientsInfo[i].hClientMsg);
 				}
 				else 
-					sendMessagePipe(sendMsg, clientsInfo[i].hClient);
+					sendMessagePipe(sendMsg, clientsInfo[i].hClientMsg);
 			
 	}
 	else {
 		if (clientsInfo[sendMsg.to].communication == 0) {
 			_tprintf(TEXT("Responding via DLL\n"));
 			sendMessageDLL(sendMsg);
-			SetEvent(clientsInfo[sendMsg.to].hClient);
+			SetEvent(clientsInfo[sendMsg.to].hClientMsg);
 		}
 		else {
 			_tprintf(TEXT("Responding via PIPE\n"));
-			sendMessagePipe(sendMsg, clientsInfo[sendMsg.to].hClient);
+			sendMessagePipe(sendMsg, clientsInfo[sendMsg.to].hClientMsg);
 		}
 	}
 	//_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
+	_tprintf(TEXT("Sent codigo:(%d)\n"), sendMsg.codigoMsg);
 	//if (sendMsg.codigoMsg < 0)
 		//hClients[sendMsg.to] = NULL;//if invalid resets handle
 }
@@ -1362,13 +1381,14 @@ void sendMessagePipe(msg sendMsg,HANDLE hPipe){
 	//_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
 	return;
 }
+
 DWORD createHandle(msg newMsg) {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	DWORD flag = 1;
 	int i;
 	for (i = 0; i < MAX_CLIENTS; i++) {
-		if (clientsInfo[i].hClient == NULL) {
+		if (clientsInfo[i].hClientMsg == NULL) {
 			flag = 0;
 			break;
 		}
@@ -1380,11 +1400,11 @@ DWORD createHandle(msg newMsg) {
 	}
 
 	if (newMsg.connection == 0) {
-		clientsInfo[i].hClient = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
+		clientsInfo[i].hClientMsg = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
 		clientsInfo[i].communication = 0;
 		return i;
 	}else if(newMsg.connection==1){
-		clientsInfo[i].hClient = hPipeClient;
+		clientsInfo[i].hClientMsg = hPipeClient;
 		clientsInfo[i].communication = 1;
 		_tprintf(TEXT("remote handle[%d]\n"), i);
 		return i;
@@ -1393,46 +1413,79 @@ DWORD createHandle(msg newMsg) {
 	return -1;
 }
 
+DWORD WINAPI connectPipeGame(LPVOID param) {
+	BOOLEAN fConnected = 0;
+	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
+	DWORD nSent;
+	DWORD num = 0;
+
+	HANDLE sendGamePipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)updateGamePipe, NULL, 0, NULL);
+	if (sendGamePipe == NULL) {
+		_tprintf(TEXT("Error createing updateGamePipe!\n"));
+		return -1;
+	}
+	
+	_tprintf(TEXT("iniciating pipe game!\n"));
+	
+	do {
+
+		hPipeInit = CreateNamedPipe(INIT_PIPE_GAME_NAME,
+			PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // bloqueante (não usar PIPE_NOWAIT nem mesmo em Asyncr)
+			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
+			BUFSIZE_GAME, // tam buffer output
+			BUFSIZE_GAME, // tam buffer input
+			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
+			NULL);
+
+		if (hPipeInit == INVALID_HANDLE_VALUE) {
+			_tprintf(TEXT("Erro ao iniciar pipe!"));
+			return 0;
+		}
+		else
+			_tprintf(TEXT("Pipe for game created with success\n"));
+
+		//waits for client
+		_tprintf(TEXT("Waiting for a client!\n"));
+		fConnected = ConnectNamedPipe(hPipeInit, NULL);
+		if (!fConnected && GetLastError() == ERROR_PIPE_CONNECTED)
+			fConnected = 1;
+
+		_tprintf(TEXT("Got a client for game...\n"));
+
+		if (fConnected) {
+			clientsInfo[num++].hClientGame = hPipeInit;//got a new client to send the game to
+		}
+		else {
+			CloseHandle(hPipeInit);
+		}
+
+	} while (1);
+
+	return 0;
+}
 
 DWORD WINAPI updateGamePipe(LPVOID param) {
 
-	HANDLE WriteReady;
-	OVERLAPPED OverlWr = { 0 };
 	DWORD bytesWritten;
 	BOOLEAN fSuccess;
-
-	WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (WriteReady == NULL) {
-		_tprintf(TEXT("Erro ao criar writeRead Event. Erro = %d\n"), GetLastError());
-		return 0;
-	}
-
+	int i;
+	_tprintf(TEXT("In the thread that updates client with game\n"));
 	do {
 		WaitForSingleObject(updateGame, INFINITE);
-		for(int i = 0;i<MAX_CLIENTS;i++)
-			if (clientsInfo[i].hClient != NULL && clientsInfo[i].communication == 1) {
+		_tprintf(TEXT("Will update game now\n"));
+		for(i = 0;i<MAX_CLIENTS;i++)
+			if (clientsInfo[i].hClientGame != NULL && clientsInfo[i].communication == 1) {
 				//sends game
 				//_tprintf(TEXT("This is the size of the game = %d | also there are %d bricks\n"), sizeof(tmp_game),tmp_game.numBricks);
-				ZeroMemory(&OverlWr, sizeof(OverlWr));
-				ResetEvent(WriteReady);
-				OverlWr.hEvent = WriteReady;
-
+				_tprintf(TEXT("Updating game for client number %d\n"),i);
 				fSuccess = WriteFile(
-					clientsInfo[i].hClient,
+					clientsInfo[i].hClientGame,
 					gameInfo,
 					sizeof(game),
 					&bytesWritten,
-					&OverlWr
-				);
-
-				WaitForSingleObject(WriteReady, INFINITE);
-				_tprintf(TEXT("Sent updated game via pipe...\n"));
-
-				GetOverlappedResult(clientsInfo[i].hClient, &OverlWr, &bytesWritten, FALSE);
-				if (bytesWritten < sizeof(game)) {
-					_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
-				}
-				//sends message that the game is going next
+					NULL
+				);			
 			}
 		
 	} while (1);

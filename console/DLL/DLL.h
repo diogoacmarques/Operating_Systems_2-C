@@ -53,14 +53,16 @@
 #define LOCAL_CONNECTION_NAME TEXT("../../localMessage")
 //Pipe
 #define MAX_PIPES 5
-#define INIT_PIPE_NAME  TEXT("\\\\.\\pipe\\initPipeArknoid")
+#define INIT_PIPE_MSG_NAME  TEXT("\\\\.\\pipe\\initPipeArknoidMsg")
+#define INIT_PIPE_GAME_NAME  TEXT("\\\\.\\pipe\\initPipeArknoidGame")
 
 //event to check if a server is running
 #define CHECK_SERVER_EVENT TEXT("../../arknoidServer")//this event only exists to check if a server is running
 
 
 typedef struct handles {
-	HANDLE hClient;
+	HANDLE hClientMsg;
+	HANDLE hClientGame;
 	DWORD communication;
 } comuciationHandle;
 

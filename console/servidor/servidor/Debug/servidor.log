@@ -1,50 +1,49 @@
 ﻿  servidor.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(68): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(231): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(245): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(254): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(262): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(396): warning C4098: 'userInit': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(433): warning C4098: 'createBalls': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(485): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(485): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(486): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(486): note: placeholders and their parameters expect 0 variadic arguments, but 2 were provided
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(508): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(508): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(509): warning C4474: 'wprintf' : too many arguments passed for format string
-  c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(509): note: placeholders and their parameters expect 0 variadic arguments, but 2 were provided
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(548): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(576): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(580): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(580): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(657): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(654): warning C4101: 'threadId': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(716): warning C4098: 'createBonus': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(745): warning C4101: 'num': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(743): warning C4101: 'tmpMsg': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(786): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(787): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(827): warning C4133: 'function': incompatible types - from 'char [2]' to 'const wchar_t *'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(857): warning C4047: '==': 'int' differs in levels of indirection from 'char [2]'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(994): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1032): warning C4101: 'regSize': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1038): warning C4101: 'user_score': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1032): warning C4101: 'regVersion': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1140): warning C4033: 'bonusDrop' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1190): warning C4101: 'buf': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1188): warning C4101: 'nSent': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1184): warning C4101: 'i': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1237): warning C4101: 'outMsg': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1238): warning C4101: 'cbReplyBytes': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1238): warning C4101: 'cbWritten': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1330): warning C4098: 'sendMessagePipe': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1370): warning C4098: 'updateGamePipe': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1434): warning C4033: 'createHandle' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1422): warning C4101: 'tmp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1421): warning C4101: 'str': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(381): warning C4716: 'startGame': must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(362): warning C4716: 'resolveMessage': must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1158): warning C4715: 'bonusDrop': not all control paths return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\servidor\servidor\servidor.c(1449): warning C4715: 'createHandle': not all control paths return a value
-  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\console\servidor\Debug\servidor.exe
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(75): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(248): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(262): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(271): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(279): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(418): warning C4098: 'userInit': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(455): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(507): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(507): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(508): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(508): note: placeholders and their parameters expect 0 variadic arguments, but 2 were provided
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(530): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(530): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(531): warning C4474: 'wprintf' : too many arguments passed for format string
+  c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(531): note: placeholders and their parameters expect 0 variadic arguments, but 2 were provided
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(570): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(598): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(602): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(602): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(680): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(677): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(739): warning C4098: 'createBonus': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(768): warning C4101: 'num': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(766): warning C4101: 'tmpMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(809): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(810): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(851): warning C4133: 'function': incompatible types - from 'char [2]' to 'const wchar_t *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(881): warning C4047: '==': 'int' differs in levels of indirection from 'char [2]'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1018): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1056): warning C4101: 'regSize': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1062): warning C4101: 'user_score': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1056): warning C4101: 'regVersion': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1165): warning C4033: 'bonusDrop' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1216): warning C4101: 'buf': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1214): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1264): warning C4101: 'cbReplyBytes': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1264): warning C4101: 'cbWritten': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1358): warning C4098: 'sendMessagePipe': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1399): warning C4033: 'createHandle' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1387): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1386): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1419): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1493): warning C4033: 'updateGamePipe' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(403): warning C4716: 'startGame': must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(380): warning C4716: 'resolveMessage': must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1185): warning C4715: 'bonusDrop': not all control paths return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\console\servidor\servidor\servidor.c(1414): warning C4715: 'createHandle': not all control paths return a value
+  servidor.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\console\servidor\Debug\servidor.exe
