@@ -51,11 +51,13 @@ DWORD connection_mode = -1;
 
 HANDLE hPipe;
 
-BOOLEAN canSendDLL;
+BOOLEAN canSendMsg;
 
 HANDLE gameReady;
 
 HANDLE xy;
+
+DWORD quantMsg = 0;
 
 int _tmain(int argc, LPTSTR argv[]) {
 	//Um cliente muito simples em consola que invoca cada funcionalidade da DLL através de uma sequência pré - definida
@@ -87,7 +89,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		}
 	} while (1);
 
-	canSendDLL = TRUE;
+	canSendMsg = TRUE;
 	xy = CreateMutex(NULL, FALSE, NULL);
 	gameReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	newClient = CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -124,7 +126,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 				str[i] = '\0';
 		//_tprintf(TEXT("Trying login with:%s"),str);
 		LoginUser(str);
-
 	} while (1);
 
 	system("cls");
@@ -146,8 +147,7 @@ DWORD WINAPI localConnection(LPVOID param) {
 	do {
 		WaitForSingleObject(messageEvent, INFINITE);
 		newMsg = receiveMessageDLL();
-		canSendDLL = TRUE;
-
+	
 		resp = resolveMessage(newMsg);
 
 	} while (1);
@@ -169,18 +169,25 @@ DWORD WINAPI localConnection(LPVOID param) {
 }
 
 DWORD resolveMessage(msg inMsg) {
-	//_tprintf(TEXT("\n\nCodigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+	canSendMsg = TRUE;
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0, 0);
+	//_tprintf(TEXT("\n\n[%d]Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"),quantMsg++, inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
+	//ReleaseMutex(hStdoutMutex);
 	if (inMsg.codigoMsg == 9999) {
 		_tprintf(TEXT("New client allowed\n"));
 		client_id = _tstoi(inMsg.messageInfo);
 		_tprintf(TEXT("initianting receiveGamePipe thread\n"));
 		//thread responsible for game updates
-		hTGameConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveGamePipe, NULL, 0, NULL);
-		if (hTGameConnection == NULL) {
-			_tprintf(TEXT("Erro na criãção da thread para remotePipe for game. Erro = %d\n"), GetLastError());
-			pressKey();
-			return 1;
+		if (connection_mode) {//if is via pipes then opens up receivegamepipe
+			hTGameConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)receiveGamePipe, NULL, 0, NULL);
+			if (hTGameConnection == NULL) {
+				_tprintf(TEXT("Erro na criãção da thread para remotePipe for game. Erro = %d\n"), GetLastError());
+				pressKey();
+				return 1;
+			}
 		}
+		
 		SetEvent(newClient);
 		return;
 	}
@@ -215,7 +222,7 @@ DWORD resolveMessage(msg inMsg) {
 		return -1;
 	}
 	else if (inMsg.codigoMsg == 100) {//new game
-		_tprintf(TEXT("GAME created by server...\n"));
+		_tprintf(TEXT("\nGAME created by server... Status = %d\n"),gameInfo->gameStatus);
 		localGameStatus = 1;
 		hidecursor();
 		system("cls");
@@ -389,6 +396,8 @@ void usersMove(TCHAR move[TAM]) {
 		}
 		return;
 	}
+	else if (_tcscmp(move, TEXT("no")) == 0)
+		return;
 
 	if (connection_mode == 1) {
 		WaitForSingleObject(gameReady, INFINITE);//waits for info to come from pipe
@@ -442,10 +451,10 @@ void usersMove(TCHAR move[TAM]) {
 		ReleaseMutex(hStdoutMutex);
 	}
 
-	//WaitForSingleObject(hStdoutMutex, INFINITE);
-	//gotoxy(0, 15);
-	//_tprintf(TEXT("User[%d]-pos(%d,%d)"),user_id, userinfo.posx, userinfo.posy);
-	//ReleaseMutex(hStdoutMutex);
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	gotoxy(0, 15);
+	_tprintf(TEXT("User[%d]-pos(%d,%d)"),user_id, userinfo.posx, userinfo.posy);
+	ReleaseMutex(hStdoutMutex);
 
 	return;
 }
@@ -518,11 +527,13 @@ DWORD WINAPI BrickThread(LPVOID param) {
 	//_tprintf(TEXT("should create %d bricks"), gameInfo->numBricks);
 	brick localBricks[MAX_BRICKS];
 
-	do {
-		WaitForSingleObject(gameReady, INFINITE);
-		if (gameInfo->numBricks > 0 && gameInfo->numBricks < MAX_BRICKS)
-			break;
-	} while (1);
+	if (connection_mode == 1) {
+		do {
+			WaitForSingleObject(gameReady, INFINITE);
+			if (gameInfo->numBricks > 0 && gameInfo->numBricks < MAX_BRICKS)
+				break;
+		} while (1);
+	}
 	
 	int numBricks = gameInfo->numBricks;
 	//draws intially all bricks
@@ -698,13 +709,14 @@ void sendMessage(msg sendMsg){
 	DWORD bytesWritten;
 	BOOLEAN fSuccess;
 
+	if (canSendMsg)
+		canSendMsg = FALSE;
+	else
+		return;
 
 	if (connection_mode == 0) {
 		sendMsg.connection = 0;
-		if (canSendDLL) {
 			sendMessageDLL(sendMsg);
-			canSendDLL = FALSE;
-		}			
 	}		
 	else if (connection_mode == 1) {
 		sendMsg.connection = 1;

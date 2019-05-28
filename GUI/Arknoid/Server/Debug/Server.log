@@ -1,1 +1,16 @@
-﻿
+﻿  server.c
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(45): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(98): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(317): warning C4033: 'resolveMenu' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(333): warning C4101: 'buf': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(331): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(384): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'resp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'cbReplyBytes': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'cbWritten': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(526): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(527): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(562): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(318): warning C4716: 'resolveMenu': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(323): warning C4716: 'print': must return a value
+  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe

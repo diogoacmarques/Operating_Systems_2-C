@@ -68,6 +68,8 @@ comuciationHandle clientsInfo[MAX_CLIENTS];
 
 HANDLE updateGame;
 
+DWORD tmp_client_id = 0;
+
 int _tmain(int argc, LPTSTR argv[]) {
 	DWORD threadId;
 	HANDLE hTReceiveMessage;
@@ -182,7 +184,6 @@ int _tmain(int argc, LPTSTR argv[]) {
 			}
 			else if (gameInfo->numUsers > 0 && gameInfo->gameStatus == 0) {
 				_tprintf(TEXT("Game is starting!\n"));			
-				//build bricks here
 				startGame();
 			}
 			else {
@@ -237,7 +238,7 @@ DWORD resolveMessage(msg inMsg){
 	//init
 	if (inMsg.codigoMsg == -9999) {
 		num = createHandle(inMsg);
-		if (num>=0) {//success
+			if (num>=0) {//success
 			outMsg.codigoMsg = 9999;
 			outMsg.to = num;
 			_itot_s(num, tmp, TAM, 10);//translates num to str
@@ -360,16 +361,19 @@ DWORD resolveMessage(msg inMsg){
 		int res = moveUser(inMsg.from, inMsg.messageInfo);
 		if (!res) {
 			SetEvent(updateGame);//update pipe
-			outMsg.codigoMsg = 200;
-			outMsg.to = 255;
 			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
 			//_tprintf(TEXT("outMsg:(%s)\t"), outMsg.messageInfo);
 			_tcscat_s(outMsg.messageInfo, TAM, TEXT(":"));//adds ':'
 			//_tprintf(TEXT("outMsg2:(%s)\t"), outMsg.messageInfo);
 			_tcscat_s(outMsg.messageInfo, TAM, inMsg.messageInfo);//adds direction
 			//_tprintf(TEXT("outMsg.messageInfo:(%s)\n"), outMsg.messageInfo);
-			sendMessage(outMsg);
 		}
+		else {
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("no"));
+		}
+		outMsg.codigoMsg = 200;
+		outMsg.to = 255;
+		sendMessage(outMsg);
 		//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
 		//_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
 	}
@@ -387,7 +391,7 @@ int startGame() {
 		userInit(i);
 	}
 
-	_tprintf(TEXT("Game started!\n"));
+	_tprintf(TEXT("Game started for %d users!\n"),gameInfo->numUsers);
 	gameInfo->gameStatus = 1;
 	SetEvent(updateGame);
 	Sleep(250);
@@ -397,9 +401,11 @@ int startGame() {
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("game started"));
 	sendMessage(tmpMsg);
 	_tprintf(TEXT("sent Game started!\n"));
+
 	Sleep(1000);
+
+	//create bricks
 	assignBrick(gameInfo->myconfig.initial_bricks);
-	//_tprintf(TEXT("out of start game!\n"));
 }
 
 void userInit(DWORD id){
@@ -1318,9 +1324,10 @@ DWORD WINAPI remoteUserPipe(LPVOID param) {
 }
 
 void sendMessage(msg sendMsg) {
+	_tprintf(TEXT("Sending:'%s'\tCode=%d\tFrom=%d\tTo=%d|Via=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to,sendMsg.connection);
 	if (sendMsg.to == 255) {
 		for(int i = 0;i<MAX_CLIENTS;i++)
-			if (clientsInfo[i].hClientMsg != NULL) 
+			if (clientsInfo[i].hClientMsg != NULL)
 				if (clientsInfo[i].communication == 0) {
 					sendMessageDLL(sendMsg);
 					SetEvent(clientsInfo[i].hClientMsg);
@@ -1341,7 +1348,7 @@ void sendMessage(msg sendMsg) {
 		}
 	}
 	//_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
-	_tprintf(TEXT("Sent codigo:(%d)\n"), sendMsg.codigoMsg);
+	//_tprintf(TEXT("Sent codigo:(%d)\n"), sendMsg.codigoMsg);
 	//if (sendMsg.codigoMsg < 0)
 		//hClients[sendMsg.to] = NULL;//if invalid resets handle
 }
@@ -1401,14 +1408,17 @@ DWORD createHandle(msg newMsg) {
 
 	if (newMsg.connection == 0) {
 		clientsInfo[i].hClientMsg = CreateEvent(NULL, FALSE, FALSE, newMsg.messageInfo);
+		clientsInfo[i].hClientGame = NULL;
 		clientsInfo[i].communication = 0;
 		return i;
 	}else if(newMsg.connection==1){
 		clientsInfo[i].hClientMsg = hPipeClient;
+		tmp_client_id = i;//next client for game pipe will be this one
 		clientsInfo[i].communication = 1;
 		_tprintf(TEXT("remote handle[%d]\n"), i);
 		return i;
 	}
+
 
 	return -1;
 }
@@ -1454,7 +1464,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 		_tprintf(TEXT("Got a client for game...\n"));
 
 		if (fConnected) {
-			clientsInfo[num++].hClientGame = hPipeInit;//got a new client to send the game to
+			clientsInfo[tmp_client_id].hClientGame = hPipeInit;//got a new client to send the game to
 		}
 		else {
 			CloseHandle(hPipeInit);
@@ -1473,7 +1483,7 @@ DWORD WINAPI updateGamePipe(LPVOID param) {
 	_tprintf(TEXT("In the thread that updates client with game\n"));
 	do {
 		WaitForSingleObject(updateGame, INFINITE);
-		_tprintf(TEXT("Will update game now\n"));
+		//_tprintf(TEXT("Will update game now\n"));
 		for(i = 0;i<MAX_CLIENTS;i++)
 			if (clientsInfo[i].hClientGame != NULL && clientsInfo[i].communication == 1) {
 				//sends game

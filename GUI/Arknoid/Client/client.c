@@ -2,14 +2,19 @@
 #include <windows.h>
 #include <tchar.h>
 #include <windowsx.h>
+#include "DLL.h"
 #include "resource.h"
 
+LRESULT CALLBACK print(TCHAR frase[TAM]);
 
 LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK ResolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK createLocalConnection();
+LRESULT CALLBACK createRemoteConnection();
 TCHAR szProgName[] = TEXT("Base");
 int connection_mode = -1;//0 = local / 1 = remote
+HWND global_hWnd = NULL;
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 
@@ -90,6 +95,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 	ShowWindow(hWnd, nCmdShow); // "hWnd"= handler da janela, devolvido por
    // "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
    // normal/modal); é passado como parâmetro de WinMain()
+	global_hWnd = hWnd;
 	UpdateWindow(hWnd); // Refrescar a janela (Windows envia à janela uma
    // mensagem para pintar, mostrar dados, (refrescar)…
    // ============================================================================
@@ -146,20 +152,126 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 // WM_DESTROY, WM_CHAR, WM_KEYDOWN, WM_PAINT...) definidas em windows.h
 //============================================================================
 
+//printf variables
+int xPos = 0, yPos = 0;
+
+
+int xPrint = 0, yPrint = 0;
+TCHAR frase[200];
+
+int maxX = 0, maxY = 0;
+HDC memDC = NULL;
+HBITMAP hBit = NULL;
+HBRUSH hBrush = NULL;
+HDC tempDC = NULL;
+HBITMAP hBmp = NULL;
+BITMAP bmp;
+
+int xBitMap = 0, yBitMap = 0;
 TCHAR login[100];
+
+
+
+//arknoid variarbles
+HANDLE  messageEvent, hStdoutMutex;
+
+HANDLE gameInfo;//has game information
+
+HANDLE hTMsgConnection;//has thread where receives messages
+//end of variables
+
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
-	HDC hdc;
+	HDC hDC;
 	RECT rect;
-	TCHAR text_clicks[50];
-	int res;
+	DWORD res;
 	PAINTSTRUCT ps;
 	switch (messg) {
+	case WM_LBUTTONDOWN:
+
+		xPos = LOWORD(lParam); // Alternativa!
+		yPos = HIWORD(lParam); // Alternativa!
+
+		InvalidateRect(hWnd, NULL, TRUE);
+
+		break;
+
 	case WM_CREATE:
+		maxX = GetSystemMetrics(SM_CXSCREEN);
+		maxY = GetSystemMetrics(SM_CYSCREEN);
+
+		hDC = GetDC(hWnd);
+
+		memDC = CreateCompatibleDC(hDC);
+
+		hBit = CreateCompatibleBitmap(hDC, maxX, maxY);
+
+		SelectObject(memDC, hBit);
+
+		DeleteObject(hBit);
+
+		hBrush = CreateSolidBrush(RGB(70, 150, 70));
+
+		SelectObject(memDC, hBrush);
+
+		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
+
+		ReleaseDC(hWnd, hDC);
+
+		hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
+			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+		GetObject(hBmp, sizeof(bmp), &bmp);
+
+		break;
+	case WM_KEYDOWN:
+		GetClientRect(hWnd, &rect);
+		switch (LOWORD(wParam)){
+			case VK_UP:
+				yBitMap = yBitMap > 0 ? yBitMap - 10 : 0;
+				break;
+			case VK_DOWN:
+				yBitMap = yBitMap < rect.bottom - bmp.bmHeight ? yBitMap + 10 : rect.bottom - bmp.bmHeight;
+				//yBitMap += 10;
+				break;
+			case VK_LEFT:
+				xBitMap = xBitMap > 0 ? xBitMap - 10 : 0;
+				break;
+			case VK_RIGHT:
+				xBitMap = xBitMap < rect.right - bmp.bmWidth ? xBitMap + 10 : rect.right - bmp.bmWidth;
+				break;
+			}
+		InvalidateRect(hWnd, NULL, TRUE);
+		break;
+	case WM_PAINT:
+		tempDC = CreateCompatibleDC(memDC);
+
+		SelectObject(tempDC, hBmp);
+
+		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
+
+		//BitBlt(memDC, 0, 0, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
+		BitBlt(memDC, xBitMap, yBitMap, maxX, maxY, tempDC, 0, 0, SRCCOPY);
+
+		DeleteDC(tempDC);
+
+		GetClientRect(hWnd, &rect);
+		SetTextColor(memDC, RGB(255, 255, 255));
+		SetBkMode(memDC, TRANSPARENT);
+		rect.left = 0;
+		rect.top = yPrint++;
+		DrawText(memDC, frase, _tcslen(frase), &rect, DT_SINGLELINE | DT_NOCLIP);
+
+		hDC = BeginPaint(hWnd, &ps);
+
+		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
+
+		EndPaint(hWnd, &ps);
+
 		break;
 	case WM_COMMAND:
 
 		switch (LOWORD(wParam)) {
-		case ID_PLAY:													//NULL em vez de hWnd para a janela nao ter "prioridade"
+		case ID_PLAY:												//NULL em vez de hWnd para a janela nao ter "prioridade"
 			if (!DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, ResolveMenu))
 				if (_tccmp(login, TEXT("")) != 0)
 					MessageBox(hWnd, login, TEXT("Login do User"), NULL);//sucesso
@@ -189,12 +301,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			DestroyWindow(hWnd);
 		break;
 	case WM_DESTROY: // Destruir a janela e terminar o programa
-// "PostQuitMessage(Exit Status)"
 		PostQuitMessage(0);
 		break;
 	default:
-		// Neste exemplo, para qualquer outra mensagem (p.e. "minimizar","maximizar","restaurar")
-		// não é efectuado nenhum processamento, apenas se segue o "default" do Windows
 		return DefWindowProc(hWnd, messg, wParam, lParam);
 		break;
 	}
@@ -226,11 +335,13 @@ LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDC_BUTTON_LOCAL) {
 			connection_mode = 0;
+			createLocalConnection();
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
 		else if (LOWORD(wParam) == IDC_BUTTON_REMOTE) {
 			connection_mode = 1;
+			createRemoteConnection();
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
@@ -240,3 +351,131 @@ LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 	}
 	return FALSE;
 }
+
+LRESULT CALLBACK createLocalConnection() {
+	return; //not yet
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
+	_itot_s(GetCurrentThreadId(), tmp, TAM, 10);
+	_tcscat_s(str, TAM, tmp);
+	//print
+	printf(str);
+
+	messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
+	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
+	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
+	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
+	if (messageEvent == NULL || updateBalls == NULL || updateBonus == NULL || hStdoutMutex == NULL) {
+		print(TEXT("Erro ao criar recursos!"));
+		return 0;
+	}
+
+	BOOLEAN res = initializeHandles();
+	if (res) {
+		//print(TEXT("Erro ao criar Handles!"));
+		//return 1;
+	}
+	
+	//sessionId = (GetCurrentThreadId() + GetTickCount());
+	//sessionId = GetCurrentThreadId();
+
+	//Message
+	createSharedMemoryMsg();
+	//Game
+	//gameInfo = (game *)malloc(sizeof(game));
+	gameInfo = createSharedMemoryGame();
+
+	/*hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)localConnection, NULL, 0, NULL);
+	if (hTMsgConnection == NULL) {
+		print(TEXT("Erro na criãção da thread para local message thread. Erro = %d\n"), GetLastError());
+		return 1;
+	}*/
+
+	msg tmpMsg;
+	tmpMsg.codigoMsg = -9999;//new client
+	tmpMsg.from = -1;
+	tmpMsg.to = 254;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
+	//sendMessage(tmpMsg); // lets server know of new client
+
+	return 0;
+}
+
+LRESULT CALLBACK createRemoteConnection() {
+	/*HANDLE hPipeTmp;
+	BOOL fSuccess = FALSE;
+	DWORD dwMode;
+	DWORD dwThreadId = 0;
+	while (1) {
+
+		print(TEXT("CreateFile...\n"));
+		hPipeTmp = CreateFile(
+			INIT_PIPE_MSG_NAME,
+			GENERIC_READ | GENERIC_WRITE,
+			0 | FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			OPEN_EXISTING,
+			0 | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+
+		if (hPipeTmp != INVALID_HANDLE_VALUE) {
+			print(TEXT("I got a valid hPipe\n"));
+			break;
+		}
+
+
+		if (GetLastError() != ERROR_PIPE_BUSY) {
+			print(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
+			return 1;
+		}
+
+
+		if (!WaitNamedPipe(INIT_PIPE_MSG_NAME, 10000)) {
+			print(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
+			return FALSE;
+		}
+
+	}
+
+	dwMode = PIPE_READMODE_MESSAGE;
+	fSuccess = SetNamedPipeHandleState(
+		hPipeTmp,
+		&dwMode,
+		NULL,
+		NULL
+	);
+
+	if (!fSuccess) {
+		print(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"), GetLastError());
+		return -1;
+	}
+
+	print(TEXT("initianting pipeConnection thread\n"));
+	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeConnection, (LPVOID)hPipeTmp, 0, NULL);
+	if (hTMsgConnection == NULL) {
+		print(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
+		return 1;
+	}
+
+	Sleep(250);
+	print(TEXT("sending message ...\n"));
+	msg tmpMsg;
+	tmpMsg.codigoMsg = -9999;
+	tmpMsg.from = user_id;
+	tmpMsg.to = 254;
+	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("remoteClient"));
+	sendMessage(tmpMsg); // lets server know of new client
+	print(TEXT("message sent sending message ...\n"));
+	return 0;*/
+}
+
+LRESULT CALLBACK print(TCHAR line[TAM]) {
+
+	_tcscpy_s(frase, TAM, line);
+	InvalidateRect(global_hWnd, NULL, TRUE);
+
+}
+

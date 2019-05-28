@@ -1,33 +1,33 @@
 ﻿  cliente.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(77): warning C4013: '_putch' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(110): warning C4553: '==': result of expression not used; did you intend '='?
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(70): warning C4101: 'newMsg': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(67): warning C4101: 'userLogged': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(71): warning C4101: 'threadId': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(155): warning C4033: 'localConnection' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(185): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(188): warning C4101: 'tmp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(187): warning C4101: 'str': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(275): warning C4098: 'createBalls': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(300): warning C4098: 'createBonus': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(313): warning C4101: 'userInfo': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(404): warning C4553: '==': result of expression not used; did you intend '='?
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(600): warning C4129: ' ': unrecognized character escape sequence
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(620): warning C4098: 'watchGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(626): warning C4098: 'watchGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(691): warning C4033: 'bonusDrop' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(714): warning C4098: 'sendMessage': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(819): warning C4047: '=': 'HANDLE' differs in levels of indirection from 'DWORD'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(826): warning C4033: 'pipeConnection' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(918): warning C4098: 'LoginUser': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(960): warning C4033: 'receiveGamePipe' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(966): warning C4033: 'receiveGamePipe' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(976): warning C4033: 'receiveGamePipe' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(932): warning C4101: 'dwMode': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(931): warning C4101: 'res': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(262): warning C4715: 'resolveMessage': not all control paths return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(568): warning C4716: 'BrickThread': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(692): warning C4716: 'bonusDrop': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(860): warning C4716: 'pipeConnection': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\console\cliente\cliente\cliente.c(1018): warning C4715: 'receiveGamePipe': not all control paths return a value
-  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\console\servidor\Debug\cliente.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(79): warning C4013: '_putch' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(112): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(72): warning C4101: 'newMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(69): warning C4101: 'userLogged': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(73): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(155): warning C4033: 'localConnection' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(192): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(195): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(194): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(282): warning C4098: 'createBalls': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(307): warning C4098: 'createBonus': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(320): warning C4101: 'userInfo': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(413): warning C4553: '==': result of expression not used; did you intend '='?
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(611): warning C4129: ' ': unrecognized character escape sequence
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(631): warning C4098: 'watchGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(637): warning C4098: 'watchGame': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(702): warning C4033: 'bonusDrop' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(726): warning C4098: 'sendMessage': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(831): warning C4047: '=': 'HANDLE' differs in levels of indirection from 'DWORD'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(838): warning C4033: 'pipeConnection' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(930): warning C4098: 'LoginUser': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(972): warning C4033: 'receiveGamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(978): warning C4033: 'receiveGamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(988): warning C4033: 'receiveGamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(944): warning C4101: 'dwMode': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(943): warning C4101: 'res': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(269): warning C4715: 'resolveMessage': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(579): warning C4716: 'BrickThread': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(703): warning C4716: 'bonusDrop': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(872): warning C4716: 'pipeConnection': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\console\cliente\cliente\cliente.c(1030): warning C4715: 'receiveGamePipe': not all control paths return a value
+  cliente.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\console\servidor\Debug\cliente.exe
