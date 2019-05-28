@@ -29,26 +29,26 @@
 #define MAX_BONUS_AT_TIME 
 
 #define USE_MSG_MUTEX TEXT("../../writeMsgMutex")
-#define MSG_SHARED_MEMORY_NAME TEXT("../../MSG_SHARED_MEMORY")
-#define GAME_SHARED_MEMORY_NAME TEXT("../../GAME_SHARED_MEMORY")
-#define STDOUT_CLIENT_MUTEX_NAME TEXT("../../stdoutMutexClient")
-#define SEMAPHORE_MEMORY_READ TEXT("../../memory_semaphore_read")
-#define SEMAPHORE_MEMORY_WRITE TEXT("../../memory_semaphore_write")
-#define MESSAGE_EVENT_NAME TEXT("../../messageEventServer")
-#define MESSAGE_BROADCAST_EVENT_NAME TEXT("../../messageEventBroadcast")
-#define GAME_EVENT_NAME TEXT("../../gameEvent")
-#define BALL_EVENT_NAME TEXT("../../ballEvent")
-#define USER_MOVE_EVENT_NAME TEXT("../../userMoveEvent")
-#define BONUS_EVENT_NAME TEXT("../../bonusEvent")
+#define MSG_SHARED_MEMORY_NAME TEXT("../MSG_SHARED_MEMORY")
+#define GAME_SHARED_MEMORY_NAME TEXT("../GAME_SHARED_MEMORY")
+#define STDOUT_CLIENT_MUTEX_NAME TEXT("../stdoutMutexClient")
+#define SEMAPHORE_MEMORY_READ TEXT("../memory_semaphore_read")
+#define SEMAPHORE_MEMORY_WRITE TEXT("../memory_semaphore_write")
+#define MESSAGE_EVENT_NAME TEXT("../messageEventServer")
+#define MESSAGE_BROADCAST_EVENT_NAME TEXT("../messageEventBroadcast")
+#define GAME_EVENT_NAME TEXT("../gameEvent")
+#define BALL_EVENT_NAME TEXT("../ballEvent")
+#define USER_MOVE_EVENT_NAME TEXT("../userMoveEvent")
+#define BONUS_EVENT_NAME TEXT("../bonusEvent")
 //local
-#define LOCAL_CONNECTION_NAME TEXT("../../localMessage")
+#define LOCAL_CONNECTION_NAME TEXT("../localMessage")
 //Pipe
 #define MAX_PIPES 5
 #define INIT_PIPE_MSG_NAME  TEXT("\\\\.\\pipe\\initPipeArknoidMsg")
 #define INIT_PIPE_GAME_NAME  TEXT("\\\\.\\pipe\\initPipeArknoidGame")
 
 //event to check if a server is running
-#define CHECK_SERVER_EVENT TEXT("../../arknoidServer")//this event only exists to check if a server is running
+#define CHECK_SERVER_EVENT TEXT("../arknoidServer")//this event only exists to check if a server is running
 
 
 typedef struct handles {

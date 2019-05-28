@@ -1,16 +1,21 @@
 ﻿  server.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(45): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(98): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(317): warning C4033: 'resolveMenu' must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(333): warning C4101: 'buf': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(331): warning C4101: 'nSent': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(384): warning C4101: 'nSent': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'resp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'cbReplyBytes': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(435): warning C4101: 'cbWritten': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(526): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(527): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(562): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(318): warning C4716: 'resolveMenu': must return a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(323): warning C4716: 'print': must return a value
-  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(48): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(101): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(311): warning C4033: 'resolveMenu' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(342): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(356): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(365): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(373): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(487): warning C4101: 'buf': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(485): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(537): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'resp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'cbReplyBytes': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'cbWritten': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(679): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(680): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(715): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(317): warning C4716: 'print': must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(477): warning C4716: 'resolveMessage': must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(312): warning C4716: 'resolveMenu': must return a value
+  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe

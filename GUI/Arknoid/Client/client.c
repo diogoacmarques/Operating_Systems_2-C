@@ -10,11 +10,19 @@ LRESULT CALLBACK print(TCHAR frase[TAM]);
 LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK ResolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK createLocalConnection();
+
+void createLocalConnection();
 LRESULT CALLBACK createRemoteConnection();
+
+void sendMessage(msg sendMsg);
+
 TCHAR szProgName[] = TEXT("Base");
 int connection_mode = -1;//0 = local / 1 = remote
 HWND global_hWnd = NULL;
+
+
+//variaveis
+BOOLEAN canSendMsg;
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 
@@ -118,6 +126,10 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
    // 4)Código limite superior das mensagens que se pretendem receber
    // NOTA: GetMessage() devolve 0 quando for recebida a mensagem de fecho da janela,
    // terminando então o loop de recepção de mensagens, e o programa
+
+
+	canSendMsg = TRUE;
+
 	while (GetMessage(&lpMsg, NULL, 0, 0)) {
 		TranslateMessage(&lpMsg); // Pré-processamento da mensagem (p.e. obter código
 	   // ASCII da tecla premida)
@@ -185,6 +197,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	RECT rect;
 	DWORD res;
 	PAINTSTRUCT ps;
+	msg testesMsg;
 	switch (messg) {
 	case WM_LBUTTONDOWN:
 
@@ -221,8 +234,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
 		GetObject(hBmp, sizeof(bmp), &bmp);
-
 		break;
+
 	case WM_KEYDOWN:
 		GetClientRect(hWnd, &rect);
 		switch (LOWORD(wParam)){
@@ -238,6 +251,14 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				break;
 			case VK_RIGHT:
 				xBitMap = xBitMap < rect.right - bmp.bmWidth ? xBitMap + 10 : rect.right - bmp.bmWidth;
+				break;
+			case VK_SPACE:
+				testesMsg.codigoMsg = -9999;
+				testesMsg.connection = 0;
+				testesMsg.from = 20;
+				testesMsg.to = 254;
+				_tcscpy_s(testesMsg.messageInfo,TAM,TEXT("ola"));
+				sendMessage(testesMsg);
 				break;
 			}
 		InvalidateRect(hWnd, NULL, TRUE);
@@ -352,15 +373,14 @@ LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 	return FALSE;
 }
 
-LRESULT CALLBACK createLocalConnection() {
-	return; //not yet
+void createLocalConnection() {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
 	_itot_s(GetCurrentThreadId(), tmp, TAM, 10);
 	_tcscat_s(str, TAM, tmp);
 	//print
-	printf(str);
+	print(str);
 
 	messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
@@ -397,8 +417,8 @@ LRESULT CALLBACK createLocalConnection() {
 	tmpMsg.from = -1;
 	tmpMsg.to = 254;
 	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
-	//sendMessage(tmpMsg); // lets server know of new client
-
+	sendMessage(tmpMsg); // lets server know of new client
+	
 	return 0;
 }
 
@@ -470,6 +490,56 @@ LRESULT CALLBACK createRemoteConnection() {
 	sendMessage(tmpMsg); // lets server know of new client
 	print(TEXT("message sent sending message ...\n"));
 	return 0;*/
+}
+
+void sendMessage(msg sendMsg) {
+	HANDLE WriteReady;
+	OVERLAPPED OverlWr = { 0 };
+	DWORD bytesWritten;
+	BOOLEAN fSuccess;
+
+	//if (canSendMsg)
+		//canSendMsg = FALSE;
+	//else
+		//return;
+
+	if (connection_mode == 0) {
+		sendMsg.connection = 0;
+		sendMessageDLL(sendMsg);
+	}
+	else if (connection_mode == 1) {
+		/*sendMsg.connection = 1;
+		WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (WriteReady == NULL) {
+			_tprintf(TEXT("Erro ao criar writeRead Event. Erro = %d\n"), GetLastError());
+			return 0;
+		}
+
+		//_tprintf(TEXT("Ligaçao establecida...\n"));
+
+		ZeroMemory(&OverlWr, sizeof(OverlWr));
+		ResetEvent(WriteReady);
+		OverlWr.hEvent = WriteReady;
+
+
+		fSuccess = WriteFile(
+			hPipe,
+			&sendMsg,
+			sizeof(msg),
+			&bytesWritten,
+			&OverlWr
+		);
+
+		WaitForSingleObject(WriteReady, INFINITE);
+
+		GetOverlappedResult(hPipe, &OverlWr, &bytesWritten, FALSE);
+		if (bytesWritten < sizeof(msg)) {
+			_tprintf(TEXT("Write File failed... | Erro = %d\n"), GetLastError());
+		}*/
+
+		//_tprintf(TEXT("[ESCRITOR] Enviei %d bytes ao leitor...(WriteFile)\n"), bytesWritten);
+
+	}
 }
 
 LRESULT CALLBACK print(TCHAR line[TAM]) {

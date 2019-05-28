@@ -1,2 +1,22 @@
-﻿client.obj : error LNK2019: unresolved external symbol _printf referenced in function _createLocalConnection@0
-C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe : fatal error LNK1120: 1 unresolved externals
+﻿  client.c
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(27): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(32): warning C4033: 'wWinMain' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(298): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(298): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(308): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(308): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(310): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(310): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(312): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(312): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(315): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(315): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(391): warning C4098: 'createLocalConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(422): warning C4098: 'createLocalConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(496): warning C4101: 'WriteReady': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(499): warning C4101: 'fSuccess': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(498): warning C4101: 'bytesWritten': unreferenced local variable
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(144): warning C4715: 'wWinMain': not all control paths return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(493): warning C4716: 'createRemoteConnection': must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(550): warning C4716: 'print': must return a value
+  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe

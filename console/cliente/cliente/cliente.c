@@ -191,6 +191,7 @@ DWORD resolveMessage(msg inMsg) {
 		SetEvent(newClient);
 		return;
 	}
+
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	BOOLEAN logged = 0;

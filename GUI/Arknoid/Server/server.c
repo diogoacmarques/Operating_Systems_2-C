@@ -18,6 +18,8 @@ LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK print(TCHAR line[TAM]);
 DWORD startVars();
+DWORD resolveMessage(msg inMsg);
+void sendMessage(msg sendMsg);
 void resetUser(DWORD id);
 void resetBall(DWORD id);
 void resetBrick(DWORD id);
@@ -26,6 +28,7 @@ void resetBrick(DWORD id);
 //vars
 TCHAR szProgName[] = TEXT("Server Base");
 HWND global_hWnd = NULL;
+DWORD localNumBricks;
 
 //client related
 comuciationHandle clientsInfo[MAX_CLIENTS];
@@ -223,8 +226,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
 		BitBlt(memDC, xBitMap, yBitMap, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
 		ReleaseDC(hWnd, hDC);
-
 		break;
+
 	case WM_KEYDOWN:
 		GetClientRect(hWnd, &rect);
 		switch (LOWORD(wParam)) {
@@ -233,7 +236,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			break;
 		case VK_DOWN:
 			yBitMap = yBitMap < rect.bottom - bmp.bmHeight ? yBitMap + 10 : rect.bottom - bmp.bmHeight;
-			//yBitMap += 10;
 			break;
 		case VK_LEFT:
 			xBitMap = xBitMap > 0 ? xBitMap - 10 : 0;
@@ -257,22 +259,15 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		InvalidateRect(hWnd, NULL, TRUE);
 		break;
 	case WM_PAINT:
-		//tempDC = CreateCompatibleDC(memDC);
-
-		//SelectObject(tempDC, hBmp);
-
-		//PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
-
-		//BitBlt(memDC, 0, 0, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
-		
-
-		//DeleteDC(tempDC);
 
 		GetClientRect(hWnd, &rect);
 		SetTextColor(memDC, RGB(255, 255, 255));
 		SetBkMode(memDC, TRANSPARENT);
 		rect.left = xPrint;
-		rect.top = yPrint++;
+		rect.top = yPrint;
+		yPrint += 15;
+		if (yPrint > maxY)
+			yPrint = 0;
 		DrawText(memDC, frase, _tcslen(frase), &rect, DT_SINGLELINE | DT_NOCLIP);
 
 		hDC = BeginPaint(hWnd, &ps);
@@ -280,8 +275,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
 
 		EndPaint(hWnd, &ps);
-
 		break;
+
 	case WM_COMMAND:
 		resolveMenu(hWnd, messg, wParam, lParam);
 		break;
@@ -307,7 +302,6 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 		case ID_STARTGAME:
 			break;
 		case ID_TOP10:
-			MessageBeep(MB_ICONSTOP);
 			break;
 		case ID_USERSLOGGED:
 			break;
@@ -322,6 +316,166 @@ LRESULT CALLBACK print(TCHAR line[TAM]) {
 	InvalidateRect(global_hWnd, NULL, TRUE);
 }
 
+DWORD resolveMessage(msg inMsg) {
+
+	DWORD num;
+	TCHAR tmp[TAM];
+	boolean flag;
+	msg outMsg;
+	outMsg.from = 254;
+	outMsg.connection = inMsg.connection;
+	print(inMsg.messageInfo);
+	//_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
+	//init
+	if (inMsg.codigoMsg == -9999) {
+		MessageBeep(MB_ICONSTOP);
+		//num = createHandle(inMsg);
+		num = 1;
+		if (num >= 0) {//success
+			outMsg.codigoMsg = 9999;
+			outMsg.to = num;
+			_itot_s(num, tmp, TAM, 10);//translates num to str
+			_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys user_id to messageInfo
+			sendMessage(outMsg);
+			//SetEvent(updateGame);//sends client the game
+		}
+		return;
+	}
+
+	//user
+	if (inMsg.codigoMsg == 1) {//login de utilizador
+		flag = 1;
+		print(inMsg.messageInfo);
+		if (gameInfo->gameStatus == -1) {
+			//_tprintf(TEXT("User(%s) tried to login with no game created\n"), newMsg.messageInfo);
+			outMsg.codigoMsg = -100;//no game created
+			outMsg.to = inMsg.from;
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("noGameCreated"));
+			print(TEXT("Sent game not created\n"));
+			sendMessage(outMsg);
+			return;
+		}
+		else if (gameInfo->gameStatus == 1) {
+			outMsg.codigoMsg = -110;//game already in progress
+			outMsg.to = inMsg.to;
+			//hClients[inMsg.from] to spectate
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("gameInProgress"));
+			_tprintf(TEXT("Sent game in progress\n"));
+			sendMessage(outMsg);
+			return;
+		}
+		else if (_tcscmp(inMsg.messageInfo, TEXT("nop")) == 0) {//for tests
+			//_tprintf(TEXT("Login do Utilizador (%s) not accepted\n"), newMsg.messageInfo);
+			outMsg.codigoMsg = -1;//not successful
+			outMsg.to = inMsg.from;
+			//_tprintf(TEXT("Sent user not accepted created\n"));
+			sendMessage(outMsg);
+			return;
+		}
+		for (int i = 0; i < gameInfo->numUsers; i++) {
+			if (_tcscmp(gameInfo->nUsers[i].name, inMsg.messageInfo) == 0) {
+				_tprintf(TEXT("This user is already logged in\n"));
+				flag = 0;
+				outMsg.codigoMsg = -1;//not successful
+				outMsg.to = inMsg.from;
+				//_tprintf(TEXT("Sent user not accepted created\n"));
+				sendMessage(outMsg);
+				break;
+			}
+		}
+		if (flag) {
+			_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, inMsg.messageInfo);
+
+			gameInfo->nUsers[gameInfo->numUsers].user_id = gameInfo->numUsers;
+			_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
+			outMsg.codigoMsg = 1;//sucesso
+			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClientMsg;
+			_itot_s(gameInfo->numUsers++, tmp, TAM, 10);
+			_tcscpy_s(outMsg.messageInfo, TAM, tmp);
+			outMsg.to = inMsg.from;
+			sendMessage(outMsg);
+		}
+	}
+	else if (inMsg.codigoMsg == 2) {//end of user
+		_tprintf(TEXT("%s[%d] exited with the score of:%d\n"), gameInfo->nUsers[inMsg.from].name, gameInfo->nUsers[inMsg.from].user_id, gameInfo->nUsers[inMsg.from].score);
+		/*int res = registry(gameInfo->nUsers[inMsg.from]);
+		if (res) {
+			_tprintf(TEXT("new high score saved!\n"));
+		}
+		else {
+			_tprintf(TEXT("not enough for top 10!\n"));
+		}
+		*/
+		Sleep(250);
+		resetUser(inMsg.from);
+		gameInfo->numUsers--;
+		outMsg.to = inMsg.from;
+		outMsg.codigoMsg = 2;
+		_tcscpy_s(outMsg.messageInfo, TAM, TEXT("ended user"));
+		sendMessage(outMsg);
+
+		if (gameInfo->numUsers == 0) {//closing game
+			_tprintf(TEXT("Reseting game...\n"));
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("End of Game"));
+			outMsg.to = inMsg.from;
+			outMsg.codigoMsg = -999;
+			sendMessage(outMsg);
+
+			for (int i = 0; i < MAX_BALLS; i++) {
+				TerminateThread(hTBola[i], 1);
+				CloseHandle(hTBola[i]);
+				resetBall(i);
+			}
+			for (int i = 0; i < MAX_BRICKS; i++) {
+				resetBrick(i);
+			}
+			gameInfo->numBalls = 0;
+			gameInfo->gameStatus = -1; //after game ends
+			localNumBricks = 0;
+			Sleep(1000);
+			_tprintf(TEXT("Game reseted!\n"));
+		}
+		else
+			_tprintf(TEXT("There are still players in the game!\n"));
+	}
+	else if (inMsg.codigoMsg == 101) {
+		//if (gameInfo->nUsers[inMsg.from].lifes > 0 && gameInfo->numBalls == 0)
+			//createBalls(1);
+	}
+	else if (inMsg.codigoMsg == 200) {//user trying to move
+		_tprintf(TEXT("[%d]-%s\n"), inMsg.from, inMsg.messageInfo);
+		//_tprintf(TEXT("\n\nIN->Codigo:(%d)\tDirection:(%s)\tFrom:%d\tTo:%d\n"), inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
+
+		if (_tcscmp(inMsg.messageInfo, TEXT("right")) != 0 && _tcscmp(inMsg.messageInfo, TEXT("left")) != 0) {
+			_tprintf(TEXT("Erro!\n"));
+			Sleep(3000);
+		}
+
+		/*int res = moveUser(inMsg.from, inMsg.messageInfo);
+		if (!res) {
+			SetEvent(updateGame);//update pipe
+			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
+			//_tprintf(TEXT("outMsg:(%s)\t"), outMsg.messageInfo);
+			_tcscat_s(outMsg.messageInfo, TAM, TEXT(":"));//adds ':'
+			//_tprintf(TEXT("outMsg2:(%s)\t"), outMsg.messageInfo);
+			_tcscat_s(outMsg.messageInfo, TAM, inMsg.messageInfo);//adds direction
+			//_tprintf(TEXT("outMsg.messageInfo:(%s)\n"), outMsg.messageInfo);
+		}
+		else {
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("no"));
+		}*/
+		outMsg.codigoMsg = 200;
+		outMsg.to = 255;
+		sendMessage(outMsg);
+		//_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
+		//_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
+	}
+	else if (inMsg.codigoMsg == 123) {//for tests || returns the exact same msg
+		outMsg.to = inMsg.from;
+		sendMessage(outMsg);
+	}
+}
+
 //thread to receive initial clients via pipe for msg
 DWORD WINAPI connectPipeMsg(LPVOID param) {
 	BOOLEAN fConnected = 0;
@@ -333,7 +487,6 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 	msg buf;
 
 	do {
-
 		hPipeInit = CreateNamedPipe(INIT_PIPE_MSG_NAME,
 			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_MESSAGE | // tipo de pipe = message
@@ -389,7 +542,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 		return -1;
 	}*/
 
-	_tprintf(TEXT("iniciating pipe game!\n"));
+	print(TEXT("iniciating pipe game!\n"));
 
 	do {
 
@@ -495,15 +648,15 @@ DWORD WINAPI receiveLocalMsg(LPVOID param) {//local communication
 		WaitForSingleObject(messageEventServer, INFINITE);
 		inMsg = receiveMessageDLL();
 		WaitForSingleObject(hResolveMessageMutex, INFINITE);
-		//resolveMessage(inMsg);
+		resolveMessage(inMsg);
 		ReleaseMutex(hResolveMessageMutex);
+		
+		//Sleep(5000);
 	} while (1);
 }
 
 DWORD startVars() {
 
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
 	int i;
 
 	//Status
@@ -511,8 +664,8 @@ DWORD startVars() {
 	server_id = 254;
 	//default config
 	//game
-	gameInfo->myconfig.limx = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-	gameInfo->myconfig.limy = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+	gameInfo->myconfig.limx = maxX + 1;
+	gameInfo->myconfig.limy = maxY + 1;
 	gameInfo->myconfig.num_levels = MAX_LEVELS;
 	gameInfo->myconfig.score_up = 100;
 	//Users
@@ -592,4 +745,35 @@ void resetBrick(DWORD id) {
 	gameInfo->nBricks[id].brinde.type = 0;
 	gameInfo->nBricks[id].brinde.posx = 0;
 	gameInfo->nBricks[id].brinde.posy = 0;
+}
+
+void sendMessage(msg sendMsg) {
+	return;
+	/*_tprintf(TEXT("Sending:'%s'\tCode=%d\tFrom=%d\tTo=%d|Via=%d\n"), sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to, sendMsg.connection);
+	if (sendMsg.to == 255) {
+		for (int i = 0; i < MAX_CLIENTS; i++)
+			if (clientsInfo[i].hClientMsg != NULL)
+				if (clientsInfo[i].communication == 0) {
+					sendMessageDLL(sendMsg);
+					SetEvent(clientsInfo[i].hClientMsg);
+				}
+				else
+					sendMessagePipe(sendMsg, clientsInfo[i].hClientMsg);
+
+	}
+	else {
+		if (clientsInfo[sendMsg.to].communication == 0) {
+			_tprintf(TEXT("Responding via DLL\n"));
+			sendMessageDLL(sendMsg);
+			SetEvent(clientsInfo[sendMsg.to].hClientMsg);
+		}
+		else {
+			_tprintf(TEXT("Responding via PIPE\n"));
+			sendMessagePipe(sendMsg, clientsInfo[sendMsg.to].hClientMsg);
+		}
+	}
+	//_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
+	//_tprintf(TEXT("Sent codigo:(%d)\n"), sendMsg.codigoMsg);
+	//if (sendMsg.codigoMsg < 0)
+		//hClients[sendMsg.to] = NULL;//if invalid resets handle*/
 }
