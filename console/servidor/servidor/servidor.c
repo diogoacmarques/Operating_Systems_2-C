@@ -276,6 +276,7 @@ DWORD resolveMessage(msg inMsg){
 			outMsg.codigoMsg = -1;//not successful
 			outMsg.to = inMsg.from;
 			//_tprintf(TEXT("Sent user not accepted created\n"));
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("iDontLikeYou"));
 			sendMessage(outMsg);
 			return;
 		}
@@ -292,13 +293,11 @@ DWORD resolveMessage(msg inMsg){
 		}
 		if (flag) {
 			_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, inMsg.messageInfo);
-
-			gameInfo->nUsers[gameInfo->numUsers].user_id = gameInfo->numUsers;
+			gameInfo->nUsers[gameInfo->numUsers].user_id = inMsg.from;
 			_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
 			outMsg.codigoMsg = 1;//sucesso
 			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClientMsg;
-			_itot_s(gameInfo->numUsers++, tmp, TAM, 10);
-			_tcscpy_s(outMsg.messageInfo, TAM, tmp);
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("loginSucess"));
 			outMsg.to = inMsg.from;
 			sendMessage(outMsg);
 		}

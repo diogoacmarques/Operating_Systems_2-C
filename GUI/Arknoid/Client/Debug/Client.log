@@ -1,22 +1,32 @@
 ﻿  client.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(27): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(32): warning C4033: 'wWinMain' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(298): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(298): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(308): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(308): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(310): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(310): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(312): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(312): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(315): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(315): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(391): warning C4098: 'createLocalConnection': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(422): warning C4098: 'createLocalConnection': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(496): warning C4101: 'WriteReady': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(499): warning C4101: 'fSuccess': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(498): warning C4101: 'bytesWritten': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(144): warning C4715: 'wWinMain': not all control paths return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(493): warning C4716: 'createRemoteConnection': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(550): warning C4716: 'print': must return a value
-  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(72): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(137): warning C4033: 'wWinMain' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(293): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(293): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(296): warning C4047: 'function': 'UINT' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(296): warning C4024: 'MessageBoxW': different types for formal and actual parameter 4
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(404): warning C4098: 'createLocalConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(419): warning C4033: 'localConnection' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(446): warning C4098: 'createRemoteConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(452): warning C4098: 'createRemoteConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(467): warning C4098: 'createRemoteConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(474): warning C4098: 'createRemoteConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(488): warning C4098: 'createRemoteConnection': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(502): warning C4033: 'msgPipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(574): warning C4033: 'gamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(580): warning C4033: 'gamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(590): warning C4033: 'gamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(547): warning C4101: 'dwMode': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(546): warning C4101: 'res': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(657): warning C4098: 'sendMessage': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(707): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(771): warning C4013: 'fflush' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(714): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(789): warning C4101: 'userInfo': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(912): warning C4098: 'LoginUser': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(155): warning C4715: 'wWinMain': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(541): warning C4716: 'msgPipe': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(631): warning C4715: 'gamePipe': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(785): warning C4715: 'resolveMessage': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(903): warning C4716: 'BrickThread': must return a value
+  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe

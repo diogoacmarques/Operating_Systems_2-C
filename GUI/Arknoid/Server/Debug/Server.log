@@ -1,21 +1,30 @@
 ﻿  server.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(48): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(101): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(311): warning C4033: 'resolveMenu' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(342): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(356): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(365): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(373): warning C4033: 'resolveMessage' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(487): warning C4101: 'buf': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(485): warning C4101: 'nSent': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(537): warning C4101: 'nSent': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'resp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'cbReplyBytes': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'cbWritten': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(679): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(680): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(715): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(317): warning C4716: 'print': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(477): warning C4716: 'resolveMessage': must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(312): warning C4716: 'resolveMenu': must return a value
-  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(54): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(107): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(212): warning C4101: 'res': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(323): warning C4033: 'resolveMenu' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(397): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(410): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(419): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(426): warning C4033: 'resolveMessage' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(538): warning C4101: 'buf': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(536): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(588): warning C4101: 'nSent': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(639): warning C4101: 'cbReplyBytes': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(639): warning C4101: 'cbWritten': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(721): warning C4033: 'updateGamePipe' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(761): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(762): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(798): warning C4047: '=': 'DWORD' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(834): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(835): warning C4101: 'tmp2': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(901): warning C4033: 'createHandle' must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(881): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(928): warning C4013: 'fflush' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(926): warning C4101: 'num': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(924): warning C4101: 'tmpMsg': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(955): warning C4098: 'sendMessagePipe': 'void' function returning a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(528): warning C4716: 'resolveMessage': must return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(921): warning C4715: 'createHandle': not all control paths return a value
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(324): warning C4716: 'resolveMenu': must return a value
+  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe

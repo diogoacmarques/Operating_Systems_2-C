@@ -1,6 +1,2 @@
-﻿  stdafx.cpp
-  DLL.cpp
-  dllmain.cpp
-  Generating Code...
-     Creating library C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.lib and object C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.exp
-  DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.dll
+﻿  DLL.cpp
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\dll\dll.cpp(4): fatal error C1853: 'Debug\DLL.pch' precompiled header file is from a previous version of the compiler, or the precompiled header is C++ and you are using it from C (or vice versa)
