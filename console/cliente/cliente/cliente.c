@@ -838,8 +838,6 @@ DWORD WINAPI pipeConnection(LPVOID param) {
 		_tprintf(TEXT("Erro na criãção do event ReadReady. Erro = %d\n"), GetLastError());
 		return;
 	}
-	_tcscpy_s(frase, TAM, TEXT("connected to a msg pipe"));
-	InvalidateRect(global_hWnd, NULL, TRUE);
 
 	while (1) {
 		ZeroMemory(&OverlRd, sizeof(OverlRd));

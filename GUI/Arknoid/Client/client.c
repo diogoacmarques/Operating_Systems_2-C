@@ -1,4 +1,3 @@
-//Base.c
 #include <windows.h>
 #include <tchar.h>
 #include <windowsx.h>
@@ -8,7 +7,6 @@
 
 //threads
 DWORD WINAPI localConnection(LPVOID param);
-DWORD WINAPI userInput(LPVOID param);
 DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI msgPipe(LPVOID param);
 DWORD WINAPI gamePipe(LPVOID param);
@@ -16,13 +14,16 @@ DWORD WINAPI gamePipe(LPVOID param);
 void print(msg printMsg);
 
 LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK ResolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+void resolveKey(WPARAM wParam);
 
 void createLocalConnection();
 void createRemoteConnection();
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
+
+void usersMove(TCHAR move[TAM]);
 
 DWORD resolveMessage(msg inMsg);
 
@@ -31,6 +32,11 @@ void sendMessage(msg sendMsg);
 TCHAR szProgName[] = TEXT("Client");
 int connection_mode = -1;//0 = local / 1 = remote
 HWND global_hWnd = NULL;
+
+//bmp
+HBITMAP hBmpBarreira;//[MAX_CLIENTS] = NULL;
+HBITMAP hBmpBola;//[MAX_BALLS] = NULL;
+HBITMAP hBmpBrick;//[MAX_BRICKS] = NULL;
 
 //Variaveis
 	//print
@@ -50,7 +56,8 @@ BITMAP bmp;
 pgame gameInfo;
 TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
-DWORD localGameStatus;
+DWORD localGameStatus = 0;
+int xBitMap = 0, yBitMap = 0;
 int xBall=0, yBall=0;
 
 	//handles
@@ -69,7 +76,9 @@ BOOLEAN canSendMsg = TRUE;
 //HANDLES
 HANDLE hTUserInput;
 
-int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {	
+
+
+int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {	
 
 	HWND hWnd; // hWnd é o handler da janela, gerado mais abaixo por CreateWindow()
 	MSG lpMsg; // MSG é uma estrutura definida no Windows para as mensagens
@@ -105,7 +114,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 	wcApp.cbClsExtra = 0; // Livre, para uso particular
 	wcApp.cbWndExtra = 0; // Livre, para uso particular
 
-	wcApp.hbrBackground = CreateSolidBrush(RGB(255, 255, 255));
+	wcApp.hbrBackground = CreateSolidBrush(RGB(244, 206, 66));
 
 	if (!RegisterClassEx(&wcApp))
 		return(0);
@@ -132,9 +141,9 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 	// 4. Mostrar a janela
 	// ============================================================================
 	if (connection_mode == -1) {
-		DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_CONNECTION), NULL, ResolveConection);
+		DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_CONNECTION), NULL, resolveConection);
 		if (connection_mode == -1)
-			return;
+			return 0;
 	}
 
 	ShowWindow(hWnd, nCmdShow); // "hWnd"= handler da janela, devolvido por
@@ -159,7 +168,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	HDC hDC;
 	RECT rect;
 	PAINTSTRUCT ps;
-	msg testesMsg;
 	TCHAR tmp[TAM];
 	TCHAR tmp2[30];
 	int res;
@@ -182,7 +190,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		DeleteObject(hBit);
 
-		hBrush = CreateSolidBrush(RGB(70, 150, 70));
+		hBrush = CreateSolidBrush(RGB(36, 140, 117));
 
 		SelectObject(memDC, hBrush);
 
@@ -190,38 +198,14 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		ReleaseDC(hWnd, hDC);
 
-		hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
-			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		//hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
+			//IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
-		GetObject(hBmp, sizeof(bmp), &bmp);
+		//GetObject(hBmp, sizeof(bmp), &bmp);
 		break;
 
 	case WM_KEYDOWN:
-		GetClientRect(hWnd, &rect);
-		switch (LOWORD(wParam)){
-			case VK_UP:
-				yBall = yBall > 0 ? yBall - 10 : 0;
-				break;
-			case VK_DOWN:
-				yBall = yBall < rect.bottom - bmp.bmHeight ? yBall + 10 : rect.bottom - bmp.bmHeight;
-				//yBitMap += 10;
-				break;
-			case VK_LEFT:
-				xBall = xBall > 0 ? xBall - 10 : 0;
-				break;
-			case VK_RIGHT:
-				xBall = xBall < rect.right - bmp.bmWidth ? xBall + 10 : rect.right - bmp.bmWidth;
-				break;
-			case VK_SPACE:
-				testesMsg.codigoMsg = -9999;
-				testesMsg.connection = 0;
-				testesMsg.from = 20;
-				testesMsg.to = 254;
-				_tcscpy_s(testesMsg.messageInfo,TAM,TEXT("ola"));
-				sendMessage(testesMsg);
-				break;
-			}
-		InvalidateRect(hWnd, NULL, TRUE);
+		resolveKey(wParam);
 		break;
 	case WM_PAINT:
 		tempDC = CreateCompatibleDC(memDC);
@@ -231,7 +215,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
 
 		//BitBlt(memDC, 0, 0, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
-		BitBlt(memDC, xBall, yBall, maxX, maxY, tempDC, 0, 0, SRCCOPY);
+
+		BitBlt(memDC, xBitMap, yBitMap, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
 
 		DeleteDC(tempDC);
 
@@ -247,13 +232,13 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
 
 		EndPaint(hWnd, &ps);
-
+		_tcscpy_s(frase, TAM, TEXT("-"));
 		break;
 	case WM_COMMAND:
 
 		switch (LOWORD(wParam)) {
 		case ID_PLAY:												//NULL em vez de hWnd para a janela nao ter "prioridade"
-			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, ResolveMenu);
+			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
 			if (res == IDCANCEL || res == IDABORT)
 				break;
 			if (_tcscmp(login, TEXT("")) != 0) {
@@ -290,10 +275,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				_itot_s(gameInfo->gameStatus, tmp2, 30, 10);//translates num to str
 				_tcscat_s(tmp, TAM, tmp2);//ads
 
-				MessageBox(hWnd,tmp, TEXT("Type of connection"), NULL);
+				MessageBox(hWnd,tmp, TEXT("Type of connection"), MB_OK);
 				break;
 			case ID_ABOUT_VERSION:
-				MessageBox(hWnd, TEXT("Version 0.1! - Made by Diogo Marques"), TEXT("About Arknoid"), NULL);
+				MessageBox(hWnd, TEXT("Version 0.1! - Made by Diogo Marques"), TEXT("About Arknoid"), MB_OK);
 				break;
 		}
 		break;
@@ -312,7 +297,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	return(0);
 }
 
-LRESULT CALLBACK ResolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 
 	switch (messg) {
 	case WM_COMMAND:
@@ -332,7 +317,7 @@ LRESULT CALLBACK ResolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 	return FALSE;
 }
 
-LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	switch (messg) {
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDC_BUTTON_LOCAL) {
@@ -352,6 +337,53 @@ LRESULT CALLBACK ResolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 		return FALSE;
 	}
 	return FALSE;
+}
+
+void resolveKey(WPARAM wParam) {
+	if (localGameStatus == -1)
+		return;
+
+	msg gameMsg;
+	gameMsg.codigoMsg = 200;
+	gameMsg.from = client_id;
+	gameMsg.to = 254;
+	_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("not"));
+	switch (LOWORD(wParam)) {
+	case VK_LEFT:
+	case 0x41://a key
+		if (localGameStatus == 2)//watching
+			return;
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
+		break;
+	case VK_RIGHT:
+	case 0x44://d key
+		if (localGameStatus == 2)//watching
+			return;
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
+		break;
+	case VK_SPACE:
+		if (localGameStatus == 2)//watching
+			return;
+		gameMsg.codigoMsg = 101;
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
+		break;
+
+	case VK_ESCAPE:
+		if (localGameStatus == 2) {//watching
+			//endUser();
+		}
+
+		gameMsg.codigoMsg = 2;
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
+		break;
+	}
+
+	if (_tcscmp(gameMsg.messageInfo, TEXT("not")) != 0) {
+		sendMessage(gameMsg);
+		_tcscpy_s(frase, TAM, gameMsg.messageInfo);
+		InvalidateRect(global_hWnd, NULL, TRUE);
+	}
+		
 }
 
 void createLocalConnection() {
@@ -401,7 +433,7 @@ void createLocalConnection() {
 	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
 	sendMessage(tmpMsg); // lets server know of new client
 	
-	return 0;
+	return;
 }
 
 DWORD WINAPI localConnection(LPVOID param) {
@@ -416,7 +448,7 @@ DWORD WINAPI localConnection(LPVOID param) {
 		resp = resolveMessage(newMsg);
 	} while (1);
 
-	return;
+	return 0;
 }
 
 void createRemoteConnection() {
@@ -443,13 +475,13 @@ void createRemoteConnection() {
 
 		if (GetLastError() != ERROR_PIPE_BUSY) {
 			//print(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
-			return 1;
+			return;
 		}
 
 
 		if (!WaitNamedPipe(INIT_PIPE_MSG_NAME, 10000)) {
 			//print(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
-			return FALSE;
+			return;
 		}
 
 	}
@@ -464,14 +496,14 @@ void createRemoteConnection() {
 
 	if (!fSuccess) {
 		//print(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"), GetLastError());
-		return -1;
+		return;
 	}
 
 	//print(TEXT("initianting pipeConnection thread\n"));
 	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)msgPipe, NULL, 0, NULL);
 	if (hTMsgConnection == NULL) {
 		//print(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
-		return 1;
+		return;
 	}
 
 	
@@ -485,7 +517,7 @@ void createRemoteConnection() {
 	tmpMsg.to = 254;
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("remoteClient"));
 	sendMessage(tmpMsg); // lets server know of new client
-	return 0;
+	return;
 }
 
 DWORD WINAPI msgPipe(LPVOID param) {
@@ -499,7 +531,7 @@ DWORD WINAPI msgPipe(LPVOID param) {
 	ReadReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (ReadReady == NULL) {
 		_tprintf(TEXT("Erro na criãção do event ReadReady. Erro = %d\n"), GetLastError());
-		return;
+		return -1;
 	}
 
 	_tcscpy_s(frase, TAM, TEXT("connected to a msg pipe"));
@@ -538,13 +570,14 @@ DWORD WINAPI msgPipe(LPVOID param) {
 
 		resp = resolveMessage(inMsg);
 	}
+	return 1;
 }
 
 DWORD WINAPI gamePipe(LPVOID param) {
 
 	HANDLE gamePipe;
-	BOOLEAN res;
-	DWORD bytesRead, dwMode;
+	//BOOLEAN res;
+	DWORD bytesRead;// dwMode;
 	HANDLE ReadReady;
 	BOOLEAN fSuccess = FALSE;
 	OVERLAPPED OverlRd = { 0 };
@@ -571,23 +604,27 @@ DWORD WINAPI gamePipe(LPVOID param) {
 
 		if (GetLastError() != ERROR_PIPE_BUSY) {
 			_tprintf(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
-			return;
+			return -1;
 		}
 
 
 		if (!WaitNamedPipe(INIT_PIPE_GAME_NAME, 10000)) {
 			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
-			return;
+			return -1;
 		}
 
 	}
 
 	gameInfo = (pgame)malloc(sizeof(game));
+	if (gameInfo == NULL) {
+		return -1;
+	}
+
 
 	ReadReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (ReadReady == NULL) {
 		_tprintf(TEXT("Erro na criãção do event ReadReady. Erro = %d\n"), GetLastError());
-		return;
+		return -1;
 	}
 
 	int quant = 0;
@@ -641,20 +678,19 @@ void sendMessage(msg sendMsg) {
 	else
 		return;
 
+	sendMsg.connection = connection_mode;
 	print(sendMsg);
 
 	//MessageBox(global_hWnd, TEXT("Trynig to send message AGAIN..."), TEXT("MessageBox"), MB_OK);
 
 	if (connection_mode == 0) {
-		sendMsg.connection = 0;
 		sendMessageDLL(sendMsg);
 	}
 	else if (connection_mode == 1) {
-		sendMsg.connection = 1;
 		WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (WriteReady == NULL) {
 			_tprintf(TEXT("Erro ao criar writeRead Event. Erro = %d\n"), GetLastError());
-			return 0;
+			return;
 		}
 
 		//_tprintf(TEXT("Ligaçao establecida...\n"));
@@ -703,16 +739,13 @@ DWORD resolveMessage(msg inMsg) {
 				return 1;
 			}
 		}
-		//SetEvent(newClient);
-		return;
+		return 1;
 	}
 	else if (inMsg.codigoMsg == -9999) {
 		MessageBox(global_hWnd, TEXT("NOT ALLOWED"), TEXT("client"), MB_OK);
 		DestroyWindow(global_hWnd);//not destroying...
 	}
 
-	TCHAR str[TAM];
-	//TCHAR tmp[TAM];
 	BOOLEAN logged = 0;
 	if (inMsg.from != 254) {
 		_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
@@ -727,7 +760,8 @@ DWORD resolveMessage(msg inMsg) {
 
 	if (inMsg.codigoMsg == 1 && !logged) {//successful login
 		logged = 1;
-		_tprintf(TEXT("Login do Utilizador (%s) efetuado com sucesso\nWaiting for server to start game..."), inMsg.messageInfo);
+		_tcscpy_s(frase, TAM, TEXT("You are now in the game, waiting for server to start..."));
+		InvalidateRect(global_hWnd, NULL, TRUE);
 	}
 	else if (inMsg.codigoMsg == -1 && !logged) {
 		_tprintf(TEXT("Server refused login with %s\n"), inMsg.messageInfo);
@@ -739,15 +773,11 @@ DWORD resolveMessage(msg inMsg) {
 		//endUser();
 		return -1;
 	}
-	else if (inMsg.codigoMsg == 100) {//new game
-		_tprintf(TEXT("\nGAME created by server... Status = %d\n"), gameInfo->gameStatus);
+	else if (inMsg.codigoMsg == 100) {//start game
+		_tcscpy_s(frase, TAM, TEXT("game started by the server"));
+		//invalid rect will be done insde usersMoves
 		localGameStatus = 1;
-		//usersMove(TEXT("init"));
-		hTUserInput = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)userInput, NULL, 0, NULL);
-		if (hTUserInput == NULL) {
-			_tprintf(TEXT("Erro ao criar thread para o utilizador escrever!\n"));
-			return -1;
-		}
+		usersMove(TEXT("init"));
 	}
 	else if (inMsg.codigoMsg == 101) {//new ball
 		DWORD tmp = _tstoi(inMsg.messageInfo);
@@ -766,85 +796,21 @@ DWORD resolveMessage(msg inMsg) {
 		//createBonus(tmp);
 	}
 	else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
-		_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
-		TCHAR resp;
-		fflush(stdin);
-		resp = _gettch();
-		_tprintf(TEXT("\n"));
-		if (resp == 'n' || resp == 'N') {
-			return -1;
-		}
+		//_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
+		//TCHAR resp;
+		
+		//if (resp == 'n' || resp == 'N') {
+		//	return -1;
+		//}
 		//watchGame();
 	}
 	else if (inMsg.codigoMsg == 200) {
-		//usersMove(inMsg.messageInfo);
+		usersMove(inMsg.messageInfo);
 	}
 	else if (inMsg.codigoMsg == -999) {
 		//endUser();
 	}
-}
-
-DWORD WINAPI userInput(LPVOID param) {//needs to be changed
-	Sleep(1000);
-	user userInfo = gameInfo->nUsers[client_id];
-
-	//gotoxy(0, 10);
-	//_tprintf(TEXT("I have the id number:%d\n"), user_id);
-	//_tprintf(TEXT("my name is %s\n"), userInfo.name);
-	//_tprintf(TEXT("I am in pos(%d,%d)\n"), userInfo.posx,userInfo.posy);
-	//_tprintf(TEXT("My id is'%d' and my name is size is'%d'\n"), userInfo.user_id,userInfo.size);
-	TCHAR KeyPress;
-	msg gameMsg;
-
-	while (1) {
-		gameMsg.codigoMsg = 200;
-		gameMsg.from = client_id;
-		gameMsg.to = 254;
-		fflush(stdin);
-		KeyPress = _gettch();
-		//_putch(keypress);
-		switch (KeyPress) {
-		case 'a':
-		case 'A':
-			if (localGameStatus == 2)//watching
-				break;
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
-			sendMessage(gameMsg);
-			break;
-
-		case 'd':
-		case 'D':
-			if (localGameStatus == 2)//watching
-				break;
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
-			sendMessage(gameMsg);
-			break;
-
-		case 32://sends ball
-			if (localGameStatus == 2)//watching
-				break;
-			gameMsg.codigoMsg = 101;
-			gameMsg.from = client_id;
-			gameMsg.to = 254;
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
-			sendMessage(gameMsg);
-			break;
-
-		case 27://esc
-			if (localGameStatus == 2) {//watching
-				//endUser();
-				return 0;
-			}
-
-			gameMsg.codigoMsg = 2;
-			gameMsg.from = client_id;
-			gameMsg.to = 254;
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
-			sendMessage(gameMsg);
-			return 0;
-		}
-
-	}
+	return -1;
 }
 
 DWORD WINAPI BrickThread(LPVOID param) {
@@ -900,6 +866,108 @@ DWORD WINAPI BrickThread(LPVOID param) {
 			}
 	} while (gameInfo->numBricks);
 	*/
+	return 0;
+}
+
+void usersMove(TCHAR move[TAM]) {
+	hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"),IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	xBitMap = maxX / 2;
+	yBitMap = maxY / 2;
+	hBmpBarreira = hBmp;
+	GetObject(hBmp, sizeof(bmp), &bmp);
+	//InvalidateRect(global_hWnd, NULL, TRUE);
+	return;
+	if (_tcscmp(move, TEXT("init")) == 0) {
+		for (int i = 0; i < gameInfo->numUsers; i++) {
+			WaitForSingleObject(hStdoutMutex, INFINITE);
+			hBmpBarreira = hBmp = (HBITMAP)LoadImage(NULL, TEXT("barreiratmp.bmp"),
+				IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+			xBitMap = gameInfo->nUsers[i].posx;
+			yBitMap = gameInfo->nUsers[i].posy;
+			hBmp = hBmpBarreira;
+			GetObject(hBmp, sizeof(bmp), &bmp);
+			InvalidateRect(global_hWnd, NULL, TRUE);
+			//invalidaterect
+			//gotoxy(gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy);
+			ReleaseMutex(hStdoutMutex);
+		}
+		return;
+	}
+	else if (_tcscmp(move, TEXT("no")) == 0)
+		return;
+
+	if (connection_mode == 1) {
+		WaitForSingleObject(gameReady, INFINITE);//waits for info to come from pipe
+	}
+
+	//this function displays users barreiras
+	BOOLEAN flag = 0;
+	DWORD user_id, j = 0;
+	TCHAR usr[TAM];
+	TCHAR direction[TAM];
+	for (int i = 0; i < TAM; i++) {
+		if (move[i] == ':') {
+			usr[i] = '\0';
+			flag = 1;
+			continue;
+		}
+		else if (move[i] == '\0') {
+			direction[j] = '\0';
+			break;
+		}
+
+		if (!flag)
+			usr[i] = move[i];
+		else {
+			direction[j] = move[i];
+			j++;
+		}
+	}
+	user_id = _tstoi(usr);
+	if (user_id < 0 || user_id > MAX_USERS) {
+		_tprintf(TEXT("Invalido->From (%s) to user[%d]->(%s)\n"), move, user_id, direction);
+		Sleep(2000);
+		return;
+	}
+
+	user userinfo = gameInfo->nUsers[user_id];
+	WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(userinfo.posx + userinfo.size, userinfo.posy);
+	xBitMap = userinfo.posx;
+	yBitMap = userinfo.posy;
+	hBmp = hBmpBarreira;
+	GetObject(hBmp, sizeof(bmp), &bmp);
+	InvalidateRect(global_hWnd, NULL, TRUE);
+	ReleaseMutex(hStdoutMutex);
+
+	return;
+	if (_tcscmp(direction, TEXT("left")) == 0) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		//gotoxy(userinfo.posx + userinfo.size, userinfo.posy);
+		xBitMap = userinfo.posx;
+		yBitMap = userinfo.posy;
+		hBmp = hBmpBarreira;
+		GetObject(hBmp, sizeof(bmp), &bmp);
+		InvalidateRect(global_hWnd, NULL, TRUE);
+		ReleaseMutex(hStdoutMutex);
+	}
+	else if (_tcscmp(direction, TEXT("right")) == 0) {
+		WaitForSingleObject(hStdoutMutex, INFINITE);
+		//gotoxy(userinfo.posx - 1, userinfo.posy);
+		xBitMap = userinfo.posx;
+		yBitMap = userinfo.posy;
+		hBmp = hBmpBarreira;
+		GetObject(hBmp, sizeof(bmp), &bmp);
+		InvalidateRect(global_hWnd, NULL, TRUE);
+		ReleaseMutex(hStdoutMutex);
+	}
+
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
+	//gotoxy(0, 15);
+	//_tprintf(TEXT("User[%d]-pos(%d,%d)"), user_id, userinfo.posx, userinfo.posy);
+	//ReleaseMutex(hStdoutMutex);
+
+	return;
 }
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
@@ -909,7 +977,7 @@ void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	newMsg.codigoMsg = 1;//login
 	_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, user);
 	sendMessage(newMsg);
-	return 1;
+	return;
 }
 
 void print(msg printMsg) {

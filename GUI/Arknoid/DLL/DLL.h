@@ -108,8 +108,8 @@ typedef struct config {
 	int initial_bricks;
 	//bonus
 	int score_up;
-	int prob_speed_up;
-	int prob_speed_down;
+	float prob_speed_up;
+	float prob_speed_down;
 	int num_speed_up;
 	int num_speed_down;
 	int duration;

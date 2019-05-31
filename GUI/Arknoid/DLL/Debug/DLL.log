@@ -1,2 +1,2 @@
 ﻿  DLL.cpp
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\dll\dll.cpp(4): fatal error C1853: 'Debug\DLL.pch' precompiled header file is from a previous version of the compiler, or the precompiled header is C++ and you are using it from C (or vice versa)
+  DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.dll
