@@ -28,20 +28,20 @@
 
 #define MAX_BONUS_AT_TIME 
 
-#define USE_MSG_MUTEX TEXT("../../writeMsgMutex")
-#define MSG_SHARED_MEMORY_NAME TEXT("../MSG_SHARED_MEMORY")
-#define GAME_SHARED_MEMORY_NAME TEXT("../GAME_SHARED_MEMORY")
-#define STDOUT_CLIENT_MUTEX_NAME TEXT("../stdoutMutexClient")
-#define SEMAPHORE_MEMORY_READ TEXT("../memory_semaphore_read")
-#define SEMAPHORE_MEMORY_WRITE TEXT("../memory_semaphore_write")
-#define MESSAGE_EVENT_NAME TEXT("../messageEventServer")
-#define MESSAGE_BROADCAST_EVENT_NAME TEXT("../messageEventBroadcast")
-#define GAME_EVENT_NAME TEXT("../gameEvent")
-#define BALL_EVENT_NAME TEXT("../ballEvent")
-#define USER_MOVE_EVENT_NAME TEXT("../userMoveEvent")
-#define BONUS_EVENT_NAME TEXT("../bonusEvent")
+#define USE_MSG_MUTEX TEXT("writeMsgMutex")
+#define MSG_SHARED_MEMORY_NAME TEXT("MSG_SHARED_MEMORY")
+#define GAME_SHARED_MEMORY_NAME TEXT("GAME_SHARED_MEMORY")
+#define STDOUT_CLIENT_MUTEX_NAME TEXT("stdoutMutexClient")
+#define SEMAPHORE_MEMORY_READ TEXT("memory_semaphore_read")
+#define SEMAPHORE_MEMORY_WRITE TEXT("memory_semaphore_write")
+#define MESSAGE_EVENT_NAME TEXT("messageEventServer")
+#define MESSAGE_BROADCAST_EVENT_NAME TEXT("messageEventBroadcast")
+#define GAME_EVENT_NAME TEXT("gameEvent")
+#define BALL_EVENT_NAME TEXT("ballEvent")
+#define USER_MOVE_EVENT_NAME TEXT("userMoveEvent")
+#define BONUS_EVENT_NAME TEXT("bonusEvent")
 //local
-#define LOCAL_CONNECTION_NAME TEXT("../localMessage")
+#define LOCAL_CONNECTION_NAME TEXT("localMessage")
 //Pipe
 #define MAX_PIPES 5
 #define INIT_PIPE_MSG_NAME  TEXT("\\\\.\\pipe\\initPipeArknoidMsg")
@@ -142,7 +142,6 @@ HANDLE updateBalls, updateBonus;
 HANDLE messageEventClient[MAX_USERS];
 
 HANDLE messageBroadcastDll;
-HANDLE messageServerDll;
 
 //Definir uma constante para facilitar a leitura do protótipo da função
 //Este .h deve ser incluído no projeto que o vai usar (modo implícito)
@@ -172,11 +171,7 @@ extern "C"
 	DLL_IMP_API void closeSharedMemoryGame(void);
 
 	//functions
-	DLL_IMP_API int findAvailableHandle(void);
 	DLL_IMP_API int Login(TCHAR user[MAX_NAME_LENGTH]);
-	DLL_IMP_API void createHandles(void);
-	DLL_IMP_API int initializeHandles(void);
-
 
 #ifdef __cplusplus
 }

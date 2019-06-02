@@ -34,7 +34,7 @@ int connection_mode = -1;//0 = local / 1 = remote
 HWND global_hWnd = NULL;
 
 //bmp
-HBITMAP hBmpBarreira;//[MAX_CLIENTS] = NULL;
+HBITMAP hBmpBarreira[MAX_CLIENTS];
 HBITMAP hBmpBola;//[MAX_BALLS] = NULL;
 HBITMAP hBmpBrick;//[MAX_BRICKS] = NULL;
 
@@ -140,11 +140,16 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	// ============================================================================
 	// 4. Mostrar a janela
 	// ============================================================================
+
 	if (connection_mode == -1) {
 		DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_CONNECTION), NULL, resolveConection);
 		if (connection_mode == -1)
 			return 0;
 	}
+	if (!connection_mode)
+		createLocalConnection();
+	else
+		createRemoteConnection();
 
 	ShowWindow(hWnd, nCmdShow); // "hWnd"= handler da janela, devolvido por
 	// "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
@@ -254,7 +259,13 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				//MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				//MessageBeep(MB_ICONSTOP);
+				hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				xBitMap = 30;
+				yBitMap = 30;
+				hBmpBarreira[0] = hBmp;
+				GetObject(hBmp, sizeof(bmp), &bmp);
+				InvalidateRect(global_hWnd, NULL, TRUE);
+				MessageBeep(MB_ICONSTOP);
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -322,13 +333,11 @@ LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDC_BUTTON_LOCAL) {
 			connection_mode = 0;
-			createLocalConnection();
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
 		else if (LOWORD(wParam) == IDC_BUTTON_REMOTE) {
 			connection_mode = 1;
-			createRemoteConnection();
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
@@ -404,11 +413,11 @@ void createLocalConnection() {
 		PostQuitMessage(1);
 	}
 
-	BOOLEAN res = initializeHandles();
-	if (res) {
+	//BOOLEAN res = initializeHandles();
+	//if (res) {
 		//print(TEXT("Erro ao criar Handles!"));
 		//return 1;
-	}
+	//}
 	
 	//sessionId = (GetCurrentThreadId() + GetTickCount());
 	//sessionId = GetCurrentThreadId();
@@ -432,7 +441,7 @@ void createLocalConnection() {
 	tmpMsg.to = 254;
 	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
 	sendMessage(tmpMsg); // lets server know of new client
-	
+
 	return;
 }
 
@@ -685,7 +694,7 @@ void sendMessage(msg sendMsg) {
 
 	if (connection_mode == 0) {
 		sendMessageDLL(sendMsg);
-	}
+	}	
 	else if (connection_mode == 1) {
 		WriteReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (WriteReady == NULL) {
@@ -728,8 +737,8 @@ DWORD resolveMessage(msg inMsg) {
 	//gotoxy(0, 0);
 	//_tprintf(TEXT("\n\n[%d]Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"),quantMsg++, inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
 	//ReleaseMutex(hStdoutMutex);
-	_itot_s(inMsg.codigoMsg, tmp_info, TAM, 10);
-	MessageBox(global_hWnd,inMsg.messageInfo,tmp_info, MB_OK);//sucesso
+	//_itot_s(inMsg.codigoMsg, tmp_info, TAM, 10);
+	//MessageBox(global_hWnd,inMsg.messageInfo,tmp_info, MB_OK);//sucesso
 	if (inMsg.codigoMsg == 9999) {//first connection
 		_tprintf(TEXT("New client allowed\n"));
 		client_id = _tstoi(inMsg.messageInfo);
@@ -870,25 +879,22 @@ DWORD WINAPI BrickThread(LPVOID param) {
 }
 
 void usersMove(TCHAR move[TAM]) {
-	hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"),IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-	xBitMap = maxX / 2;
-	yBitMap = maxY / 2;
-	hBmpBarreira = hBmp;
-	GetObject(hBmp, sizeof(bmp), &bmp);
-	//InvalidateRect(global_hWnd, NULL, TRUE);
-	return;
+	//TCHAR tmp[TAM];
+	//TCHAR tmp2[TAM];
+	//_itot_s(gameInfo->nUsers[0].posx, tmp, TAM, 10);//translates num to str
+	//_tcscat_s(tmp, TAM, TEXT(","));
+	//_itot_s(gameInfo->nUsers[0].posy, tmp2, TAM, 10);//translates num to str
+	//_tcscat_s(tmp, TAM, tmp2);//ads
+	//MessageBox(global_hWnd, tmp, TEXT("jogador:"), MB_OK);
 	if (_tcscmp(move, TEXT("init")) == 0) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			WaitForSingleObject(hStdoutMutex, INFINITE);
-			hBmpBarreira = hBmp = (HBITMAP)LoadImage(NULL, TEXT("barreiratmp.bmp"),
-				IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+			hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 			xBitMap = gameInfo->nUsers[i].posx;
 			yBitMap = gameInfo->nUsers[i].posy;
-			hBmp = hBmpBarreira;
+			hBmpBarreira[i] = hBmp;
 			GetObject(hBmp, sizeof(bmp), &bmp);
 			InvalidateRect(global_hWnd, NULL, TRUE);
-			//invalidaterect
-			//gotoxy(gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy);
 			ReleaseMutex(hStdoutMutex);
 		}
 		return;
@@ -931,42 +937,20 @@ void usersMove(TCHAR move[TAM]) {
 	}
 
 	user userinfo = gameInfo->nUsers[user_id];
-	WaitForSingleObject(hStdoutMutex, INFINITE);
-	//gotoxy(userinfo.posx + userinfo.size, userinfo.posy);
+	TCHAR tmp[TAM];
+	TCHAR tmp2[TAM];
+	_itot_s(gameInfo->nUsers[user_id].posx, tmp, TAM, 10);//translates num to str
+	_tcscat_s(tmp, TAM, TEXT(","));
+	_itot_s(gameInfo->nUsers[user_id].posy, tmp2, TAM, 10);//translates num to str
+	_tcscat_s(tmp, TAM, tmp2);//ads
+	MessageBox(global_hWnd, tmp, TEXT("jogador:"), MB_OK);
+	//WaitForSingleObject(hStdoutMutex, INFINITE);
 	xBitMap = userinfo.posx;
 	yBitMap = userinfo.posy;
-	hBmp = hBmpBarreira;
+	hBmp = hBmpBarreira[user_id];
 	GetObject(hBmp, sizeof(bmp), &bmp);
 	InvalidateRect(global_hWnd, NULL, TRUE);
-	ReleaseMutex(hStdoutMutex);
-
-	return;
-	if (_tcscmp(direction, TEXT("left")) == 0) {
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-		//gotoxy(userinfo.posx + userinfo.size, userinfo.posy);
-		xBitMap = userinfo.posx;
-		yBitMap = userinfo.posy;
-		hBmp = hBmpBarreira;
-		GetObject(hBmp, sizeof(bmp), &bmp);
-		InvalidateRect(global_hWnd, NULL, TRUE);
-		ReleaseMutex(hStdoutMutex);
-	}
-	else if (_tcscmp(direction, TEXT("right")) == 0) {
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-		//gotoxy(userinfo.posx - 1, userinfo.posy);
-		xBitMap = userinfo.posx;
-		yBitMap = userinfo.posy;
-		hBmp = hBmpBarreira;
-		GetObject(hBmp, sizeof(bmp), &bmp);
-		InvalidateRect(global_hWnd, NULL, TRUE);
-		ReleaseMutex(hStdoutMutex);
-	}
-
-	//WaitForSingleObject(hStdoutMutex, INFINITE);
-	//gotoxy(0, 15);
-	//_tprintf(TEXT("User[%d]-pos(%d,%d)"), user_id, userinfo.posx, userinfo.posy);
 	//ReleaseMutex(hStdoutMutex);
-
 	return;
 }
 
