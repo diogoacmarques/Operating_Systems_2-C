@@ -7,7 +7,7 @@
 #define MAX_MSG 50
 #define _MSECOND 10000
 //game
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 5
 #define MAX_LEVELS 5
 //User
 #define MAX_USERS 5
@@ -16,10 +16,10 @@
 
 //bals
 #define MAX_SPEED 150
-#define MAX_BALLS 20
+#define MAX_BALLS 5
 #define MAX_SPEED_BONUS 50
 #define PROB_SPEED_BONUS 0.5
-#define INIT_SPEED 250
+#define INIT_SPEED 20
 #define MAX_DURATION 50000
 
 //bricks
@@ -36,7 +36,7 @@
 #define SEMAPHORE_MEMORY_WRITE TEXT("memory_semaphore_write")
 #define MESSAGE_EVENT_NAME TEXT("messageEventServer")
 #define MESSAGE_BROADCAST_EVENT_NAME TEXT("messageEventBroadcast")
-#define GAME_EVENT_NAME TEXT("gameEvent")
+#define LOCAL_UPDATE_GAME TEXT("updateLocalGame")
 #define BALL_EVENT_NAME TEXT("ballEvent")
 #define USER_MOVE_EVENT_NAME TEXT("userMoveEvent")
 #define BONUS_EVENT_NAME TEXT("bonusEvent")

@@ -1,4 +1,6 @@
 ﻿  client.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(81): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(735): warning C4101: 'tmp_info': unreferenced local variable
-  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(105): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(225): warning C4133: '=': incompatible types - from 'HDC' to 'HWND'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(203): warning C4101: 'rect': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(796): warning C4101: 'tmp_info': unreferenced local variable
+  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe

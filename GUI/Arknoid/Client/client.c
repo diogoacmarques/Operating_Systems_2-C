@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <Windows.h>
 #include <tchar.h>
 #include <windowsx.h>
 #include "DLL.h"
@@ -7,9 +8,11 @@
 
 //threads
 DWORD WINAPI localConnection(LPVOID param);
-DWORD WINAPI BrickThread(LPVOID param);
 DWORD WINAPI msgPipe(LPVOID param);
 DWORD WINAPI gamePipe(LPVOID param);
+
+void WINAPI waitGameReady(LPVOID param);
+
 //functions
 void print(msg printMsg);
 
@@ -23,8 +26,6 @@ void createRemoteConnection();
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
 
-void usersMove(TCHAR move[TAM]);
-
 DWORD resolveMessage(msg inMsg);
 
 void sendMessage(msg sendMsg);
@@ -35,20 +36,43 @@ HWND global_hWnd = NULL;
 
 //bmp
 HBITMAP hBmpBarreira[MAX_CLIENTS];
-HBITMAP hBmpBola;//[MAX_BALLS] = NULL;
+HBITMAP hBolaBmp[MAX_BALLS];
+BITMAP ballBmp[MAX_BALLS];
+int ballPosx = 0, ballPosy = 0;
 HBITMAP hBmpBrick;//[MAX_BRICKS] = NULL;
 
 //Variaveis
 	//print
 int xPrint = 0, yPrint = 0;
 TCHAR frase[TAM];
+int numBalls = 0;
 
-	//window
-int maxX = 0, maxY = 0;
+//double buffer
 HDC memDC = NULL;
+int maxX = 0, maxY = 0;
+
+//Barreira
+HBITMAP hPlayerBarreira = NULL;
+BITMAP bmPlayerBarreira;
+HDC hdcPlayerBarreira;
+
+//Ball
+HBITMAP hBall = NULL;
+BITMAP bmBall;
+HDC hdcBall;
+
+//Ball
+HBITMAP hBrick = NULL;
+BITMAP bmBrick;
+HDC hdcBrick;
+
+//background
+HBITMAP hBackground = NULL;
+BITMAP bmBackground;
+HDC hdcBackground;
+
 HBITMAP hBit = NULL;
 HBRUSH hBrush = NULL;
-HDC tempDC = NULL;
 HBITMAP hBmp = NULL;
 BITMAP bmp;
 
@@ -57,10 +81,9 @@ pgame gameInfo;
 TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
 DWORD localGameStatus = 0;
-int xBitMap = 0, yBitMap = 0;
-int xBall=0, yBall=0;
 
 	//handles
+HANDLE hTBola[MAX_BALLS];
 HANDLE gameReady;
 HANDLE  messageEvent, hStdoutMutex;
 HANDLE hTMsgConnection;//has thread where receives messages
@@ -76,6 +99,7 @@ BOOLEAN canSendMsg = TRUE;
 //HANDLES
 HANDLE hTUserInput;
 
+TCHAR userLogged[MAX_NAME_LENGTH];
 
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {	
@@ -151,6 +175,12 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	else
 		createRemoteConnection();
 
+	HANDLE hGameReady = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)waitGameReady, NULL, 0, NULL);
+	if (hGameReady == NULL) {
+		MessageBox(hWnd, TEXT("could not create waitGameReadThread"), TEXT("WARNING"), MB_OK);
+		return 1;
+	}
+
 	ShowWindow(hWnd, nCmdShow); // "hWnd"= handler da janela, devolvido por
 	// "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
 	// normal/modal); é passado como parâmetro de WinMain()
@@ -167,7 +197,6 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 
 	return((int)lpMsg.wParam); // Retorna sempre o parâmetro wParam da estrutura lpMsg
 }
-
 
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	HDC hDC;
@@ -188,21 +217,39 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		hDC = GetDC(hWnd);
 
 		memDC = CreateCompatibleDC(hDC);
-
 		hBit = CreateCompatibleBitmap(hDC, maxX, maxY);
-
 		SelectObject(memDC, hBit);
-
-		DeleteObject(hBit);
-
-		hBrush = CreateSolidBrush(RGB(36, 140, 117));
-
-		SelectObject(memDC, hBrush);
-
-		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
-
 		ReleaseDC(hWnd, hDC);
 
+		hDC = GetDC(hWnd);
+		global_hWnd = hDC;
+
+		//background
+		hBackground = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hBackground, sizeof(bmBackground), &bmBackground);
+		hdcBackground = CreateCompatibleDC(hDC);
+		SelectObject(hdcBackground, hBackground);
+
+		//player
+		hPlayerBarreira = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hPlayerBarreira, sizeof(bmPlayerBarreira), &bmPlayerBarreira);
+		hdcPlayerBarreira = CreateCompatibleDC(hDC);
+		SelectObject(hdcPlayerBarreira, hPlayerBarreira);
+
+		//ball
+		hBall = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/ball.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hBall, sizeof(bmBall), &bmBall);
+		hdcBall = CreateCompatibleDC(hDC);
+		SelectObject(hdcBall, hBall);
+		
+		//brick
+		hBrick = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/brick.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hBrick, sizeof(bmBrick), &bmBrick);
+		hdcBrick = CreateCompatibleDC(hDC);
+		SelectObject(hdcBrick, hBrick);
+
+		ReleaseDC(hWnd, hDC);
+		break;
 		//hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
 			//IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
@@ -213,36 +260,40 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		resolveKey(wParam);
 		break;
 	case WM_PAINT:
-		tempDC = CreateCompatibleDC(memDC);
-
-		SelectObject(tempDC, hBmp);
-
-		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
-
-		//BitBlt(memDC, 0, 0, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
-
-		BitBlt(memDC, xBitMap, yBitMap, bmp.bmWidth, bmp.bmHeight, tempDC, 0, 0, SRCCOPY);
-
-		DeleteDC(tempDC);
-
-		GetClientRect(hWnd, &rect);
-		SetTextColor(memDC, RGB(255, 255, 255));
 		SetBkMode(memDC, TRANSPARENT);
-		rect.left = 0;
-		rect.top = yPrint++;
-		DrawText(memDC, frase, _tcslen(frase), &rect, DT_SINGLELINE | DT_NOCLIP);
+		SetTextColor((HDC)memDC, RGB(255, 255, 255));
+		SetStretchBltMode(memDC, COLORONCOLOR);
+		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
+		StretchBlt(memDC, 0, 0, 800, 700, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
+	
+		TextOut(memDC, 0, 0, userLogged, _tcslen(userLogged));
+		TextOut(memDC, 400, 15, frase, _tcslen(frase));
 
+		if (localGameStatus == 1) {
+			//users
+			for (int i = 0; i < gameInfo->numUsers; i++) {
+				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size, 20, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
+			}
+
+			//balls
+			for (int i = 0; i < gameInfo->numBalls; i++) {
+				StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, 15, 15, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
+			}
+			
+			//bricks
+			for (int i = 0; i < gameInfo->numBricks; i++) {
+				StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].tam, 15, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
+			}
+		}
+	
 		hDC = BeginPaint(hWnd, &ps);
-
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
-
 		EndPaint(hWnd, &ps);
-		_tcscpy_s(frase, TAM, TEXT("-"));
 		break;
 	case WM_COMMAND:
 
 		switch (LOWORD(wParam)) {
-		case ID_PLAY:												//NULL em vez de hWnd para a janela nao ter "prioridade"
+		case ID_PLAY:					
 			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
 			if (res == IDCANCEL || res == IDABORT)
 				break;
@@ -259,13 +310,23 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				//MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-				xBitMap = 30;
-				yBitMap = 30;
-				hBmpBarreira[0] = hBmp;
-				GetObject(hBmp, sizeof(bmp), &bmp);
-				InvalidateRect(global_hWnd, NULL, TRUE);
+				_tcscpy_s(tmp, TAM, TEXT("T"));
+				InvalidateRect(hWnd, NULL, FALSE);	
+				break;
+
+
+				//barreira
+				localGameStatus = 1;
+				gameInfo->numUsers = 1;
+				gameInfo->nUsers[0].posx = 100;
+				gameInfo->nUsers[0].posy = 100;
+				gameInfo->nUsers[0].size = 100;
+				gameInfo->numBalls++;
+				gameInfo->nBalls[0].posx = 300;
+				gameInfo->nBalls[0].posy = 300;
+				
 				MessageBeep(MB_ICONSTOP);
+				InvalidateRect(hWnd, NULL, FALSE);	
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -389,8 +450,8 @@ void resolveKey(WPARAM wParam) {
 
 	if (_tcscmp(gameMsg.messageInfo, TEXT("not")) != 0) {
 		sendMessage(gameMsg);
-		_tcscpy_s(frase, TAM, gameMsg.messageInfo);
-		InvalidateRect(global_hWnd, NULL, TRUE);
+		//_tcscpy_s(frase, TAM, gameMsg.messageInfo);
+		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
 		
 }
@@ -407,7 +468,7 @@ void createLocalConnection() {
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
-	gameReady = CreateEvent(NULL, TRUE, FALSE, NULL);
+	gameReady = CreateEvent(NULL, FALSE, FALSE, LOCAL_UPDATE_GAME);
 	if (messageEvent == NULL || updateBalls == NULL || updateBonus == NULL || hStdoutMutex == NULL || gameReady == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating resources..."), TEXT("Resources"), MB_OK);
 		PostQuitMessage(1);
@@ -455,6 +516,7 @@ DWORD WINAPI localConnection(LPVOID param) {
 		//MessageBox(global_hWnd, TEXT("you got a message"), TEXT("client"), MB_OK);
 		newMsg = receiveMessageDLL();
 		resp = resolveMessage(newMsg);
+		InvalidateRect(global_hWnd, NULL, FALSE);	
 	} while (1);
 
 	return 0;
@@ -544,7 +606,7 @@ DWORD WINAPI msgPipe(LPVOID param) {
 	}
 
 	_tcscpy_s(frase, TAM, TEXT("connected to a msg pipe"));
-	InvalidateRect(global_hWnd, NULL, TRUE);
+	//InvalidateRect(global_hWnd, NULL, TRUE);
 
 	while (1) {
 		ZeroMemory(&OverlRd, sizeof(OverlRd));
@@ -661,7 +723,6 @@ DWORD WINAPI gamePipe(LPVOID param) {
 		}
 
 		SetEvent(gameReady);
-		ResetEvent(gameReady);
 
 		//WaitForSingleObject(hStdoutMutex,INFINITE);
 		//gotoxy(0, 10);
@@ -769,8 +830,9 @@ DWORD resolveMessage(msg inMsg) {
 
 	if (inMsg.codigoMsg == 1 && !logged) {//successful login
 		logged = 1;
+		MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
 		_tcscpy_s(frase, TAM, TEXT("You are now in the game, waiting for server to start..."));
-		InvalidateRect(global_hWnd, NULL, TRUE);
+		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
 	else if (inMsg.codigoMsg == -1 && !logged) {
 		_tprintf(TEXT("Server refused login with %s\n"), inMsg.messageInfo);
@@ -784,21 +846,16 @@ DWORD resolveMessage(msg inMsg) {
 	}
 	else if (inMsg.codigoMsg == 100) {//start game
 		_tcscpy_s(frase, TAM, TEXT("game started by the server"));
-		//invalid rect will be done insde usersMoves
 		localGameStatus = 1;
-		usersMove(TEXT("init"));
+		//usersMove(inMsg.messageInfo);
 	}
 	else if (inMsg.codigoMsg == 101) {//new ball
-		DWORD tmp = _tstoi(inMsg.messageInfo);
+		//DWORD tmp = _tstoi(inMsg.messageInfo);
 		//_tprintf(TEXT("creating %d balls thread para o utilizador!\n"),tmp);
 		//createBalls(tmp);
 	}
 	else if (inMsg.codigoMsg == 102) {//create bricks
-		hTBrick = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BrickThread, NULL, 0, NULL);
-		if (hTBrick == NULL) {
-			_tprintf(TEXT("Erro ao criar thread para desenhar bricks!\n"));
-			return -1;
-		}
+
 	}
 	else if (inMsg.codigoMsg == 103) {
 		int tmp = _tstoi(inMsg.messageInfo);
@@ -814,144 +871,12 @@ DWORD resolveMessage(msg inMsg) {
 		//watchGame();
 	}
 	else if (inMsg.codigoMsg == 200) {
-		usersMove(inMsg.messageInfo);
+		//usersMove(inMsg.messageInfo);
 	}
 	else if (inMsg.codigoMsg == -999) {
 		//endUser();
 	}
 	return -1;
-}
-
-DWORD WINAPI BrickThread(LPVOID param) {
-	//_tprintf(TEXT("should create %d bricks"), gameInfo->numBricks);
-	/*brick localBricks[MAX_BRICKS];
-
-	if (connection_mode == 1) {
-		do {
-			WaitForSingleObject(gameReady, INFINITE);
-			if (gameInfo->numBricks > 0 && gameInfo->numBricks < MAX_BRICKS)
-				break;
-		} while (1);
-	}
-
-	int numBricks = gameInfo->numBricks;
-	//draws intially all bricks
-	for (int i = 0; i < numBricks; i++) {
-		WaitForSingleObject(hStdoutMutex, INFINITE);
-
-		if (gameInfo->nBricks[i].status <= 0 && localGameStatus == 2) {
-			ReleaseMutex(hStdoutMutex);
-			continue;
-		}
-
-		gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
-		for (int j = 0; j < gameInfo->nBricks[i].tam; j++)
-			_tprintf(TEXT("%d"), gameInfo->nBricks[i].status);
-		ReleaseMutex(hStdoutMutex);
-	}
-
-	//updates
-	do {
-		WaitForSingleObject(updateBalls, INFINITE);
-		//numBricks = gameInfo->numBricks;
-		for (int i = 0; i < numBricks; i++)
-			if (localBricks[i].status != gameInfo->nBricks[i].status) {
-				if (gameInfo->nBricks[i].status == 0) {//end of brick life
-					WaitForSingleObject(hStdoutMutex, INFINITE);
-					gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
-					for (int j = 0; j < gameInfo->nBricks[i].tam; j++)
-						_tprintf(TEXT(" "));
-					ReleaseMutex(hStdoutMutex);
-				}
-				else {
-					WaitForSingleObject(hStdoutMutex, INFINITE);
-					gotoxy(gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
-					for (int j = 0; j < gameInfo->nBricks[i].tam; j++)
-						_tprintf(TEXT("%d"), gameInfo->nBricks[i].status);
-					ReleaseMutex(hStdoutMutex);
-					localBricks[i] = gameInfo->nBricks[i];
-				}
-
-			}
-	} while (gameInfo->numBricks);
-	*/
-	return 0;
-}
-
-void usersMove(TCHAR move[TAM]) {
-	//TCHAR tmp[TAM];
-	//TCHAR tmp2[TAM];
-	//_itot_s(gameInfo->nUsers[0].posx, tmp, TAM, 10);//translates num to str
-	//_tcscat_s(tmp, TAM, TEXT(","));
-	//_itot_s(gameInfo->nUsers[0].posy, tmp2, TAM, 10);//translates num to str
-	//_tcscat_s(tmp, TAM, tmp2);//ads
-	//MessageBox(global_hWnd, tmp, TEXT("jogador:"), MB_OK);
-	if (_tcscmp(move, TEXT("init")) == 0) {
-		for (int i = 0; i < gameInfo->numUsers; i++) {
-			WaitForSingleObject(hStdoutMutex, INFINITE);
-			hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-			xBitMap = gameInfo->nUsers[i].posx;
-			yBitMap = gameInfo->nUsers[i].posy;
-			hBmpBarreira[i] = hBmp;
-			GetObject(hBmp, sizeof(bmp), &bmp);
-			InvalidateRect(global_hWnd, NULL, TRUE);
-			ReleaseMutex(hStdoutMutex);
-		}
-		return;
-	}
-	else if (_tcscmp(move, TEXT("no")) == 0)
-		return;
-
-	if (connection_mode == 1) {
-		WaitForSingleObject(gameReady, INFINITE);//waits for info to come from pipe
-	}
-
-	//this function displays users barreiras
-	BOOLEAN flag = 0;
-	DWORD user_id, j = 0;
-	TCHAR usr[TAM];
-	TCHAR direction[TAM];
-	for (int i = 0; i < TAM; i++) {
-		if (move[i] == ':') {
-			usr[i] = '\0';
-			flag = 1;
-			continue;
-		}
-		else if (move[i] == '\0') {
-			direction[j] = '\0';
-			break;
-		}
-
-		if (!flag)
-			usr[i] = move[i];
-		else {
-			direction[j] = move[i];
-			j++;
-		}
-	}
-	user_id = _tstoi(usr);
-	if (user_id < 0 || user_id > MAX_USERS) {
-		_tprintf(TEXT("Invalido->From (%s) to user[%d]->(%s)\n"), move, user_id, direction);
-		Sleep(2000);
-		return;
-	}
-
-	user userinfo = gameInfo->nUsers[user_id];
-	TCHAR tmp[TAM];
-	TCHAR tmp2[TAM];
-	_itot_s(gameInfo->nUsers[user_id].posx, tmp, TAM, 10);//translates num to str
-	_tcscat_s(tmp, TAM, TEXT(","));
-	_itot_s(gameInfo->nUsers[user_id].posy, tmp2, TAM, 10);//translates num to str
-	_tcscat_s(tmp, TAM, tmp2);//ads
-	MessageBox(global_hWnd, tmp, TEXT("jogador:"), MB_OK);
-	//WaitForSingleObject(hStdoutMutex, INFINITE);
-	xBitMap = userinfo.posx;
-	yBitMap = userinfo.posy;
-	hBmp = hBmpBarreira[user_id];
-	GetObject(hBmp, sizeof(bmp), &bmp);
-	InvalidateRect(global_hWnd, NULL, TRUE);
-	//ReleaseMutex(hStdoutMutex);
-	return;
 }
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
@@ -960,6 +885,7 @@ void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	newMsg.to = 254;//login e sempre para o servidor
 	newMsg.codigoMsg = 1;//login
 	_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, user);
+	_tcscpy_s(userLogged, MAX_NAME_LENGTH, user);
 	sendMessage(newMsg);
 	return;
 }
@@ -991,8 +917,14 @@ void print(msg printMsg) {
 
 	//MessageBox(global_hWnd, tmp, TEXT("Server - sending message"), MB_OK);
 	_tcscpy_s(frase, TAM, tmp);
-	InvalidateRect(global_hWnd, NULL, TRUE);
+	//InvalidateRect(global_hWnd, NULL, TRUE);
 	return;
-
 }
 
+void WINAPI waitGameReady(LPVOID param) {
+	while (1) {
+		WaitForSingleObject(gameReady, INFINITE);//waits for game to be ready to use
+		InvalidateRect(global_hWnd, NULL, FALSE);	
+	}
+	return;
+}

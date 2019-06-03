@@ -28,7 +28,9 @@ void sendMessage(msg sendMsg);
 void sendMessagePipe(msg sendMsg, HANDLE hPipe);
 void createGame();
 void startGame();
+void assignBrick(DWORD num);
 void userInit(DWORD id);
+void createBalls(DWORD num);
 void resetUser(DWORD id);
 void resetBall(DWORD id);
 void resetBrick(DWORD id);
@@ -49,6 +51,7 @@ HANDLE hTmpPipeGame = NULL;
 
 //server related
 HANDLE updateGame;//event to update game for pipe users
+HANDLE updateLocalGame;//event to update game for local users
 HANDLE messageEventServer;//event to update server of dll msg
 HANDLE hResolveMessageMutex;//handle to resolveMessage function
 DWORD server_id;
@@ -117,11 +120,12 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		//return 0;
 
 	updateGame = CreateEvent(NULL, FALSE, FALSE, NULL);
+	updateLocalGame = CreateEvent(NULL, FALSE, FALSE, LOCAL_UPDATE_GAME);
 	messageEventServer = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);//updates ball of local
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);//updates bonus of local
 	hResolveMessageMutex = CreateMutex(NULL, FALSE, NULL);
-	if (updateGame == NULL || messageEventServer == NULL || updateBalls == NULL || updateBonus == NULL || hResolveMessageMutex == NULL) {
+	if (updateGame == NULL || messageEventServer == NULL || updateBalls == NULL || updateBonus == NULL || hResolveMessageMutex == NULL || updateLocalGame == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating resources..."), TEXT("Resources"), MB_OK);
 		PostQuitMessage(1);
 	}
@@ -252,25 +256,17 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		//InvalidateRect(hWnd, NULL, TRUE);
 		break;
 	case WM_PAINT:
-
-		GetClientRect(hWnd, &rect);
-		SetTextColor(memDC, RGB(255, 255, 255));
 		SetBkMode(memDC, TRANSPARENT);
-		rect.left = xPrint;
-		rect.top = yPrint;
-		yPrint += 15;
-		if (yPrint > maxY)
-			yPrint = 0;
-
-
-		//DrawText(memDC, frase, _tcslen(frase), &rect, DT_SINGLELINE | DT_NOCLIP);
+		SetTextColor((HDC)memDC, RGB(255, 255, 255));
+		SetStretchBltMode(memDC, COLORONCOLOR);
+		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
+		//StretchBlt(memDC, 0, 0, 800, 700, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
+		
+		TextOut(memDC, 0, 15, frase, _tcslen(frase));
 
 		hDC = BeginPaint(hWnd, &ps);
-
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
-
 		EndPaint(hWnd, &ps);
-		_tcscpy_s(frase, TAM, TEXT("-"));
 		break;
 
 	case WM_COMMAND:
@@ -380,7 +376,6 @@ DWORD resolveMessage(msg inMsg) {
 		}
 		else if (num >= 0) {//success
 			outMsg.codigoMsg = 9999;
-			//SetEvent(updateGame);//sends client the game
 		}
 		outMsg.to = num;
 		_itot_s(num, tmp, TAM, 10);//translates num to str
@@ -483,8 +478,8 @@ DWORD resolveMessage(msg inMsg) {
 			//_tprintf(TEXT("There are still players in the game!\n"));
 	}
 	else if (inMsg.codigoMsg == 101) {
-		//if (gameInfo->nUsers[inMsg.from].lifes > 0 && gameInfo->numBalls == 0)
-			//createBalls(1);
+		if (gameInfo->nUsers[inMsg.from].lifes > 0 && gameInfo->numBalls == 0)
+			createBalls(1);
 	}
 	else if (inMsg.codigoMsg == 200) {//user trying to move
 		//_tprintf(TEXT("[%d]-%s\n"), inMsg.from, inMsg.messageInfo);
@@ -497,7 +492,7 @@ DWORD resolveMessage(msg inMsg) {
 
 		int res = moveUser(inMsg.from, inMsg.messageInfo);
 		if (!res) {
-			SetEvent(updateGame);//update pipe
+			//SetEvent(updateGame);//update pipe
 			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
 			_tcscat_s(outMsg.messageInfo, TAM, TEXT(":"));//adds ':'
 			_tcscat_s(outMsg.messageInfo, TAM, inMsg.messageInfo);//adds direction
@@ -514,6 +509,9 @@ DWORD resolveMessage(msg inMsg) {
 		outMsg.to = inMsg.from;
 		sendMessage(outMsg);
 	}
+
+	SetEvent(updateLocalGame);
+	SetEvent(updateGame);
 	return -1;
 }
 
@@ -615,7 +613,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 			CloseHandle(hPipeInit);
 		}
 
-		SetEvent(updateGame);
+		//SetEvent(updateGame);
 	} while (1);
 
 	return 0;
@@ -662,7 +660,7 @@ DWORD WINAPI pipeClientMsg(LPVOID param) {
 			&OverlRd); // != NULL -> é overlapped I/O
 
 		WaitForSingleObject(ReadReady, INFINITE);
-		MessageBox(global_hWnd, TEXT("Got a message via the pipes"), TEXT("PIPE"), MB_OK);
+		//MessageBox(global_hWnd, TEXT("Got a message via the pipes"), TEXT("PIPE"), MB_OK);
 
 		GetOverlappedResult(hPipe, &OverlRd, &cbBytesRead, FALSE);
 		if (cbBytesRead < sizeof(msg))
@@ -671,6 +669,7 @@ DWORD WINAPI pipeClientMsg(LPVOID param) {
 		//processa info recebida
 		WaitForSingleObject(hResolveMessageMutex, INFINITE);
 		resp = resolveMessage(inMsg);
+		//SetEvent(updateGame);
 		ReleaseMutex(hResolveMessageMutex);
 	}
 
@@ -750,6 +749,9 @@ DWORD startVars() {
 	GetWindowRect(global_hWnd, &tmpRect);
 	gameInfo->myconfig.limx = tmpRect.right;
 	gameInfo->myconfig.limy = tmpRect.bottom;
+	gameInfo->myconfig.limx = 780;
+	//menor que 800
+	//gameInfo->myconfig.limy = 400;
 	_itot_s(gameInfo->myconfig.limx, tmp, TAM, 10);//translates num to str
 	_tcscat_s(tmp, TAM, TEXT(","));
 	_itot_s(gameInfo->myconfig.limy,tmp2, TAM, 10);//translates num to str
@@ -775,7 +777,6 @@ DWORD startVars() {
 	gameInfo->myconfig.max_bricks = MAX_BRICKS;
 	gameInfo->myconfig.initial_bricks = INIT_BRICKS;
 	//end of default config
-
 
 	for (i = 0; i < MAX_CLIENTS; i++) {
 
@@ -813,7 +814,7 @@ void resetUser(DWORD id) {
 	gameInfo->nUsers[id].user_id = -1;
 	gameInfo->nUsers[id].lifes = 3;
 	gameInfo->nUsers[id].score = 0;
-	gameInfo->nUsers[id].size = 10;
+	gameInfo->nUsers[id].size = 100;
 	gameInfo->nUsers[id].posx = 0;
 	gameInfo->nUsers[id].posy = 0;
 
@@ -849,7 +850,7 @@ void createBalls(DWORD num) {
 	DWORD threadId;
 	int i;
 	_tcscpy_s(frase, TAM, TEXT("Creating Ball"));
-	//InvalidateRect(global_hWnd, NULL, TRUE);
+	InvalidateRect(global_hWnd, NULL, TRUE);
 	for (i = 0; i < MAX_BALLS; i++) {
 		if (hTBola[i] == INVALID_HANDLE_VALUE) {//se handle is available
 			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
@@ -908,13 +909,20 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	LARGE_INTEGER li;
 	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
 
+	TCHAR tmp[TAM];
+	TCHAR tmp2[TAM];
+	TCHAR str[TAM];
+
 	int numberBrick = gameInfo->numBricks;
 	srand((int)time(NULL));
 	gameInfo->nBalls[id].id = id;
-	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size / 2);
-	DWORD posy = gameInfo->nUsers[0].posy;
+	//DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size / 2);
+	//DWORD posy = gameInfo->nUsers[0].posy;
+	DWORD posx = 100;
+	DWORD posy = 100;
+	
 	DWORD oposx, oposy, num = 0, ballScore = 0;
-	boolean flag, goingUp = 1, goingRight = (rand() % 2);
+	boolean flag, goingUp = 0, goingRight = 0;//(rand() % 2);
 	gameInfo->nBalls[id].status = 1;
 	do {
 		ballScore = GetTickCount();
@@ -991,7 +999,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		oposx = posx;
 		oposy = posy;
 		if (goingRight) {
-			if (posx < (gameInfo->myconfig.limx - 1)) {
+			if (posx < (gameInfo->myconfig.limx - 15)) {
 				posx++;
 			}
 			else {
@@ -1023,7 +1031,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 				for (int i = 0; i < gameInfo->numUsers; i++) {//checks for player
 					////_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
-					if (posy == gameInfo->nUsers[i].posy - 1 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size))) {//atinge a barreira
+					if (posy == gameInfo->nUsers[i].posy - 20 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size))) {//atinge a barreira
 						flag = 1;
 						//_tprintf(TEXT("HIT player[%d]!!\n"), i);
 						break;
@@ -1043,10 +1051,10 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			}
 		}
 
-		if (localNumBricks <= 0) {
-			gameInfo->nBalls[id].status = 0;//end of ball
-			gameInfo->numBalls--;
-		}
+		//if (localNumBricks <= 0) {
+		//	gameInfo->nBalls[id].status = 0;//end of ball
+		//	gameInfo->numBalls--;
+		//}
 
 		gameInfo->nBalls[id].posx = posx;
 		gameInfo->nBalls[id].posy = posy;
@@ -1054,9 +1062,8 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		if (gameInfo->nBalls[id].status != 0)//if is to end
 			gameInfo->nBalls[id].status = 1;
 
-		SetEvent(updateBalls);//local
-		ResetEvent(updateBalls);
-		SetEvent(updateGame);//pipe
+		SetEvent(updateLocalGame);
+		SetEvent(updateGame);
 
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
@@ -1084,16 +1091,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		}
 
 	resetBall(id);
-	hTBola[id] = INVALID_HANDLE_VALUE;
-	//_tprintf(TEXT("End of Ball %d!\n"), id);
-
-	/*if (gameInfo->numBalls == 0) {
-		if (gameInfo->nUsers[0].lifes) {
-			gameInfo->nUsers[0].lifes--;
-			createBalls(1);
-		}
-	}*/
-
 	return 0;
 }
 
@@ -1123,7 +1120,9 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 					gameInfo->nBricks[id].brinde.status = 0;
 					SetEvent(updateBonus);//update local
 					ResetEvent(updateBonus);
-					SetEvent(updateGame);//update pipe
+					//SetEvent(updateGame);//update pipe
+					SetEvent(updateLocalGame);
+					SetEvent(updateGame);
 					//_tprintf(TEXT("%s caught the bonus[%d]!\n"), gameInfo->nUsers[i].name, id);
 					//addBonus(id, i);
 					return 1;
@@ -1143,7 +1142,7 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 	gameInfo->nBricks[id].brinde.status = 0;
 	SetEvent(updateBonus);//update local
 	ResetEvent(updateBonus);
-	SetEvent(updateGame);//update pipe
+	//SetEvent(updateGame);//update pipe
 
 	return 0;
 }
@@ -1326,13 +1325,13 @@ void createGame() {
 
 	gameInfo->gameStatus = 0;
 	gameInfo->numUsers = 0;
-	MessageBox(global_hWnd, TEXT("game created"), TEXT("ALERT"), MB_OK);
-	_tcscpy_s(frase, TAM, TEXT("New game created"));
-	//InvalidateRect(global_hWnd, NULL, TRUE);
+	//MessageBox(global_hWnd, TEXT("game created"), TEXT("ALERT"), MB_OK);
+	_tcscpy_s(frase, TAM, TEXT("Game Created"));
+	InvalidateRect(global_hWnd, NULL, TRUE);
 }
 
 void startGame(){
-	MessageBox(global_hWnd, TEXT("starting game"), TEXT("WARNING"), MB_OK);
+	//MessageBox(global_hWnd, TEXT("starting game"), TEXT("WARNING"), MB_OK);
 	int i;
 	msg tmpMsg;
 	for (i = 0; i < gameInfo->numUsers; i++) {
@@ -1340,6 +1339,7 @@ void startGame(){
 	}
 
 	gameInfo->gameStatus = 1;
+	SetEvent(updateLocalGame);
 	SetEvent(updateGame);
 	Sleep(250);
 	tmpMsg.codigoMsg = 100;//new game
@@ -1349,11 +1349,62 @@ void startGame(){
 	sendMessage(tmpMsg);
 	
 	Sleep(1000);
-	//_tcscpy_s(frase, TAM, TEXT("Game started"));
-	//InvalidateRect(global_hWnd, NULL, TRUE);
+	_tcscpy_s(frase, TAM, TEXT("Game started"));
+	InvalidateRect(global_hWnd, NULL, TRUE);
 	//create bricks
-	//assignBrick(gameInfo->myconfig.initial_bricks);
+	assignBrick(gameInfo->myconfig.initial_bricks);
 	return 1;
+}
+
+void assignBrick(DWORD num) {
+	//create num brick
+	DWORD count = 0;
+	DWORD threadId;
+	int i;
+	int oposx = 10, oposy = 10;
+	for (i = 0; i < num; i++) {
+
+		gameInfo->nBricks[i].id = i;
+
+		gameInfo->nBricks[i].tam = 50;
+		gameInfo->nBricks[i].type = 1 + rand() % 3;
+		if (gameInfo->nBricks[i].type == 1) {//normal
+			gameInfo->nBricks[i].status = 1;
+		}
+		else if (gameInfo->nBricks[i].type == 2) {//resistent
+			gameInfo->nBricks[i].status = 2 + rand() % 3;
+		}
+		else if (gameInfo->nBricks[i].type == 3) {//magic
+			gameInfo->nBricks[i].status = 1;
+			gameInfo->nBricks[i].brinde.type = 1 + rand() % 3;
+		}
+
+		if (!(oposx + gameInfo->nBricks[i].tam + 3 <= gameInfo->myconfig.limx)) {
+			oposx = 10;
+			oposy += 25;
+		}
+
+		gameInfo->nBricks[i].posx = oposx;
+		gameInfo->nBricks[i].posy = oposy;
+		if (gameInfo->nBricks[i].type == 3) {//create bonus
+			gameInfo->nBricks[i].brinde.posx = oposx;
+			gameInfo->nBricks[i].brinde.posy = oposy;
+		}
+		oposx += gameInfo->nBricks[i].tam + 10;
+
+	}
+
+	gameInfo->numBricks = num;
+	localNumBricks = gameInfo->numBricks;
+	//msg tmpMsg;
+	//TCHAR tmp[TAM];
+	//tmpMsg.codigoMsg = 102;
+	//_itot_s(num, tmp, TAM, 10);
+	//_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
+	//tmpMsg.from = server_id;
+	//tmpMsg.to = 255;
+	//sendMessage(tmpMsg);
+	return;
 }
 
 
