@@ -1,7 +1,8 @@
 #include <windows.h>
-#include <Windows.h>
 #include <tchar.h>
 #include <windowsx.h>
+#include <strsafe.h>
+#include <aclapi.h>
 #include "DLL.h"
 #include "resource.h"
 
@@ -27,19 +28,14 @@ void createRemoteConnection();
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
 
 DWORD resolveMessage(msg inMsg);
-
 void sendMessage(msg sendMsg);
+
+void securityPipes(SECURITY_ATTRIBUTES * sa);
+void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR pSD);
 
 TCHAR szProgName[] = TEXT("Client");
 int connection_mode = -1;//0 = local / 1 = remote
 HWND global_hWnd = NULL;
-
-//bmp
-HBITMAP hBmpBarreira[MAX_CLIENTS];
-HBITMAP hBolaBmp[MAX_BALLS];
-BITMAP ballBmp[MAX_BALLS];
-int ballPosx = 0, ballPosy = 0;
-HBITMAP hBmpBrick;//[MAX_BRICKS] = NULL;
 
 //Variaveis
 	//print
@@ -47,43 +43,13 @@ int xPrint = 0, yPrint = 0;
 TCHAR frase[TAM];
 int numBalls = 0;
 
-//double buffer
-HDC memDC = NULL;
-int maxX = 0, maxY = 0;
-
-//Barreira
-HBITMAP hPlayerBarreira = NULL;
-BITMAP bmPlayerBarreira;
-HDC hdcPlayerBarreira;
-
-//Ball
-HBITMAP hBall = NULL;
-BITMAP bmBall;
-HDC hdcBall;
-
-//Ball
-HBITMAP hBrick = NULL;
-BITMAP bmBrick;
-HDC hdcBrick;
-
-//background
-HBITMAP hBackground = NULL;
-BITMAP bmBackground;
-HDC hdcBackground;
-
-HBITMAP hBit = NULL;
-HBRUSH hBrush = NULL;
-HBITMAP hBmp = NULL;
-BITMAP bmp;
-
 	//game
-pgame gameInfo;
+pgame gameInfo,gameUpdate;
 TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
 DWORD localGameStatus = 0;
 
 	//handles
-HANDLE hTBola[MAX_BALLS];
 HANDLE gameReady;
 HANDLE  messageEvent, hStdoutMutex;
 HANDLE hTMsgConnection;//has thread where receives messages
@@ -100,6 +66,42 @@ BOOLEAN canSendMsg = TRUE;
 HANDLE hTUserInput;
 
 TCHAR userLogged[MAX_NAME_LENGTH];
+
+
+//double buffer
+HDC memDC = NULL;
+int maxX = 0, maxY = 0;
+
+//background
+HBITMAP hBackground = NULL;
+BITMAP bmBackground;
+HDC hdcBackground;
+
+//Barreira
+HBITMAP hPlayerBarreira = NULL;
+BITMAP bmPlayerBarreira;
+HDC hdcPlayerBarreira;
+
+//Ball
+HBITMAP hBall = NULL;
+BITMAP bmBall;
+HDC hdcBall;
+
+//Brick
+HBITMAP hBrick = NULL;
+BITMAP bmBrick;
+HDC hdcBrick;
+
+//Hard Brick
+HBITMAP hHardBrick = NULL;
+BITMAP bmHardBrick;
+HDC hdcHardBrick;
+
+//other
+HBITMAP hBit = NULL;
+HBRUSH hBrush = NULL;
+HBITMAP hBmp = NULL;
+BITMAP bmp;
 
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {	
@@ -149,7 +151,8 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	hWnd = CreateWindow(
 		szProgName, // Nome da janela (programa) definido acima
 		TEXT("SO2 - Ficha 6 - Ex1_V2"),// Texto que figura na barra do título
-		WS_OVERLAPPEDWINDOW, // Estilo da janela (WS_OVERLAPPED= normal)
+		//WS_OVERLAPPEDWINDOW, // Estilo da janela (WS_OVERLAPPED= normal)
+		WS_OVERLAPPED, // Estilo da janela (WS_OVERLAPPED= normal)
 		5, // Posição x pixels (default=à direita da última)
 		5, // Posição y pixels (default=abaixo da última)
 		800, // Largura da janela (em pixels)
@@ -200,8 +203,8 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	HDC hDC;
-	RECT rect;
 	PAINTSTRUCT ps;
+	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	TCHAR tmp2[30];
 	int res;
@@ -222,10 +225,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		ReleaseDC(hWnd, hDC);
 
 		hDC = GetDC(hWnd);
-		global_hWnd = hDC;
 
 		//background
-		hBackground = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBackground = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/lobbyBackground.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		GetObject(hBackground, sizeof(bmBackground), &bmBackground);
 		hdcBackground = CreateCompatibleDC(hDC);
 		SelectObject(hdcBackground, hBackground);
@@ -247,6 +249,12 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		GetObject(hBrick, sizeof(bmBrick), &bmBrick);
 		hdcBrick = CreateCompatibleDC(hDC);
 		SelectObject(hdcBrick, hBrick);
+		
+		//hard brick
+		hHardBrick = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/hard_brick.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hHardBrick, sizeof(bmHardBrick), &bmHardBrick);
+		hdcHardBrick = CreateCompatibleDC(hDC);
+		SelectObject(hdcHardBrick, hHardBrick);
 
 		ReleaseDC(hWnd, hDC);
 		break;
@@ -264,25 +272,28 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		SetTextColor((HDC)memDC, RGB(255, 255, 255));
 		SetStretchBltMode(memDC, COLORONCOLOR);
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
-		StretchBlt(memDC, 0, 0, 800, 700, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
+		StretchBlt(memDC, 0, 0, 800, 600, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
 	
 		TextOut(memDC, 0, 0, userLogged, _tcslen(userLogged));
-		TextOut(memDC, 400, 15, frase, _tcslen(frase));
+		TextOut(memDC, 0, 15, frase, _tcslen(frase));
 
 		if (localGameStatus == 1) {
 			//users
 			for (int i = 0; i < gameInfo->numUsers; i++) {
-				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size, 20, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
+				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size.sizex, gameInfo->nUsers[i].size.sizey, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
 			}
 
 			//balls
 			for (int i = 0; i < gameInfo->numBalls; i++) {
-				StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, 15, 15, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
+				StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, gameInfo->nBalls[i].size.sizex, gameInfo->nBalls[i].size.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
 			}
 			
 			//bricks
 			for (int i = 0; i < gameInfo->numBricks; i++) {
-				StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].tam, 15, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
+				if(gameInfo->nBricks[i].type == 2)//hard brick
+					StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick, 0, 0, bmHardBrick.bmWidth, bmHardBrick.bmHeight, SRCPAINT);
+				else	
+					StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
 			}
 		}
 	
@@ -310,10 +321,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				//MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				_tcscpy_s(tmp, TAM, TEXT("T"));
+				
+				/*_tcscpy_s(tmp, TAM, TEXT("T"));
 				InvalidateRect(hWnd, NULL, FALSE);	
 				break;
-
 
 				//barreira
 				localGameStatus = 1;
@@ -324,8 +335,11 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				gameInfo->numBalls++;
 				gameInfo->nBalls[0].posx = 300;
 				gameInfo->nBalls[0].posy = 300;
-				
-				MessageBeep(MB_ICONSTOP);
+				*/
+				//MessageBeep(MB_ICONSTOP);
+				_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
+				MessageBox(global_hWnd, tmp, TEXT("NumBricks = "), MB_OK);
+				localGameStatus = 1;
 				InvalidateRect(hWnd, NULL, FALSE);	
 				break;
 			case ID_ABOUT_TYPE:
@@ -410,6 +424,9 @@ LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 }
 
 void resolveKey(WPARAM wParam) {
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	TCHAR tmp2[TAM];
 	if (localGameStatus == -1)
 		return;
 
@@ -423,19 +440,32 @@ void resolveKey(WPARAM wParam) {
 	case 0x41://a key
 		if (localGameStatus == 2)//watching
 			return;
-		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
+		if(gameInfo->nUsers[client_id].posx > 0)
+			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
 		break;
 	case VK_RIGHT:
 	case 0x44://d key
 		if (localGameStatus == 2)//watching
 			return;
-		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
+
+		//_itot_s(gameInfo->nUsers[0].posx + gameInfo->nUsers[0].size, tmp, TAM, 10);//translates num to str
+		//_itot_s(gameInfo->nUsers[0].posy, tmp2, TAM, 10);//translates num to str
+		//_tcscpy_s(str, TAM, TEXT("pos Before:"));
+		//_tcscat_s(str, TAM, tmp);//adds
+		//_tcscat_s(str, TAM, TEXT(","));//adds
+		//_tcscat_s(str, TAM, tmp2);//adds
+		//if(gameInfo->nUsers[0].posx > 600)
+		//	MessageBox(global_hWnd, str, TEXT("pos"), MB_OK);
+
+		if (gameInfo->nUsers[client_id].posx + gameInfo->nUsers[client_id].size.sizex < gameInfo->myconfig.gameSize.sizex)
+			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
 		break;
 	case VK_SPACE:
 		if (localGameStatus == 2)//watching
 			return;
 		gameMsg.codigoMsg = 101;
-		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
+		//if (gameInfo->numBalls == 0)
+			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
 		break;
 
 	case VK_ESCAPE:
@@ -525,6 +555,10 @@ DWORD WINAPI localConnection(LPVOID param) {
 void createRemoteConnection() {
 	BOOL fSuccess = FALSE;
 	DWORD dwMode;
+
+	SECURITY_ATTRIBUTES sa;
+	securityPipes(&sa);
+
 	while (1) {
 
 		hPipeMsg = CreateFile(
@@ -534,7 +568,7 @@ void createRemoteConnection() {
 			NULL,
 			OPEN_EXISTING,
 			0 | FILE_FLAG_OVERLAPPED,
-			NULL
+			&sa
 		);
 
 
@@ -652,7 +686,8 @@ DWORD WINAPI gamePipe(LPVOID param) {
 	HANDLE ReadReady;
 	BOOLEAN fSuccess = FALSE;
 	OVERLAPPED OverlRd = { 0 };
-
+	SECURITY_ATTRIBUTES sa;
+	securityPipes(&sa);
 
 	while (1) {
 		_tprintf(TEXT("Create file for game\n"));
@@ -663,7 +698,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 			NULL,
 			OPEN_EXISTING,
 			0 | FILE_FLAG_OVERLAPPED,
-			NULL
+			&sa
 		);
 
 
@@ -836,11 +871,12 @@ DWORD resolveMessage(msg inMsg) {
 	}
 	else if (inMsg.codigoMsg == -1 && !logged) {
 		_tprintf(TEXT("Server refused login with %s\n"), inMsg.messageInfo);
+		_tcscpy_s(userLogged, TAM, TEXT(""));
 		//endUser();
 		return -1;
 	}
 	else if (inMsg.codigoMsg == -100) {
-		_tprintf(TEXT("There is no game created by the server yet\n"));
+		_tcscpy_s(userLogged, TAM, TEXT("Game hasnt been created by the server yet"));
 		//endUser();
 		return -1;
 	}
@@ -924,7 +960,75 @@ void print(msg printMsg) {
 void WINAPI waitGameReady(LPVOID param) {
 	while (1) {
 		WaitForSingleObject(gameReady, INFINITE);//waits for game to be ready to use
+		//gameInfo = gameUpdate;
 		InvalidateRect(global_hWnd, NULL, FALSE);	
 	}
 	return;
+}
+
+void securityPipes(SECURITY_ATTRIBUTES * sa)
+{
+	PSECURITY_DESCRIPTOR pSD;
+	PACL pAcl;
+	EXPLICIT_ACCESS ea;
+	PSID pEveryoneSID = NULL, pAdminSID = NULL;
+	SID_IDENTIFIER_AUTHORITY SIDAuthWorld = SECURITY_WORLD_SID_AUTHORITY;
+	TCHAR str[256];
+
+	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR,
+		SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (pSD == NULL) {
+		_tprintf(TEXT("Erro LocalAlloc!!!"));
+		return;
+	}
+	if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION)) {
+		_tprintf(TEXT("Erro IniSec!!!"));
+		return;
+	}
+
+	// Create a well-known SID for the Everyone group.
+	if (!AllocateAndInitializeSid(&SIDAuthWorld, 1, SECURITY_WORLD_RID,
+		0, 0, 0, 0, 0, 0, 0, &pEveryoneSID))
+	{
+		_stprintf_s(str, 256, TEXT("AllocateAndInitializeSid() error %u"), GetLastError());
+		_tprintf(str);
+		Cleanup(pEveryoneSID, pAdminSID, NULL, pSD);
+	}
+	else
+		_tprintf(TEXT("AllocateAndInitializeSid() for the Everyone group is OK"));
+
+	ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+
+	ea.grfAccessPermissions = GENERIC_READ | GENERIC_WRITE;
+	ea.grfAccessMode = SET_ACCESS;
+	ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+	ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+	ea.Trustee.ptstrName = (LPTSTR)pEveryoneSID;
+
+	if (SetEntriesInAcl(1, &ea, NULL, &pAcl) != ERROR_SUCCESS) {
+		_tprintf(TEXT("Erro SetAcl!!!"));
+		return;
+	}
+
+	if (!SetSecurityDescriptorDacl(pSD, TRUE, pAcl, FALSE)) {
+		_tprintf(TEXT("Erro IniSec!!!"));
+		return;
+	}
+
+	sa->nLength = sizeof(*sa);
+	sa->lpSecurityDescriptor = pSD;
+	sa->bInheritHandle = TRUE;
+}
+
+void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR pSD)
+{
+	if (pEveryoneSID)
+		FreeSid(pEveryoneSID);
+	if (pAdminSID)
+		FreeSid(pAdminSID);
+	if (pACL)
+		LocalFree(pACL);
+	if (pSD)
+		LocalFree(pSD);
 }

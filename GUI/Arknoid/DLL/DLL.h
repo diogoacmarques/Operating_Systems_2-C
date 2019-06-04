@@ -4,29 +4,62 @@
 #include <tchar.h>
 
 #define TAM 256
-#define MAX_MSG 50
-#define _MSECOND 10000
-//game
-#define MAX_CLIENTS 5
-#define MAX_LEVELS 5
-//User
-#define MAX_USERS 5
 #define MAX_NAME_LENGTH 250
-#define MAX_INIT_LIFES 3
+#define _MSECOND 10000
 
-//bals
-#define MAX_SPEED 150
-#define MAX_BALLS 5
-#define MAX_SPEED_BONUS 50
-#define PROB_SPEED_BONUS 0.5
-#define INIT_SPEED 20
-#define MAX_DURATION 50000
-
+//game
+#define GAME_LEVELS 5
+#define GAME_SIZE_X 800
+#define GAME_SIZE_Y 600
+//user
+#define USER_MAX_USERS 5
+#define USER_LIFES 5
+#define USER_SIZE_X 50
+#define USER_SIZE_Y 15
+//ball
+#define BALL_SPEED 25
+#define BALL_MAX_BALLS 5
+#define BALL_MAX_SPEED 5//time to sleep
+#define BALL_SIZE_X 15
+#define BALL_SIZE_Y 15
 //bricks
-#define MAX_BRICKS 50
-#define INIT_BRICKS 30
+#define BRICK_MAX_BRICKS 50
+#define BRICK_SIZE_X 20
+#define BRICK_SIZE_Y 10
+//bonus
+#define BONUS_SCORE_ADD 150 
+#define BONUS_PROB_SPEED 0.5
+#define BONUS_PROB_EXTRALIFE 0.3
+#define BONUS_PROB_TRIPLE 0.2
+#define BONUS_SPEED_CHANGE 5
+#define BONUS_SPEED_DURATION 10//seconds
+#define BONUS_SIZE_X 10
+#define BONUS_SIZE_Y 10
 
-#define MAX_BONUS_AT_TIME 
+
+//#define MAX_USERS 5
+//#define DEFAULT_USER_LIFES 5
+
+//#define MAX_INIT_LIFES 3
+//#define DEFAULT_SIZE_USER_X 50
+//#define DEFAULT_SIZE_USER_Y 15
+//
+//
+////bals
+//#define MAX_SPEED 150
+//#define MAX_BALLS 5
+//#define MAX_SPEED_BONUS 50
+//#define PROB_SPEED_BONUS 0.5
+//#define BALL_DEFAULT_SPEED 20
+//#define MAX_DURATION 50000
+//#define BALL_DEFAULT_SIZE 15
+//
+////bricks
+//#define MAX_BRICKS 50
+//#define INIT_BRICKS 30
+//#define BRICK_DEFAULT_SIZE 50
+//
+//#define MAX_BONUS_AT_TIME 
 
 #define USE_MSG_MUTEX TEXT("writeMsgMutex")
 #define MSG_SHARED_MEMORY_NAME TEXT("MSG_SHARED_MEMORY")
@@ -64,6 +97,10 @@ typedef struct Message {
 } msg, *pmsg;
 #define BUFSIZE_MSG sizeof(msg)
 
+typedef struct size {
+	int sizex;
+	int sizey;
+}drawSize;
 
 typedef struct ball {
 	int id;
@@ -71,6 +108,7 @@ typedef struct ball {
 	int posy;
 	int status;
 	int speed;
+	drawSize size;
 } ball;
 
 typedef struct bonus {
@@ -78,59 +116,62 @@ typedef struct bonus {
 	int type;	// 1 = speed_up | 2 = speed_down | 3 = extra_life | 4 = triple
 	int posx;
 	int posy;
+	drawSize size;
 } bonus;
 
 typedef struct brick {
 	int id;
 	int posx;
 	int posy;
-	int tam;
 	int status;
 	int type;	//1 = normal | 2 = resistente | 3 = magico
 	bonus brinde;
+	drawSize size;
 } brick;
 
 typedef struct config {
 	TCHAR file[TAM];
 	//game
-	int limx;
-	int limy;
-	int num_levels;
+	int gameNumLevels;
+	drawSize gameSize;
 	//user
-	int max_users;
-	int inital_lifes;
+	int userMaxUsers;
+	int userNumLifes;
+	drawSize userSize;
 	//ball
-	int inital_ball_speed;
-	int max_balls;
-	int max_speed;
+	int ballInitialSpeed;
+	int ballMaxBalls;
+	int ballMaxSpeed;
+	drawSize ballSize;
 	//bricks
-	int max_bricks;
-	int initial_bricks;
+	int brickMaxBricks;
+	drawSize brickSize;
 	//bonus
-	int score_up;
-	float prob_speed_up;
-	float prob_speed_down;
-	int num_speed_up;
-	int num_speed_down;
-	int duration;
+	int bonusScoreAdd;
+	float bonusProbSpeed;//probabilidade do bonus ser speed 
+	float bonusProbExtraLife;//probabilidade do bonus ser vida extra
+	float bonusProbTriple;//probabilidade do bonus ser triple ball
+	int bonusSpeedChange;
+	int bonusSpeedDuration;
+	drawSize bonusSize;
 } config;
 
 typedef struct Player {
 	TCHAR name[MAX_NAME_LENGTH];
-	int user_id;
+	int id;//necessary?
 	int lifes;
 	DWORD score;
-	int size;
 	int posx, posy;
-	DWORD connection_mode;
-	HANDLE hConnection;
+	DWORD connection_mode;//not being used?
+	HANDLE hConnection;//not being used?
+	drawSize size;
 }user;
 
 typedef struct {
 	config myconfig;
-	user nUsers[MAX_USERS];
-	ball nBalls[MAX_BALLS];
-	brick nBricks[MAX_BRICKS];
+	user nUsers[USER_MAX_USERS];
+	ball nBalls[BALL_MAX_BALLS];
+	brick nBricks[BRICK_MAX_BRICKS];
 	int numUsers;
 	int numBalls;
 	int numBricks;
@@ -139,7 +180,7 @@ typedef struct {
 #define BUFSIZE_GAME sizeof(game)
 
 HANDLE updateBalls, updateBonus;
-HANDLE messageEventClient[MAX_USERS];
+HANDLE messageEventClient[USER_MAX_USERS];
 
 HANDLE messageBroadcastDll;
 

@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <tchar.h>
 #include <windowsx.h>
+#include <strsafe.h>
+#include <aclapi.h>
 #include "resource.h"
 #include "DLL.h"
 
@@ -36,15 +38,20 @@ void resetBall(DWORD id);
 void resetBrick(DWORD id);
 void hitBrick(DWORD brick_id, DWORD ball_id);
 int moveUser(DWORD id, TCHAR side[TAM]);
+void securityPipes(SECURITY_ATTRIBUTES * sa);
+void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR pSD);
 
 
 //vars
 TCHAR szProgName[] = TEXT("Server Base");
 HWND global_hWnd = NULL;
 DWORD localNumBricks;
+TCHAR inTxt[TAM];
+TCHAR outTxt[TAM];
+TCHAR gameState[TAM];
 
 //client related
-comuciationHandle clientsInfo[MAX_CLIENTS];
+comuciationHandle clientsInfo[USER_MAX_USERS];
 DWORD tmp_client_id = 0;
 HANDLE hTmpPipeMsg = NULL;
 HANDLE hTmpPipeGame = NULL;
@@ -55,10 +62,14 @@ HANDLE updateLocalGame;//event to update game for local users
 HANDLE messageEventServer;//event to update server of dll msg
 HANDLE hResolveMessageMutex;//handle to resolveMessage function
 DWORD server_id;
-HANDLE hTBola[MAX_BALLS];
+HANDLE hTBola[BALL_MAX_BALLS];
+
+int maxX = 0, maxY = 0;
+HDC memDC = NULL;
+HBITMAP hBit = NULL;
+HBRUSH hBrush = NULL;
 
 pgame gameInfo;//has game Information
-
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {
 	
@@ -98,8 +109,8 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		WS_OVERLAPPEDWINDOW, // Estilo da janela (WS_OVERLAPPED= normal)
 		5, // Posição x pixels (default=à direita da última)
 		5, // Posição y pixels (default=abaixo da última)
-		800, // Largura da janela (em pixels)
-		600, // Altura da janela (em pixels)
+		GAME_SIZE_X, // Largura da janela (800)
+		GAME_SIZE_Y, // Altura da janela (600)
 		(HWND)HWND_DESKTOP, // handle da janela pai (se se criar uma a partir de
 		// outra) ou HWND_DESKTOP se a janela for a primeira,
 		// criada a partir do "desktop"
@@ -107,6 +118,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		(HINSTANCE)hInst, // handle da instância do programa actual ("hInst" é
 		// passado num dos parâmetros de WinMain()
 		0); // Não há parâmetros adicionais para a janela
+
 	ShowWindow(hWnd, nCmdShow);
 	global_hWnd = hWnd;
 	UpdateWindow(hWnd); // Refrescar a janela (Windows envia à janela uma
@@ -115,9 +127,17 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	DWORD res;
 	srand((int)time(NULL));
 
-	HANDLE checkExistingServer = CreateEvent(NULL, FALSE, FALSE, CHECK_SERVER_EVENT);
-	//if(checkExistingServer == )
-		//return 0;
+	/*HANDLE checkExistingServer;
+	checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
+	checkExistingServer = OpenEvent(NULL,NULL, CHECK_SERVER_EVENT);
+	if (checkExistingServer == NULL) {//there is no server created
+		checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
+	}
+	else {
+		MessageBox(hWnd, TEXT("There is a server running at this moment."), TEXT("WARNING"), MB_OK);
+		PostQuitMessage(0);
+	}
+	*/
 
 	updateGame = CreateEvent(NULL, FALSE, FALSE, NULL);
 	updateLocalGame = CreateEvent(NULL, FALSE, FALSE, LOCAL_UPDATE_GAME);
@@ -165,6 +185,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		//_tprintf(TEXT("Erro ao iniciar as variaveis!"));
 	}
 
+
 	while (GetMessage(&lpMsg, NULL, 0, 0)) {
 		TranslateMessage(&lpMsg); // Pré-processamento da mensagem (p.e. obter código
 	   // ASCII da tecla premida)
@@ -178,28 +199,10 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	return((int)lpMsg.wParam); // Retorna sempre o parâmetro wParam da estrutura lpMsg
 }
 
-int xPos = 0, yPos = 0;
-TCHAR c = '?';
-TCHAR frase[TAM];
-
-int maxX = 0, maxY = 0;
-HDC memDC = NULL;
-HBITMAP hBit = NULL;
-HBRUSH hBrush = NULL;
-HDC tempDC = NULL;
-HBITMAP hBmp = NULL;
-BITMAP bmp;
-
-int xBitMap = 0, yBitMap = 0;
-TCHAR login[100];
-//print
-int xPrint = 0, yPrint = 0;
 
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	//draw
 	HDC hDC;
-	RECT rect;
-	//DWORD res;
 	PAINTSTRUCT ps;
 
 	switch (messg) {
@@ -226,35 +229,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 	case WM_KEYDOWN:
 		break;
-		GetClientRect(hWnd, &rect);
-		switch (LOWORD(wParam)) {
-		case VK_UP:
-			yBitMap = yBitMap > 0 ? yBitMap - 10 : 0;
-			break;
-		case VK_DOWN:
-			yBitMap = yBitMap < rect.bottom - bmp.bmHeight ? yBitMap + 10 : rect.bottom - bmp.bmHeight;
-			break;
-		case VK_LEFT:
-			xBitMap = xBitMap > 0 ? xBitMap - 10 : 0;
-			break;
-		case VK_RIGHT:
-			xBitMap = xBitMap < rect.right - bmp.bmWidth ? xBitMap + 10 : rect.right - bmp.bmWidth;
-			break;
-		case VK_SPACE:
-			//draw image
-			hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
-				IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-			GetObject(hBmp, sizeof(bmp), &bmp);
-			tempDC = CreateCompatibleDC(memDC);
-			SelectObject(tempDC, hBmp);
-			//PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY);
-			BitBlt(memDC, xBitMap, yBitMap, 150, 150, tempDC, 0, 0, SRCCOPY);//copies from tmpDC to memDC
-			DeleteDC(tempDC);
-			break;
-		}
-		//InvalidateRect(hWnd, NULL, TRUE);
-		break;
 	case WM_PAINT:
 		SetBkMode(memDC, TRANSPARENT);
 		SetTextColor((HDC)memDC, RGB(255, 255, 255));
@@ -262,7 +236,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
 		//StretchBlt(memDC, 0, 0, 800, 700, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
 		
-		TextOut(memDC, 0, 15, frase, _tcslen(frase));
+		TextOut(memDC, 0, 10, gameState, _tcslen(gameState));
+		TextOut(memDC, 0, 30, inTxt, _tcslen(inTxt));
+		TextOut(memDC, 0, 45, outTxt, _tcslen(outTxt));
 
 		hDC = BeginPaint(hWnd, &ps);
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
@@ -304,6 +280,9 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 			}
 			break;
 		case ID_TOP10:
+			assignBrick(30);
+			//SetEvent(updateLocalGame);
+			MessageBeep(MB_ICONSTOP);
 			break;
 		case ID_USERSLOGGED:
 			break;
@@ -312,7 +291,7 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 			MessageBox(global_hWnd, tmp, TEXT("Number of users:"), MB_OK);
 			_itot_s(gameInfo->gameStatus, tmp, TAM, 10);//translates num to str
 			MessageBox(global_hWnd, tmp, TEXT("GameStatus:"), MB_OK);
-			for (int i = 0; i < MAX_CLIENTS; i++) {
+			for (int i = 0; i < USER_MAX_USERS; i++) {
 				_itot_s(clientsInfo[i].communication, tmp, TAM, 10);//translates num to str
 				MessageBox(global_hWnd, tmp, TEXT("client[i].communication = "), MB_OK);
 			}
@@ -347,8 +326,12 @@ void print(msg printMsg) {
 
 
 	//MessageBox(global_hWnd, tmp, TEXT("Server - sending message"), MB_OK);
-	//_tcscpy_s(frase, TAM, tmp);
-	//InvalidateRect(global_hWnd, NULL, TRUE);
+	if (printMsg.to == 254)
+		_tcscpy_s(inTxt, TAM, tmp);
+	else
+		_tcscpy_s(outTxt, TAM, tmp);
+	
+	InvalidateRect(global_hWnd, NULL, FALSE);
 	return;
 	//MessageBeep(MB_ICONSTOP);
 
@@ -370,8 +353,8 @@ DWORD resolveMessage(msg inMsg) {
 		num = createHandle(inMsg);
 		_itot_s(num, tmp, TAM, 10);//translates num to str
 		_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys client_id to messageInfo
-		MessageBox(global_hWnd, tmp, TEXT("client number:"), MB_OK);
-		if (num == MAX_CLIENTS - 1) {//full
+		//MessageBox(global_hWnd, tmp, TEXT("client number:"), MB_OK);
+		if (num == USER_MAX_USERS - 1) {//full
 			outMsg.codigoMsg = -9999;
 		}
 		else if (num >= 0) {//success
@@ -381,6 +364,7 @@ DWORD resolveMessage(msg inMsg) {
 		_itot_s(num, tmp, TAM, 10);//translates num to str
 		_tcscpy_s(outMsg.messageInfo, TAM, tmp);//copys client_id to messageInfo
 		sendMessage(outMsg);
+		print(outMsg);
 		return 1;
 	}
 
@@ -425,7 +409,7 @@ DWORD resolveMessage(msg inMsg) {
 		}
 		if (flag) {
 			_tcscpy_s(gameInfo->nUsers[gameInfo->numUsers].name, MAX_NAME_LENGTH, inMsg.messageInfo);
-			gameInfo->nUsers[gameInfo->numUsers].user_id = inMsg.from;
+			gameInfo->nUsers[gameInfo->numUsers].id = inMsg.from;
 			//_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
 			outMsg.codigoMsg = 1;//sucesso
 			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClientMsg;
@@ -460,12 +444,12 @@ DWORD resolveMessage(msg inMsg) {
 			outMsg.codigoMsg = -999;
 			sendMessage(outMsg);
 
-			for (int i = 0; i < MAX_BALLS; i++) {
+			for (int i = 0; i < BALL_MAX_BALLS; i++) {
 				TerminateThread(hTBola[i], 1);
 				CloseHandle(hTBola[i]);
 				resetBall(i);
 			}
-			for (int i = 0; i < MAX_BRICKS; i++) {
+			for (int i = 0; i < BRICK_MAX_BRICKS; i++) {
 				resetBrick(i);
 			}
 			gameInfo->numBalls = 0;
@@ -510,6 +494,7 @@ DWORD resolveMessage(msg inMsg) {
 		sendMessage(outMsg);
 	}
 
+	InvalidateRect(global_hWnd, NULL, FALSE);
 	SetEvent(updateLocalGame);
 	SetEvent(updateGame);
 	return -1;
@@ -520,8 +505,10 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 	BOOLEAN fConnected = 0;
 	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
 	HANDLE hThread;
-
 	//DWORD nSent;
+
+	SECURITY_ATTRIBUTES sa;
+	securityPipes(&sa);
 
 	do {
 		hPipeInit = CreateNamedPipe(INIT_PIPE_MSG_NAME,
@@ -533,7 +520,7 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 			BUFSIZE_MSG, // tam buffer output
 			BUFSIZE_MSG, // tam buffer input
 			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
-			NULL);
+			&sa);
 
 		if (hPipeInit == INVALID_HANDLE_VALUE) {
 			//_tprintf(TEXT("Erro ao iniciar pipe!"));
@@ -571,14 +558,9 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 DWORD WINAPI connectPipeGame(LPVOID param) {
 	BOOLEAN fConnected = 0;
 	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
-	//DWORD nSent;
 
-	/*HANDLE sendGamePipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)updateGamePipe, NULL, 0, NULL);
-	if (sendGamePipe == NULL) {
-		//_tprintf(TEXT("Error createing updateGamePipe!\n"));
-		return -1;
-	}*/
-
+	SECURITY_ATTRIBUTES sa;
+	securityPipes(&sa);
 
 	do {
 
@@ -589,7 +571,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 			BUFSIZE_GAME, // tam buffer output
 			BUFSIZE_GAME, // tam buffer input
 			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
-			NULL);
+			&sa);
 
 		if (hPipeInit == INVALID_HANDLE_VALUE) {
 			//_tprintf(TEXT("Erro ao iniciar pipe!"));
@@ -692,7 +674,7 @@ DWORD WINAPI updateGamePipe(LPVOID param) {
 	do {
 		WaitForSingleObject(updateGame, INFINITE);
 		////_tprintf(TEXT("Will update game now\n"));
-		for (i = 0; i < MAX_CLIENTS; i++)
+		for (i = 0; i < USER_MAX_USERS; i++)
 			if(clientsInfo[i].communication == 0){
 				//SetEvent() lets know that the game is ready to be used(should i?)
 			}
@@ -735,113 +717,122 @@ DWORD WINAPI receiveLocalMsg(LPVOID param) {//local communication
 }
 
 DWORD startVars() {
-
-	int i;
-	TCHAR tmp[TAM];
-	TCHAR tmp2[TAM];
-	//Status
-	gameInfo->gameStatus = -1;
-	server_id = 254;
-	//default config
-	//game
-
 	RECT tmpRect;
 	GetWindowRect(global_hWnd, &tmpRect);
-	gameInfo->myconfig.limx = tmpRect.right;
-	gameInfo->myconfig.limy = tmpRect.bottom;
-	gameInfo->myconfig.limx = 780;
-	//menor que 800
-	//gameInfo->myconfig.limy = 400;
-	_itot_s(gameInfo->myconfig.limx, tmp, TAM, 10);//translates num to str
-	_tcscat_s(tmp, TAM, TEXT(","));
-	_itot_s(gameInfo->myconfig.limy,tmp2, TAM, 10);//translates num to str
-	_tcscat_s(tmp, TAM, tmp2);//ads
-	MessageBox(global_hWnd, tmp, TEXT("limites"), MB_OK);
+	int i;
+	server_id = 254;
 
-
-	gameInfo->myconfig.num_levels = MAX_LEVELS;
-	gameInfo->myconfig.score_up = 100;
-	//Users
-	gameInfo->myconfig.max_users = MAX_USERS;
-	gameInfo->myconfig.inital_lifes = MAX_INIT_LIFES;
-	//balls
-	gameInfo->myconfig.max_balls = MAX_BALLS;
-	gameInfo->myconfig.max_speed = MAX_SPEED;
-	gameInfo->myconfig.num_speed_up = MAX_SPEED_BONUS;
-	gameInfo->myconfig.num_speed_down = MAX_SPEED_BONUS;
-	gameInfo->myconfig.prob_speed_up = PROB_SPEED_BONUS;
-	gameInfo->myconfig.prob_speed_down = PROB_SPEED_BONUS;
-	gameInfo->myconfig.duration = MAX_DURATION;
-	gameInfo->myconfig.inital_ball_speed = INIT_SPEED;
+	gameInfo->gameStatus = -1;
+	//default config
+	gameInfo->myconfig.file;
+	//game
+	gameInfo->myconfig.gameNumLevels = GAME_LEVELS;
+	gameInfo->myconfig.gameSize.sizex = tmpRect.right - 25;
+	gameInfo->myconfig.gameSize.sizey = tmpRect.bottom;
+	//user
+	gameInfo->myconfig.userMaxUsers = USER_MAX_USERS;
+	gameInfo->myconfig.userNumLifes = USER_LIFES;
+	gameInfo->myconfig.userSize.sizex = USER_SIZE_X;
+	gameInfo->myconfig.userSize.sizey = USER_SIZE_Y;
+	//ball
+	gameInfo->myconfig.ballInitialSpeed = BALL_SPEED;
+	gameInfo->myconfig.ballMaxBalls = BALL_MAX_BALLS;
+	gameInfo->myconfig.ballMaxSpeed = BALL_MAX_SPEED;
+	gameInfo->myconfig.ballSize.sizex = BALL_SIZE_X;
+	gameInfo->myconfig.ballSize.sizey = BALL_SIZE_Y;
 	//bricks
-	gameInfo->myconfig.max_bricks = MAX_BRICKS;
-	gameInfo->myconfig.initial_bricks = INIT_BRICKS;
+	gameInfo->myconfig.brickMaxBricks = BRICK_MAX_BRICKS;
+	gameInfo->myconfig.brickSize.sizex = BRICK_SIZE_X;
+	gameInfo->myconfig.brickSize.sizey = BRICK_SIZE_Y;
+	//bonus
+	gameInfo->myconfig.bonusScoreAdd = BONUS_SCORE_ADD;
+	gameInfo->myconfig.bonusProbSpeed = BONUS_PROB_SPEED;
+	gameInfo->myconfig.bonusProbExtraLife = BONUS_PROB_EXTRALIFE;
+	gameInfo->myconfig.bonusProbTriple = BONUS_PROB_TRIPLE;
+	gameInfo->myconfig.bonusSpeedChange = BONUS_SPEED_CHANGE;
+	gameInfo->myconfig.bonusSpeedDuration = BONUS_SPEED_DURATION;
+	gameInfo->myconfig.bonusSize.sizex = BONUS_SIZE_X;
+	gameInfo->myconfig.bonusSize.sizey = BONUS_SIZE_Y;
 	//end of default config
 
-	for (i = 0; i < MAX_CLIENTS; i++) {
-
+	//Users
+	gameInfo->numUsers = 0;
+	for (i = 0; i < USER_MAX_USERS; i++) {
+		resetUser(i);
 		clientsInfo[i].hClientMsg = NULL;
 		clientsInfo[i].hClientGame = NULL;
 		clientsInfo[i].communication = -1;
-
-		//_itot_s(clientsInfo[i].communication, tmp, TAM, 10);//translates num to str
-		//MessageBox(global_hWnd, tmp, TEXT("client[i].communication = "), MB_OK);
-	}
-	//Users
-	gameInfo->numUsers = 0;
-	for (i = 0; i < MAX_USERS; i++) {
-		resetUser(i);
 	}
 	//Balls
 	gameInfo->numBalls = 0;
-	for (i = 0; i < MAX_BALLS; i++) {
+	for (i = 0; i < BALL_MAX_BALLS; i++) {
 		resetBall(i);
 	}
 	//Brick
 	gameInfo->numBricks = 0;
-	for (i = 0; i < MAX_BRICKS; i++) {
+	for (i = 0; i < BRICK_MAX_BRICKS; i++) {
 		resetBrick(i);
 	}
+
+	_tcscpy_s(gameState, TAM, TEXT("Server Initiated"));
+	InvalidateRect(global_hWnd, NULL, TRUE);
+
+
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	TCHAR tmp2[TAM];
+	_itot_s(gameInfo->myconfig.gameSize.sizex, tmp, TAM, 10);//translates num to str
+	_itot_s(gameInfo->myconfig.gameSize.sizey, tmp2, TAM, 10);//translates num to str
+	_tcscpy_s(str, TAM, TEXT("lmites = "));
+	_tcscat_s(str, TAM, tmp);//ads
+	_tcscat_s(str, TAM, TEXT(","));
+	_tcscat_s(str, TAM, tmp2);//ads
+	MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
 
 	return 0;
 }
 
 void resetUser(DWORD id) {
 	////_tprintf(TEXT("Reseting user %d\n"), id);
-	_stprintf_s(gameInfo->nUsers[id].name, MAX_NAME_LENGTH, TEXT("empty"));
 	gameInfo->nUsers[id].connection_mode = -1;
 	gameInfo->nUsers[id].hConnection = NULL;
-	gameInfo->nUsers[id].user_id = -1;
-	gameInfo->nUsers[id].lifes = 3;
-	gameInfo->nUsers[id].score = 0;
-	gameInfo->nUsers[id].size = 100;
-	gameInfo->nUsers[id].posx = 0;
-	gameInfo->nUsers[id].posy = 0;
-
+	gameInfo->nUsers[id].lifes = -1;
+	_stprintf_s(gameInfo->nUsers[id].name, MAX_NAME_LENGTH, TEXT("empty"));
+	gameInfo->nUsers[id].posx = -1;
+	gameInfo->nUsers[id].posy = -1;
+	gameInfo->nUsers[id].score = -1;
+	gameInfo->nUsers[id].size.sizex = -1;
+	gameInfo->nUsers[id].size.sizey = -1;
+	gameInfo->nUsers[id].id = -1;
 }
 
 void resetBall(DWORD id) {
 	////_tprintf(TEXT("Reseting ball %d\n"), id);
 	gameInfo->nBalls[id].id = -1;
-	gameInfo->nBalls[id].posx = 0;
-	gameInfo->nBalls[id].posy = 0;
-	gameInfo->nBalls[id].status = 0;
-	gameInfo->nBalls[id].speed = gameInfo->myconfig.inital_ball_speed;
+	gameInfo->nBalls[id].posx = -1;
+	gameInfo->nBalls[id].posy = -1;
+	gameInfo->nBalls[id].size.sizex = -1;
+	gameInfo->nBalls[id].size.sizey = -1;
+	gameInfo->nBalls[id].speed = -1;
+	gameInfo->nBalls[id].status = -1;
 	hTBola[id] = INVALID_HANDLE_VALUE;
 }
 
 void resetBrick(DWORD id) {
 	////_tprintf(TEXT("Reseting brick %d\n"), id);
+	gameInfo->nBricks[id].brinde.posx = -1;
+	gameInfo->nBricks[id].brinde.posy = -1;
+	gameInfo->nBricks[id].brinde.size.sizex = -1;
+	gameInfo->nBricks[id].brinde.size.sizey = -1;
+	gameInfo->nBricks[id].brinde.status = -1;
+	gameInfo->nBricks[id].brinde.type = -1;
 	gameInfo->nBricks->id = -1;
-	gameInfo->nBricks[id].posx = 0;
-	gameInfo->nBricks[id].posy = 0;
-	gameInfo->nBricks[id].status = 0;
-	gameInfo->nBricks[id].tam = 0;
-	gameInfo->nBricks[id].type = 0;
-	gameInfo->nBricks[id].brinde.status = 0;
-	gameInfo->nBricks[id].brinde.type = 0;
-	gameInfo->nBricks[id].brinde.posx = 0;
-	gameInfo->nBricks[id].brinde.posy = 0;
+	gameInfo->nBricks[id].posx = -1;
+	gameInfo->nBricks[id].posy = -1;
+	gameInfo->nBricks[id].size.sizex = -1;
+	gameInfo->nBricks[id].size.sizey = -1;
+	gameInfo->nBricks[id].status = -1;
+	gameInfo->nBricks[id].type = -1;
 }
 
 void createBalls(DWORD num) {
@@ -849,9 +840,7 @@ void createBalls(DWORD num) {
 	DWORD count = 0;
 	DWORD threadId;
 	int i;
-	_tcscpy_s(frase, TAM, TEXT("Creating Ball"));
-	InvalidateRect(global_hWnd, NULL, TRUE);
-	for (i = 0; i < MAX_BALLS; i++) {
+	for (i = 0; i < BALL_MAX_BALLS; i++) {
 		if (hTBola[i] == INVALID_HANDLE_VALUE) {//se handle is available
 			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
 			if (hTBola[i] == INVALID_HANDLE_VALUE) {
@@ -905,101 +894,98 @@ void createBonus(DWORD id) {
 
 DWORD WINAPI BolaThread(LPVOID param) {
 
+	srand((int)time(NULL));
 	DWORD id = ((DWORD)param);
+	int numberBrick = gameInfo->numBricks;
 	LARGE_INTEGER li;
 	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
-
-	TCHAR tmp[TAM];
-	TCHAR tmp2[TAM];
-	TCHAR str[TAM];
-
-	int numberBrick = gameInfo->numBricks;
-	srand((int)time(NULL));
-	gameInfo->nBalls[id].id = id;
-	//DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size / 2);
-	//DWORD posy = gameInfo->nUsers[0].posy;
-	DWORD posx = 100;
-	DWORD posy = 100;
 	
-	DWORD oposx, oposy, num = 0, ballScore = 0;
-	boolean flag, goingUp = 0, goingRight = 0;//(rand() % 2);
+	gameInfo->nBalls[id].id = id;
 	gameInfo->nBalls[id].status = 1;
+	gameInfo->nBalls[id].size.sizex = gameInfo->myconfig.ballSize.sizex;
+	gameInfo->nBalls[id].size.sizey = gameInfo->myconfig.ballSize.sizey;
+	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size.sizex / 2);
+	DWORD posy = gameInfo->nUsers[0].posy + gameInfo->nUsers[0].size.sizey;
+
+	posy = 100;
+	posx = 100;
+	DWORD ballScore = 0;
+	boolean flag, goingUp = 1, goingRight = (rand() % 2);
+
 	do {
 		ballScore = GetTickCount();
 		flag = 0;
 		//checks for bricks
-		for (int i = 0; i < numberBrick; i++) {
-			if (gameInfo->nBricks[i].status <= 0)
-				continue;
-			////_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
-			//up
-			if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
+		//for (int i = 0; i < numberBrick; i++) {
+		//	if (gameInfo->nBricks[i].status <= 0)
+		//		continue;
+		//	////_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
+		//	//up
+		//	if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
 
-				//straight up
-				if (gameInfo->nBricks[i].posx - 1 < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-					////_tprintf(TEXT("Hit up\n"), posy - 1, gameInfo->nBricks[i].posy);
-					goingUp = 0;
-					hitBrick(i, id);
-				}
-				//up-left
-				else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-					//_tprintf(TEXT("Hit up-left\n"));
-					goingUp = 0;
-					goingRight = 1;
-					hitBrick(i, id);
-				}
-				//up-right
-				else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
-					//_tprintf(TEXT("Hit up-right\n"));
-					goingUp = 0;
-					goingRight = 0;
-					hitBrick(i, id);
-				}
+		//		//straight up
+		//		if (gameInfo->nBricks[i].posx - 1 < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+		//			////_tprintf(TEXT("Hit up\n"), posy - 1, gameInfo->nBricks[i].posy);
+		//			goingUp = 0;
+		//			hitBrick(i, id);
+		//		}
+		//		//up-left
+		//		else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
+		//			//_tprintf(TEXT("Hit up-left\n"));
+		//			goingUp = 0;
+		//			goingRight = 1;
+		//			hitBrick(i, id);
+		//		}
+		//		//up-right
+		//		else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
+		//			//_tprintf(TEXT("Hit up-right\n"));
+		//			goingUp = 0;
+		//			goingRight = 0;
+		//			hitBrick(i, id);
+		//		}
 
-			}
-			else if (!goingUp && posy + 1 == gameInfo->nBricks[i].posy) {
-				//down
-				if (gameInfo->nBricks[i].posx < posx + 1 && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-					////_tprintf(TEXT("Hit down\n"), posy + 1, gameInfo->nBricks[i].posy);
-					goingUp = 1;
-					hitBrick(i, id);
-				}
-				//down-left
-				else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-					//_tprintf(TEXT("Hit down-left\n"));
-					goingUp = 1;
-					goingRight = 1;
-					hitBrick(i, id);
-				}
-				//down-right
-				else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
-					//_tprintf(TEXT("Hit down-right\n"));
-					goingUp = 1;
-					goingRight = 0;
-					hitBrick(i, id);
-				}
+		//	}
+		//	else if (!goingUp && posy + 1 == gameInfo->nBricks[i].posy) {
+		//		//down
+		//		if (gameInfo->nBricks[i].posx < posx + 1 && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
+		//			////_tprintf(TEXT("Hit down\n"), posy + 1, gameInfo->nBricks[i].posy);
+		//			goingUp = 1;
+		//			hitBrick(i, id);
+		//		}
+		//		//down-left
+		//		else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
+		//			//_tprintf(TEXT("Hit down-left\n"));
+		//			goingUp = 1;
+		//			goingRight = 1;
+		//			hitBrick(i, id);
+		//		}
+		//		//down-right
+		//		else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
+		//			//_tprintf(TEXT("Hit down-right\n"));
+		//			goingUp = 1;
+		//			goingRight = 0;
+		//			hitBrick(i, id);
+		//		}
 
-			}
+		//	}
 
-			//left
-			if (!goingRight && posy == gameInfo->nBricks[i].posy && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-				//_tprintf(TEXT("Hit left\n"));
-				goingRight = 1;
-				hitBrick(i, id);
+		//	//left
+		//	if (!goingRight && posy == gameInfo->nBricks[i].posy && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
+		//		//_tprintf(TEXT("Hit left\n"));
+		//		goingRight = 1;
+		//		hitBrick(i, id);
 
-			}
-			//right
-			else if (goingRight && posy == gameInfo->nBricks[i].posy && posx + 1 == gameInfo->nBricks[i].posx) {
-				//_tprintf(TEXT("Hit right\n"));
-				goingRight = 0;
-				hitBrick(i, id);
-			}
-		}
+		//	}
+		//	//right
+		//	else if (goingRight && posy == gameInfo->nBricks[i].posy && posx + 1 == gameInfo->nBricks[i].posx) {
+		//		//_tprintf(TEXT("Hit right\n"));
+		//		goingRight = 0;
+		//		hitBrick(i, id);
+		//	}
+		//}
 
-		oposx = posx;
-		oposy = posy;
 		if (goingRight) {
-			if (posx < (gameInfo->myconfig.limx - 15)) {
+			if (posx < (gameInfo->myconfig.gameSize.sizex - 15)) {
 				posx++;
 			}
 			else {
@@ -1027,11 +1013,11 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			}
 		}
 		else {
-			if (posy < gameInfo->myconfig.limy - 1) {// se nao atinge o limite do mapa
+			if (posy < gameInfo->myconfig.gameSize.sizex - 1) {// se nao atinge o limite do mapa
 
 				for (int i = 0; i < gameInfo->numUsers; i++) {//checks for player
 					////_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
-					if (posy == gameInfo->nUsers[i].posy - 20 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size))) {//atinge a barreira
+					if (posy == gameInfo->nUsers[i].posy - 20 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex))) {//atinge a barreira
 						flag = 1;
 						//_tprintf(TEXT("HIT player[%d]!!\n"), i);
 						break;
@@ -1061,6 +1047,18 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 		if (gameInfo->nBalls[id].status != 0)//if is to end
 			gameInfo->nBalls[id].status = 1;
+
+
+		TCHAR str[TAM];
+		TCHAR tmp[TAM];
+		TCHAR tmp2[TAM];
+		_itot_s(gameInfo->myconfig.gameSize.sizex, tmp, TAM, 10);//translates num to str
+		_itot_s(gameInfo->myconfig.gameSize.sizey, tmp2, TAM, 10);//translates num to str
+		_tcscpy_s(str, TAM, TEXT("lmites = "));
+		_tcscat_s(str, TAM, tmp);//ads
+		_tcscat_s(str, TAM, TEXT(","));
+		_tcscat_s(str, TAM, tmp2);//ads
+		MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
 
 		SetEvent(updateLocalGame);
 		SetEvent(updateGame);
@@ -1116,7 +1114,7 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			if ((gameInfo->nUsers[i].posy - 1) == gameInfo->nBricks[id].brinde.posy) {
 				//_tprintf(TEXT("cheking user [%s]!\n"), gameInfo->nUsers[i].name);
-				if (gameInfo->nBricks[id].brinde.posx >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size)) {
+				if (gameInfo->nBricks[id].brinde.posx >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex)) {
 					gameInfo->nBricks[id].brinde.status = 0;
 					SetEvent(updateBonus);//update local
 					ResetEvent(updateBonus);
@@ -1135,7 +1133,7 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 		SetEvent(updateBonus);//update local
 		ResetEvent(updateBonus);
 		SetEvent(updateGame);//update pipe
-	} while (gameInfo->nBricks[id].brinde.posy < gameInfo->myconfig.limy - 1);
+	} while (gameInfo->nBricks[id].brinde.posy < gameInfo->myconfig.gameSize.sizey - 1);
 
 
 	//_tprintf(TEXT("End of bonus[%d]!\n"), id);
@@ -1153,7 +1151,7 @@ void hitBrick(DWORD brick_id, DWORD ball_id) {
 	if (gameInfo->nBricks[brick_id].status == 0) {
 		localNumBricks--;
 		for (int i = 0; i < gameInfo->numUsers; i++)
-			gameInfo->nUsers[i].score += gameInfo->myconfig.score_up;
+			gameInfo->nUsers[i].score += gameInfo->myconfig.bonusScoreAdd;
 
 		if (gameInfo->nBricks[brick_id].type == 3) {//magic
 			//creates thread that drops brinds
@@ -1166,9 +1164,9 @@ void hitBrick(DWORD brick_id, DWORD ball_id) {
 int moveUser(DWORD id, TCHAR side[TAM]) {
 	if (_tcscmp(side, TEXT("right")) == 0) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
-			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size >= gameInfo->myconfig.limx)//checks limits of map
+			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex >= gameInfo->myconfig.gameSize.sizex)//checks limits of map
 				return 1;
-			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size == gameInfo->nUsers[i].posx)
+			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex == gameInfo->nUsers[i].posx)
 				return 1;
 		}
 		gameInfo->nUsers[id].posx += 10;
@@ -1177,7 +1175,7 @@ int moveUser(DWORD id, TCHAR side[TAM]) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			if (gameInfo->nUsers[id].posx < 1)
 				return 1;
-			if (gameInfo->nUsers[id].posx == gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size)
+			if (gameInfo->nUsers[id].posx == gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex)
 				return 1;
 		}
 		gameInfo->nUsers[id].posx -= 10;
@@ -1189,7 +1187,7 @@ void sendMessage(msg sendMsg) {
 	print(sendMsg);
 	if (sendMsg.to == 255) {
 		//MessageBox(global_hWnd, TEXT("255"), TEXT("sending to:"), MB_OK);
-		for (int i = 0; i < MAX_CLIENTS; i++) {
+		for (int i = 0; i < USER_MAX_USERS; i++) {
 			if (clientsInfo[i].communication == 0) {
 				//MessageBox(global_hWnd, sendMsg.messageInfo, TEXT("Server - 255"), MB_OK);
 				sendMessageDLL(sendMsg);
@@ -1219,14 +1217,14 @@ void sendMessage(msg sendMsg) {
 		}
 	}
 	
-	if (sendMsg.to == (MAX_CLIENTS - 1)) {//responded that is full, resets space for other
+	if (sendMsg.to == (USER_MAX_USERS - 1)) {//responded that is full, resets space for other
 		if (sendMsg.connection == 0)
-			CloseHandle(clientsInfo[MAX_CLIENTS - 1].hClientMsg);
+			CloseHandle(clientsInfo[USER_MAX_USERS - 1].hClientMsg);
 		else {
-			CloseHandle(clientsInfo[MAX_CLIENTS - 1].hClientMsg);
-			CloseHandle(clientsInfo[MAX_CLIENTS - 1].hClientGame);
+			CloseHandle(clientsInfo[USER_MAX_USERS - 1].hClientMsg);
+			CloseHandle(clientsInfo[USER_MAX_USERS - 1].hClientGame);
 		}
-		clientsInfo[MAX_CLIENTS - 1].communication = -1;
+		clientsInfo[USER_MAX_USERS - 1].communication = -1;
 	}
 	////_tprintf(TEXT("Sent:'%s'\tCode=%d\tFrom=%d\tTo=%d\n"),sendMsg.messageInfo, sendMsg.codigoMsg, sendMsg.from, sendMsg.to);
 	////_tprintf(TEXT("Sent codigo:(%d)\n"), sendMsg.codigoMsg);
@@ -1270,12 +1268,9 @@ void sendMessagePipe(msg sendMsg, HANDLE hPipe) {
 }
 
 DWORD createHandle(msg newMsg) {
-	TCHAR tmp[TAM];
 	BOOLEAN flag = TRUE;
 	int i;
-	for (i = 0; i < MAX_CLIENTS - 1; i++) {//saves one to respond to clients that is full
-		//_itot_s(clientsInfo[i].communication, tmp, TAM, 10);//translates num to str
-		//MessageBox(global_hWnd, tmp, TEXT("client[i].communication = "), MB_OK);
+	for (i = 0; i < USER_MAX_USERS - 1; i++) {//saves one to respond to clients that is full
 		if (clientsInfo[i].communication == -1) {
 			flag = FALSE;
 			break;
@@ -1322,11 +1317,10 @@ void createGame() {
 			//_tprintf(TEXT("Default values changed wiht success!"));
 		}*/
 	//}
-
-	gameInfo->gameStatus = 0;
+	gameInfo->gameStatus = 0;//users can now join
 	gameInfo->numUsers = 0;
 	//MessageBox(global_hWnd, TEXT("game created"), TEXT("ALERT"), MB_OK);
-	_tcscpy_s(frase, TAM, TEXT("Game Created"));
+	_tcscpy_s(gameState, TAM, TEXT("Game Created"));
 	InvalidateRect(global_hWnd, NULL, TRUE);
 }
 
@@ -1334,39 +1328,41 @@ void startGame(){
 	//MessageBox(global_hWnd, TEXT("starting game"), TEXT("WARNING"), MB_OK);
 	int i;
 	msg tmpMsg;
+	//start Users
 	for (i = 0; i < gameInfo->numUsers; i++) {
 		userInit(i);
 	}
 
+	//start bricks
+	assignBrick(30);//assume level 1
+
 	gameInfo->gameStatus = 1;
-	SetEvent(updateLocalGame);
-	SetEvent(updateGame);
+	SetEvent(updateLocalGame);//sends game
+	SetEvent(updateGame);//sends game
 	Sleep(250);
 	tmpMsg.codigoMsg = 100;//new game
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255; //broadcast
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("gameStart"));
 	sendMessage(tmpMsg);
-	
-	Sleep(1000);
-	_tcscpy_s(frase, TAM, TEXT("Game started"));
+
+	_tcscpy_s(gameState, TAM, TEXT("Game Started"));
 	InvalidateRect(global_hWnd, NULL, TRUE);
-	//create bricks
-	assignBrick(gameInfo->myconfig.initial_bricks);
-	return 1;
+	return;
 }
 
 void assignBrick(DWORD num) {
-	//create num brick
-	DWORD count = 0;
-	DWORD threadId;
-	int i;
-	int oposx = 10, oposy = 10;
-	for (i = 0; i < num; i++) {
+	//create num bricks
+	int spaceToLim = 30;
+	int spaceToBrick = 1;
+	int oposx = spaceToLim, oposy = 10;
+	for (int i = 0; i < num; i++) {
 
 		gameInfo->nBricks[i].id = i;
+		gameInfo->nBricks[i].size.sizex = gameInfo->myconfig.brickSize.sizex;
+		gameInfo->nBricks[i].size.sizey = gameInfo->myconfig.brickSize.sizey;
 
-		gameInfo->nBricks[i].tam = 50;
+		//type
 		gameInfo->nBricks[i].type = 1 + rand() % 3;
 		if (gameInfo->nBricks[i].type == 1) {//normal
 			gameInfo->nBricks[i].status = 1;
@@ -1379,49 +1375,110 @@ void assignBrick(DWORD num) {
 			gameInfo->nBricks[i].brinde.type = 1 + rand() % 3;
 		}
 
-		if (!(oposx + gameInfo->nBricks[i].tam + 3 <= gameInfo->myconfig.limx)) {
-			oposx = 10;
+		//pos
+		if (!(oposx + gameInfo->nBricks[i].size.sizex + spaceToLim < gameInfo->myconfig.gameSize.sizex)) {
+			oposx = spaceToLim;
 			oposy += 25;
 		}
-
 		gameInfo->nBricks[i].posx = oposx;
 		gameInfo->nBricks[i].posy = oposy;
+
+		//bonus
 		if (gameInfo->nBricks[i].type == 3) {//create bonus
 			gameInfo->nBricks[i].brinde.posx = oposx;
 			gameInfo->nBricks[i].brinde.posy = oposy;
+			gameInfo->nBricks[i].brinde.status = 0;//not active
+			gameInfo->nBricks[i].brinde.size.sizex = gameInfo->myconfig.bonusSize.sizex;
+			gameInfo->nBricks[i].brinde.size.sizey = gameInfo->myconfig.bonusSize.sizey;
 		}
-		oposx += gameInfo->nBricks[i].tam + 10;
+		oposx += gameInfo->nBricks[i].size.sizex + spaceToBrick;
 
 	}
 
 	gameInfo->numBricks = num;
-	localNumBricks = gameInfo->numBricks;
-	//msg tmpMsg;
-	//TCHAR tmp[TAM];
-	//tmpMsg.codigoMsg = 102;
-	//_itot_s(num, tmp, TAM, 10);
-	//_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
-	//tmpMsg.from = server_id;
-	//tmpMsg.to = 255;
-	//sendMessage(tmpMsg);
+	localNumBricks = num;
 	return;
 }
 
-
 void userInit(DWORD id) {
 	if (id != 0) {
-		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id].size + 5;
+		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id].size.sizex + 5;
 	}
 	else {
 		gameInfo->nUsers[id].posx = 5;
 	}
 
-	gameInfo->nUsers[id].posy = gameInfo->myconfig.limy - 100;
-	gameInfo->nUsers[id].lifes = gameInfo->myconfig.inital_lifes;
-
-	//f//_tprintf(TEXT("(User[%d]->%s | pos(%d,%d)\n"), id, gameInfo->nUsers[id].name, gameInfo->nUsers[id].posx, gameInfo->nUsers[id].posy);
-
+	gameInfo->nUsers[id].posy = gameInfo->myconfig.gameSize.sizey - 100;
+	gameInfo->nUsers[id].lifes = gameInfo->myconfig.userNumLifes;
+	gameInfo->nUsers[id].size.sizex = gameInfo->myconfig.userSize.sizex;
+	gameInfo->nUsers[id].size.sizey = gameInfo->myconfig.userSize.sizey;
 	return;
 }
 
+void securityPipes(SECURITY_ATTRIBUTES * sa)
+{
+	PSECURITY_DESCRIPTOR pSD;
+	PACL pAcl;
+	EXPLICIT_ACCESS ea;
+	PSID pEveryoneSID = NULL, pAdminSID = NULL;
+	SID_IDENTIFIER_AUTHORITY SIDAuthWorld = SECURITY_WORLD_SID_AUTHORITY;
+	TCHAR str[256];
+
+	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR,
+		SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (pSD == NULL) {
+		_tprintf(TEXT("Erro LocalAlloc!!!"));
+		return;
+	}
+	if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION)) {
+		_tprintf(TEXT("Erro IniSec!!!"));
+		return;
+	}
+
+	// Create a well-known SID for the Everyone group.
+	if (!AllocateAndInitializeSid(&SIDAuthWorld, 1, SECURITY_WORLD_RID,
+		0, 0, 0, 0, 0, 0, 0, &pEveryoneSID))
+	{
+		_stprintf_s(str, 256, TEXT("AllocateAndInitializeSid() error %u"), GetLastError());
+		_tprintf(str);
+		Cleanup(pEveryoneSID, pAdminSID, NULL, pSD);
+	}
+	else
+		_tprintf(TEXT("AllocateAndInitializeSid() for the Everyone group is OK"));
+
+	ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+
+	ea.grfAccessPermissions = GENERIC_READ | GENERIC_WRITE;
+	ea.grfAccessMode = SET_ACCESS;
+	ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+	ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+	ea.Trustee.ptstrName = (LPTSTR)pEveryoneSID;
+
+	if (SetEntriesInAcl(1, &ea, NULL, &pAcl) != ERROR_SUCCESS) {
+		_tprintf(TEXT("Erro SetAcl!!!"));
+		return;
+	}
+
+	if (!SetSecurityDescriptorDacl(pSD, TRUE, pAcl, FALSE)) {
+		_tprintf(TEXT("Erro IniSec!!!"));
+		return;
+	}
+
+	sa->nLength = sizeof(*sa);
+	sa->lpSecurityDescriptor = pSD;
+	sa->bInheritHandle = TRUE;
+}
+
+void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR pSD)
+{
+	if (pEveryoneSID)
+		FreeSid(pEveryoneSID);
+	if (pAdminSID)
+		FreeSid(pAdminSID);
+	if (pACL)
+		LocalFree(pACL);
+	if (pSD)
+		LocalFree(pSD);
+}
 

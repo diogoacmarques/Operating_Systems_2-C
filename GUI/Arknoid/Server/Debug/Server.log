@@ -1,19 +1,11 @@
 ﻿  server.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(63): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(116): warning C4013: 'time' undefined; assuming extern returning int
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(939): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(939): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(962): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(962): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1002): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1030): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1034): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1034): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(912): warning C4101: 'tmp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(913): warning C4101: 'tmp2': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(914): warning C4101: 'str': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1273): warning C4101: 'tmp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1356): warning C4098: 'startGame': 'void' function returning a value
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1365): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1362): warning C4101: 'threadId': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(74): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(128): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(750): warning C4305: '=': truncation from 'double' to 'float'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(751): warning C4305: '=': truncation from 'double' to 'float'
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(988): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1016): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1020): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1020): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1359): warning C4018: '<': signed/unsigned mismatch
   Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
