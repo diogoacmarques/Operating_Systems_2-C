@@ -56,10 +56,6 @@ HANDLE hTMsgConnection;//has thread where receives messages
 HANDLE hTBrick;
 HANDLE hPipeMsg;
 HANDLE hPipeGame;
-
-
-	//comunication
-BOOLEAN canSendMsg = TRUE;
 //end of variables
 
 //HANDLES
@@ -127,7 +123,6 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
    //"NULL" = Icon definido no Windows
    // "IDI_AP..." Ícone "aplicação"
 
-	//here
 	wcApp.hIconSm = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LOGGO));// "hIconSm" = handler do ícon pequeno
 
 	//"NULL" = Icon definido no Windows
@@ -274,10 +269,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
 		StretchBlt(memDC, 0, 0, 800, 600, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
 	
-		TextOut(memDC, 0, 0, userLogged, _tcslen(userLogged));
-		TextOut(memDC, 0, 15, frase, _tcslen(frase));
+		TextOut(memDC, 0, 300, userLogged, _tcslen(userLogged));
+		TextOut(memDC, 0, 350, frase, _tcslen(frase));
 
-		if (localGameStatus == 1) {
+		if (localGameStatus == 1 || localGameStatus == 2) {
 			//users
 			for (int i = 0; i < gameInfo->numUsers; i++) {
 				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size.sizex, gameInfo->nUsers[i].size.sizey, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
@@ -309,7 +304,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			if (res == IDCANCEL || res == IDABORT)
 				break;
 			if (_tcscmp(login, TEXT("")) != 0) {
-				MessageBox(hWnd, login, TEXT("Trying to login with:"), MB_OK);//sucesso
 				for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using ':' (messes up registry)
 					if (login[i] == ':')
 						login[i] = '\0';
@@ -321,7 +315,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				//MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				
 				/*_tcscpy_s(tmp, TAM, TEXT("T"));
 				InvalidateRect(hWnd, NULL, FALSE);	
 				break;
@@ -337,10 +330,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				gameInfo->nBalls[0].posy = 300;
 				*/
 				//MessageBeep(MB_ICONSTOP);
-				_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
-				MessageBox(global_hWnd, tmp, TEXT("NumBricks = "), MB_OK);
-				localGameStatus = 1;
-				InvalidateRect(hWnd, NULL, FALSE);	
+				//_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
+				//MessageBox(global_hWnd, tmp, TEXT("NumBricks = "), MB_OK);
+				//localGameStatus = 1;
+				//InvalidateRect(hWnd, NULL, FALSE);	
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -427,7 +420,7 @@ void resolveKey(WPARAM wParam) {
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	TCHAR tmp2[TAM];
-	if (localGameStatus == -1)
+	if (localGameStatus == 0)
 		return;
 
 	msg gameMsg;
@@ -440,38 +433,25 @@ void resolveKey(WPARAM wParam) {
 	case 0x41://a key
 		if (localGameStatus == 2)//watching
 			return;
-		if(gameInfo->nUsers[client_id].posx > 0)
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
 		break;
 	case VK_RIGHT:
 	case 0x44://d key
 		if (localGameStatus == 2)//watching
 			return;
-
-		//_itot_s(gameInfo->nUsers[0].posx + gameInfo->nUsers[0].size, tmp, TAM, 10);//translates num to str
-		//_itot_s(gameInfo->nUsers[0].posy, tmp2, TAM, 10);//translates num to str
-		//_tcscpy_s(str, TAM, TEXT("pos Before:"));
-		//_tcscat_s(str, TAM, tmp);//adds
-		//_tcscat_s(str, TAM, TEXT(","));//adds
-		//_tcscat_s(str, TAM, tmp2);//adds
-		//if(gameInfo->nUsers[0].posx > 600)
-		//	MessageBox(global_hWnd, str, TEXT("pos"), MB_OK);
-
-		if (gameInfo->nUsers[client_id].posx + gameInfo->nUsers[client_id].size.sizex < gameInfo->myconfig.gameSize.sizex)
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
 		break;
 	case VK_SPACE:
 		if (localGameStatus == 2)//watching
 			return;
 		gameMsg.codigoMsg = 101;
-		//if (gameInfo->numBalls == 0)
-			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
+		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
 		break;
 
 	case VK_ESCAPE:
-		if (localGameStatus == 2) {//watching
-			//endUser();
-		}
+		//endUser();
+		if (localGameStatus == 2)//watching
+			return;
 
 		gameMsg.codigoMsg = 2;
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
@@ -483,7 +463,6 @@ void resolveKey(WPARAM wParam) {
 		//_tcscpy_s(frase, TAM, gameMsg.messageInfo);
 		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
-		
 }
 
 void createLocalConnection() {
@@ -778,11 +757,6 @@ void sendMessage(msg sendMsg) {
 	DWORD bytesWritten;
 	BOOLEAN fSuccess;
 	
-	if (canSendMsg)
-		canSendMsg = FALSE;
-	else
-		return;
-
 	sendMsg.connection = connection_mode;
 	print(sendMsg);
 
@@ -826,7 +800,6 @@ void sendMessage(msg sendMsg) {
 }
 
 DWORD resolveMessage(msg inMsg) {
-	canSendMsg = TRUE;
 	print(inMsg);
 	TCHAR tmp_info[TAM];
 	//WaitForSingleObject(hStdoutMutex, INFINITE);
@@ -916,6 +889,7 @@ DWORD resolveMessage(msg inMsg) {
 }
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
+	//MessageBox(hWnd, user, TEXT("Trying to login with:"), MB_OK);//sucesso
 	msg newMsg;
 	newMsg.from = client_id;
 	newMsg.to = 254;//login e sempre para o servidor

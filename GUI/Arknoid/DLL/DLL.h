@@ -14,7 +14,7 @@
 //user
 #define USER_MAX_USERS 5
 #define USER_LIFES 5
-#define USER_SIZE_X 50
+#define USER_SIZE_X 100
 #define USER_SIZE_Y 15
 //ball
 #define BALL_SPEED 25
@@ -24,7 +24,7 @@
 #define BALL_SIZE_Y 15
 //bricks
 #define BRICK_MAX_BRICKS 50
-#define BRICK_SIZE_X 20
+#define BRICK_SIZE_X 50
 #define BRICK_SIZE_Y 10
 //bonus
 #define BONUS_SCORE_ADD 150 

@@ -107,8 +107,8 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		szProgName, // Nome da janela (programa) definido acima
 		TEXT("SO2 - Ficha 6 - Ex1_V2"),// Texto que figura na barra do título
 		WS_OVERLAPPEDWINDOW, // Estilo da janela (WS_OVERLAPPED= normal)
-		5, // Posição x pixels (default=à direita da última)
-		5, // Posição y pixels (default=abaixo da última)
+		0, // Posição x pixels (default=à direita da última)
+		0, // Posição y pixels (default=abaixo da última)
 		GAME_SIZE_X, // Largura da janela (800)
 		GAME_SIZE_Y, // Altura da janela (600)
 		(HWND)HWND_DESKTOP, // handle da janela pai (se se criar uma a partir de
@@ -274,8 +274,8 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 				MessageBox(global_hWnd, TEXT("Cant create a game right now"), TEXT("Warning"), MB_OK);
 			break;
 		case ID_STARTGAME:
-			MessageBox(global_hWnd, TEXT("WILL START GAME AFTER OK"), TEXT("GAME START"), MB_OK);
 			if (gameInfo->numUsers > 0 && gameInfo->gameStatus == 0) {
+				MessageBox(global_hWnd, TEXT("WILL START GAME AFTER OK"), TEXT("GAME START"), MB_OK);
 				startGame();
 			}
 			break;
@@ -295,7 +295,6 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 				_itot_s(clientsInfo[i].communication, tmp, TAM, 10);//translates num to str
 				MessageBox(global_hWnd, tmp, TEXT("client[i].communication = "), MB_OK);
 			}
-				
 			break;
 	}
 	return 1;
@@ -434,7 +433,7 @@ DWORD resolveMessage(msg inMsg) {
 		gameInfo->numUsers--;
 		outMsg.to = inMsg.from;
 		outMsg.codigoMsg = 2;
-		_tcscpy_s(outMsg.messageInfo, TAM, TEXT("ended user"));
+		_tcscpy_s(outMsg.messageInfo, TAM, TEXT("userEnd"));
 		sendMessage(outMsg);
 
 		if (gameInfo->numUsers == 0) {//closing game
@@ -461,33 +460,20 @@ DWORD resolveMessage(msg inMsg) {
 		//else
 			//_tprintf(TEXT("There are still players in the game!\n"));
 	}
-	else if (inMsg.codigoMsg == 101) {
+	else if (inMsg.codigoMsg == 101 && gameInfo->gameStatus == 1) {
 		if (gameInfo->nUsers[inMsg.from].lifes > 0 && gameInfo->numBalls == 0)
 			createBalls(1);
 	}
-	else if (inMsg.codigoMsg == 200) {//user trying to move
-		//_tprintf(TEXT("[%d]-%s\n"), inMsg.from, inMsg.messageInfo);
-		////_tprintf(TEXT("\n\nIN->Codigo:(%d)\tDirection:(%s)\tFrom:%d\tTo:%d\n"), inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
+	else if (inMsg.codigoMsg == 200 && gameInfo->gameStatus == 1) {//user trying to move
 
 		if (_tcscmp(inMsg.messageInfo, TEXT("right")) != 0 && _tcscmp(inMsg.messageInfo, TEXT("left")) != 0) {
-			//_tprintf(TEXT("Erro!\n"));
-			Sleep(3000);
+			MessageBox(global_hWnd, TEXT("Received the wrong information!"), TEXT("Warning"), MB_OK);
+			return;
 		}
 
 		int res = moveUser(inMsg.from, inMsg.messageInfo);
-		if (!res) {
-			//SetEvent(updateGame);//update pipe
-			_itot_s(inMsg.from, outMsg.messageInfo, TAM, 10);//translates user_id num to str
-			_tcscat_s(outMsg.messageInfo, TAM, TEXT(":"));//adds ':'
-			_tcscat_s(outMsg.messageInfo, TAM, inMsg.messageInfo);//adds direction
-		}
-		else
-			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("no"));
-		outMsg.codigoMsg = 200;
-		outMsg.to = 255;
-		sendMessage(outMsg);
-		////_tprintf(TEXT("user_pos(%d,%d)\n"), gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
-		////_tprintf(TEXT("(moveUser)User[%d]:%s\n"), newMsg.user_id, newMsg.messageInfo);
+		if (res)
+			return -1;
 	}
 	else if (inMsg.codigoMsg == 123) {//for tests || returns the exact same msg
 		outMsg.to = inMsg.from;
@@ -673,15 +659,15 @@ DWORD WINAPI updateGamePipe(LPVOID param) {
 	int i;
 	do {
 		WaitForSingleObject(updateGame, INFINITE);
-		////_tprintf(TEXT("Will update game now\n"));
+		//_tprintf(TEXT("Will update game now\n"));
 		for (i = 0; i < USER_MAX_USERS; i++)
 			if(clientsInfo[i].communication == 0){
 				//SetEvent() lets know that the game is ready to be used(should i?)
 			}
 			else if (clientsInfo[i].hClientGame != NULL && clientsInfo[i].communication == 1) {
 				//sends game
-				////_tprintf(TEXT("This is the size of the game = %d | also there are %d bricks\n"), sizeof(tmp_game),tmp_game.numBricks);
-				////_tprintf(TEXT("Updating game for client number %d\n"), i);
+				//_tprintf(TEXT("This is the size of the game = %d | also there are %d bricks\n"), sizeof(tmp_game),tmp_game.numBricks);
+				//_tprintf(TEXT("Updating game for client number %d\n"), i);
 				fSuccess = WriteFile(
 					clientsInfo[i].hClientGame,
 					gameInfo,
@@ -727,8 +713,8 @@ DWORD startVars() {
 	gameInfo->myconfig.file;
 	//game
 	gameInfo->myconfig.gameNumLevels = GAME_LEVELS;
-	gameInfo->myconfig.gameSize.sizex = tmpRect.right - 25;
-	gameInfo->myconfig.gameSize.sizey = tmpRect.bottom;
+	gameInfo->myconfig.gameSize.sizex = GAME_SIZE_X;
+	gameInfo->myconfig.gameSize.sizey = GAME_SIZE_Y;
 	//user
 	gameInfo->myconfig.userMaxUsers = USER_MAX_USERS;
 	gameInfo->myconfig.userNumLifes = USER_LIFES;
@@ -902,13 +888,11 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	
 	gameInfo->nBalls[id].id = id;
 	gameInfo->nBalls[id].status = 1;
+	gameInfo->nBalls[id].speed = gameInfo->myconfig.ballInitialSpeed;
 	gameInfo->nBalls[id].size.sizex = gameInfo->myconfig.ballSize.sizex;
 	gameInfo->nBalls[id].size.sizey = gameInfo->myconfig.ballSize.sizey;
 	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size.sizex / 2);
-	DWORD posy = gameInfo->nUsers[0].posy + gameInfo->nUsers[0].size.sizey;
-
-	posy = 100;
-	posx = 100;
+	DWORD posy = gameInfo->nUsers[0].posy - gameInfo->nUsers[0].size.sizey;
 	DWORD ballScore = 0;
 	boolean flag, goingUp = 1, goingRight = (rand() % 2);
 
@@ -916,76 +900,43 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		ballScore = GetTickCount();
 		flag = 0;
 		//checks for bricks
-		//for (int i = 0; i < numberBrick; i++) {
-		//	if (gameInfo->nBricks[i].status <= 0)
-		//		continue;
-		//	////_tprintf(TEXT("Ball(%d,%d) | Brick(%d,%d)\n"),posx,posy,gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy);
-		//	//up
-		//	if (goingUp && posy - 1 == gameInfo->nBricks[i].posy) {
+		for (int i = 0; i < numberBrick; i++) {
+			if (gameInfo->nBricks[i].status <= 0)
+				continue;
+			//up
+			if (goingUp && posy - 1 == gameInfo->nBricks[i].posy + gameInfo->nBricks[i].size.sizey) {
+				if (gameInfo->nBricks[i].posx - 1 < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].size.sizex) > posx) {
+					//MessageBox(global_hWnd, TEXT("hit up"), TEXT("debug"), MB_OK);
+					goingUp = 0;
+					hitBrick(i, id);
+				}
+			}
+			//down
+			else if (!goingUp && posy + gameInfo->nBalls[id].size.sizey + 1 == gameInfo->nBricks[i].posy) {
+				if (gameInfo->nBricks[i].posx < posx + 1 && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].size.sizex) > posx) {
+					//MessageBox(global_hWnd, TEXT("hit down"), TEXT("debug"), MB_OK);
+					goingUp = 1;
+					hitBrick(i, id);
+				}
+			}
 
-		//		//straight up
-		//		if (gameInfo->nBricks[i].posx - 1 < posx && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-		//			////_tprintf(TEXT("Hit up\n"), posy - 1, gameInfo->nBricks[i].posy);
-		//			goingUp = 0;
-		//			hitBrick(i, id);
-		//		}
-		//		//up-left
-		//		else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-		//			//_tprintf(TEXT("Hit up-left\n"));
-		//			goingUp = 0;
-		//			goingRight = 1;
-		//			hitBrick(i, id);
-		//		}
-		//		//up-right
-		//		else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
-		//			//_tprintf(TEXT("Hit up-right\n"));
-		//			goingUp = 0;
-		//			goingRight = 0;
-		//			hitBrick(i, id);
-		//		}
+			//left
+			if (!goingRight && posx == gameInfo->nBricks[i].posx + gameInfo->nBricks[i].size.sizex && posy < gameInfo->nBricks[i].posy + gameInfo->nBricks[i].size.sizey && posy > gameInfo->nBricks[i].posy) {
+				//MessageBox(global_hWnd, TEXT("hit left"), TEXT("debug"), MB_OK);
+				goingRight = 1;
+				hitBrick(i, id);
+			}
+			//right
 
-		//	}
-		//	else if (!goingUp && posy + 1 == gameInfo->nBricks[i].posy) {
-		//		//down
-		//		if (gameInfo->nBricks[i].posx < posx + 1 && (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam) > posx) {
-		//			////_tprintf(TEXT("Hit down\n"), posy + 1, gameInfo->nBricks[i].posy);
-		//			goingUp = 1;
-		//			hitBrick(i, id);
-		//		}
-		//		//down-left
-		//		else if (!goingRight && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-		//			//_tprintf(TEXT("Hit down-left\n"));
-		//			goingUp = 1;
-		//			goingRight = 1;
-		//			hitBrick(i, id);
-		//		}
-		//		//down-right
-		//		else if (goingRight && posx + 1 == gameInfo->nBricks[i].posx) {
-		//			//_tprintf(TEXT("Hit down-right\n"));
-		//			goingUp = 1;
-		//			goingRight = 0;
-		//			hitBrick(i, id);
-		//		}
-
-		//	}
-
-		//	//left
-		//	if (!goingRight && posy == gameInfo->nBricks[i].posy && posx == (gameInfo->nBricks[i].posx + gameInfo->nBricks[i].tam)) {
-		//		//_tprintf(TEXT("Hit left\n"));
-		//		goingRight = 1;
-		//		hitBrick(i, id);
-
-		//	}
-		//	//right
-		//	else if (goingRight && posy == gameInfo->nBricks[i].posy && posx + 1 == gameInfo->nBricks[i].posx) {
-		//		//_tprintf(TEXT("Hit right\n"));
-		//		goingRight = 0;
-		//		hitBrick(i, id);
-		//	}
-		//}
+			else if (goingRight && posx + gameInfo->nBalls[id].size.sizey == gameInfo->nBricks[i].posx && posy < gameInfo->nBricks[i].posy + gameInfo->nBricks[i].size.sizey && posy > gameInfo->nBricks[i].posy) {
+				//MessageBox(global_hWnd, TEXT("hit right"), TEXT("debug"), MB_OK);
+				goingRight = 0;
+				hitBrick(i, id);
+			}
+		}
 
 		if (goingRight) {
-			if (posx < (gameInfo->myconfig.gameSize.sizex - 15)) {
+			if (posx < (gameInfo->myconfig.gameSize.sizex - gameInfo->nBalls[id].size.sizex * 2)) {
 				posx++;
 			}
 			else {
@@ -1017,7 +968,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 				for (int i = 0; i < gameInfo->numUsers; i++) {//checks for player
 					////_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
-					if (posy == gameInfo->nUsers[i].posy - 20 && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex))) {//atinge a barreira
+					if (posy == gameInfo->nUsers[i].posy - (gameInfo->nUsers[i].size.sizey) && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex))) {//atinge a barreira
 						flag = 1;
 						//_tprintf(TEXT("HIT player[%d]!!\n"), i);
 						break;
@@ -1049,17 +1000,16 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			gameInfo->nBalls[id].status = 1;
 
 
-		TCHAR str[TAM];
-		TCHAR tmp[TAM];
-		TCHAR tmp2[TAM];
-		_itot_s(gameInfo->myconfig.gameSize.sizex, tmp, TAM, 10);//translates num to str
-		_itot_s(gameInfo->myconfig.gameSize.sizey, tmp2, TAM, 10);//translates num to str
-		_tcscpy_s(str, TAM, TEXT("lmites = "));
-		_tcscat_s(str, TAM, tmp);//ads
-		_tcscat_s(str, TAM, TEXT(","));
-		_tcscat_s(str, TAM, tmp2);//ads
-		MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
-
+		//TCHAR str[TAM];
+		//TCHAR tmp[TAM];
+		//TCHAR tmp2[TAM];
+		//_itot_s(gameInfo->myconfig.gameSize.sizex, tmp, TAM, 10);//translates num to str
+		//_itot_s(gameInfo->myconfig.gameSize.sizey, tmp2, TAM, 10);//translates num to str
+		//_tcscpy_s(str, TAM, TEXT("lmites = "));
+		//_tcscat_s(str, TAM, tmp);//ads
+		//_tcscat_s(str, TAM, TEXT(","));
+		//_tcscat_s(str, TAM, tmp2);//ads
+		//MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
 		SetEvent(updateLocalGame);
 		SetEvent(updateGame);
 
@@ -1078,8 +1028,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0) {
 			//_tprintf(TEXT("WaitForSingleObject waitableTimer failed (%d)\n"), GetLastError());
 		}
-			
-
 
 	} while (gameInfo->nBalls[id].status);
 
@@ -1146,6 +1094,7 @@ DWORD WINAPI bonusDrop(LPVOID param) {
 }
 
 void hitBrick(DWORD brick_id, DWORD ball_id) {
+	return;
 	////_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
 	if (gameInfo->nBricks[brick_id].status == 0) {
@@ -1162,11 +1111,17 @@ void hitBrick(DWORD brick_id, DWORD ball_id) {
 }
 
 int moveUser(DWORD id, TCHAR side[TAM]) {
+	TCHAR str[TAM];
+	TCHAR tmp[TAM];
+	TCHAR tmp2[TAM];
+
+	_itot_s(gameInfo->nUsers[id].posx, tmp, TAM, 10);//translates num to str
+
 	if (_tcscmp(side, TEXT("right")) == 0) {
 		for (int i = 0; i < gameInfo->numUsers; i++) {
-			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex >= gameInfo->myconfig.gameSize.sizex)//checks limits of map
+			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex > gameInfo->myconfig.gameSize.sizex)//map
 				return 1;
-			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex == gameInfo->nUsers[i].posx)
+			if (gameInfo->nUsers[id].posx + gameInfo->nUsers[id].size.sizex == gameInfo->nUsers[i].posx)//player
 				return 1;
 		}
 		gameInfo->nUsers[id].posx += 10;
@@ -1180,6 +1135,17 @@ int moveUser(DWORD id, TCHAR side[TAM]) {
 		}
 		gameInfo->nUsers[id].posx -= 10;
 	}
+
+	_itot_s(gameInfo->nUsers[id].posx, tmp2, TAM, 10);//translates num to str
+
+	_tcscpy_s(str, TAM, TEXT("pos - before:"));
+	_tcscat_s(str, TAM, tmp);//ads
+	_tcscat_s(str, TAM, TEXT("|after:"));
+	_tcscat_s(str, TAM, tmp2);//ads
+
+	//if(gameInfo->nUsers[id].posx > 650 || gameInfo->nUsers[id].posx < 50)
+		//MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
+	
 	return 0;
 }
 
@@ -1334,7 +1300,7 @@ void startGame(){
 	}
 
 	//start bricks
-	assignBrick(30);//assume level 1
+	assignBrick(30);
 
 	gameInfo->gameStatus = 1;
 	SetEvent(updateLocalGame);//sends game
@@ -1353,7 +1319,7 @@ void startGame(){
 
 void assignBrick(DWORD num) {
 	//create num bricks
-	int spaceToLim = 30;
+	int spaceToLim = 10;
 	int spaceToBrick = 1;
 	int oposx = spaceToLim, oposy = 10;
 	for (int i = 0; i < num; i++) {
@@ -1401,12 +1367,10 @@ void assignBrick(DWORD num) {
 }
 
 void userInit(DWORD id) {
-	if (id != 0) {
-		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id].size.sizex + 5;
-	}
-	else {
-		gameInfo->nUsers[id].posx = 5;
-	}
+	if (id)
+		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id].size.sizex + 10;
+	else
+		gameInfo->nUsers[id].posx = 10;
 
 	gameInfo->nUsers[id].posy = gameInfo->myconfig.gameSize.sizey - 100;
 	gameInfo->nUsers[id].lifes = gameInfo->myconfig.userNumLifes;
