@@ -1,1 +1,17 @@
-﻿  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
+﻿  server.c
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(77): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(131): warning C4013: 'time' undefined; assuming extern returning int
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(896): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(896): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(904): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(904): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(912): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(912): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(918): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(918): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(927): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(956): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(959): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(959): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1259): warning C4018: '<': signed/unsigned mismatch
+  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe

@@ -28,9 +28,9 @@
 //bonus
 #define BONUS_SPEED 40
 #define BONUS_SCORE_ADD 150 
-#define BONUS_PROB_SPEED 0.5
-#define BONUS_PROB_EXTRALIFE 0.3
-#define BONUS_PROB_TRIPLE 0.2
+#define BONUS_PROB_SPEED 0.5f
+#define BONUS_PROB_EXTRALIFE 0.3f
+#define BONUS_PROB_TRIPLE 0.2f
 #define BONUS_SPEED_CHANGE 5
 #define BONUS_SPEED_DURATION 10//seconds
 #define BONUS_SIZE_X 15
@@ -148,6 +148,7 @@ typedef struct {
 	user nUsers[USER_MAX_USERS];
 	ball nBalls[BALL_MAX_BALLS];
 	brick nBricks[BRICK_MAX_BRICKS];
+	TCHAR top[TAM];
 	int numUsers;
 	int numBalls;
 	int numBricks;

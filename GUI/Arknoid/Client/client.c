@@ -26,6 +26,7 @@ void createLocalConnection();
 void createRemoteConnection();
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
+void logoutUser();
 
 DWORD resolveMessage(msg inMsg);
 void sendMessage(msg sendMsg);
@@ -335,17 +336,30 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				break;
 			if (_tcscmp(login, TEXT("")) != 0) {
 				for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using ':' (messes up registry)
-					if (login[i] == ':')
+					if (login[i] == ':' || login[i] == '|')
 						login[i] = '\0';
 			}
 			LoginUser(login);
 				
 			break;
 			case ID_WATCH:
-				//MessageBeep(MB_ICONQUESTION);
+				MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				localGameStatus = 1;
+				res = 0;
+				_tcscpy_s(str, TAM, gameInfo->top);
+				for (int i = 0; i < 10; i++) {
+					for (int j = 0; j < TAM; j++) {
+						if (str[res] == '|') {
+							tmp[j] = '\0';
+							res++;
+							break;
+						}
+							
+						tmp[j] = str[res++];
+					}
+					MessageBox(hWnd, tmp, TEXT("Info:"), MB_OK);
+				}
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -375,8 +389,13 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	case WM_CLOSE:
 		/*res = MessageBox(hWnd, TEXT("Are you sure you want to quit?"), TEXT("Quit MessageBox"), MB_ICONQUESTION | MB_YESNO);
-		if (res == IDYES)*/
-			DestroyWindow(hWnd);
+		if (res == IDYES)*/{
+
+
+		DestroyWindow(hWnd);
+
+	}
+			
 		break;
 	case WM_DESTROY: // Destruir a janela e terminar o programa
 		PostQuitMessage(0);
@@ -429,9 +448,6 @@ LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 }
 
 void resolveKey(WPARAM wParam) {
-	TCHAR str[TAM];
-	TCHAR tmp[TAM];
-	TCHAR tmp2[TAM];
 	if (localGameStatus == 0)
 		return;
 
@@ -461,19 +477,16 @@ void resolveKey(WPARAM wParam) {
 		break;
 
 	case VK_ESCAPE:
-		//endUser();
 		if (localGameStatus == 2)//watching
 			return;
 
-		gameMsg.codigoMsg = 2;
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
+		gameMsg.codigoMsg = 2;
 		break;
 	}
 
 	if (_tcscmp(gameMsg.messageInfo, TEXT("not")) != 0) {
 		sendMessage(gameMsg);
-		//_tcscpy_s(frase, TAM, gameMsg.messageInfo);
-		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
 }
 
@@ -483,7 +496,6 @@ void createLocalConnection() {
 	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
 	_itot_s(GetCurrentThreadId(), tmp, TAM, 10);
 	_tcscat_s(str, TAM, tmp);
-	//print
 
 	messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
@@ -495,19 +507,9 @@ void createLocalConnection() {
 		PostQuitMessage(1);
 	}
 
-	//BOOLEAN res = initializeHandles();
-	//if (res) {
-		//print(TEXT("Erro ao criar Handles!"));
-		//return 1;
-	//}
-	
-	//sessionId = (GetCurrentThreadId() + GetTickCount());
-	//sessionId = GetCurrentThreadId();
-
 	//Message
 	createSharedMemoryMsg();
 	//Game
-	//gameInfo = (game *)malloc(sizeof(game));
 	gameInfo = createSharedMemoryGame();
 
 	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)localConnection, NULL, 0, NULL);
@@ -534,7 +536,6 @@ DWORD WINAPI localConnection(LPVOID param) {
 
 	do {
 		WaitForSingleObject(messageEvent, INFINITE);
-		//MessageBox(global_hWnd, TEXT("you got a message"), TEXT("client"), MB_OK);
 		newMsg = receiveMessageDLL();
 		resp = resolveMessage(newMsg);
 		InvalidateRect(global_hWnd, NULL, FALSE);	
@@ -813,13 +814,7 @@ void sendMessage(msg sendMsg) {
 
 DWORD resolveMessage(msg inMsg) {
 	print(inMsg);
-	TCHAR tmp_info[TAM];
-	//WaitForSingleObject(hStdoutMutex, INFINITE);
-	//gotoxy(0, 0);
-	//_tprintf(TEXT("\n\n[%d]Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"),quantMsg++, inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
-	//ReleaseMutex(hStdoutMutex);
-	//_itot_s(inMsg.codigoMsg, tmp_info, TAM, 10);
-	//MessageBox(global_hWnd,inMsg.messageInfo,tmp_info, MB_OK);//sucesso
+
 	if (inMsg.codigoMsg == 9999) {//first connection
 		_tprintf(TEXT("New client allowed\n"));
 		client_id = _tstoi(inMsg.messageInfo);
@@ -848,20 +843,24 @@ DWORD resolveMessage(msg inMsg) {
 	//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
 	//ReleaseMutex(hStdoutMutex);
 
-	if (inMsg.codigoMsg == 1 && !logged) {//successful login
+	if (inMsg.codigoMsg == 1) {//successful login
 		logged = 1;
 		MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
 		_tcscpy_s(frase, TAM, TEXT("You are now in the game, waiting for server to start..."));
 		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
-	else if (inMsg.codigoMsg == -1 && !logged) {
-		_tprintf(TEXT("Server refused login with %s\n"), inMsg.messageInfo);
+	else if (inMsg.codigoMsg == -1) {
+		_tcscpy_s(frase, TAM, TEXT("Server denied login"));
 		_tcscpy_s(userLogged, TAM, TEXT(""));
 		//endUser();
 		return -1;
 	}
+	else if (inMsg.codigoMsg == 2) {
+		logoutUser();
+	}
 	else if (inMsg.codigoMsg == -100) {
-		_tcscpy_s(userLogged, TAM, TEXT("Game hasnt been created by the server yet"));
+		_tcscpy_s(userLogged, TAM, TEXT(""));
+		_tcscpy_s(frase, TAM, TEXT("Game hasnt been created by the server yet"));
 		//endUser();
 		return -1;
 	}
@@ -910,6 +909,13 @@ void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	_tcscpy_s(userLogged, MAX_NAME_LENGTH, user);
 	sendMessage(newMsg);
 	return;
+}
+
+void logoutUser() {
+	MessageBox(global_hWnd, TEXT("reseting user now"), TEXT("info"), MB_OK);
+	localGameStatus = -1;
+	client_id = -1;
+	_tcscpy_s(userLogged, TAM, TEXT(""));
 }
 
 void print(msg printMsg) {
