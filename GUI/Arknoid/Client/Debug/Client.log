@@ -1,8 +1,8 @@
 ﻿  client.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(103): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(202): warning C4101: 'str': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(421): warning C4101: 'tmp': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(422): warning C4101: 'tmp2': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(420): warning C4101: 'str': unreferenced local variable
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(804): warning C4101: 'tmp_info': unreferenced local variable
-  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(108): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(207): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(433): warning C4101: 'tmp': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(434): warning C4101: 'tmp2': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(432): warning C4101: 'str': unreferenced local variable
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(816): warning C4101: 'tmp_info': unreferenced local variable
+  Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe

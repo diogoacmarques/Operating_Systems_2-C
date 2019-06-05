@@ -39,9 +39,9 @@ HWND global_hWnd = NULL;
 
 //Variaveis
 	//print
-int xPrint = 0, yPrint = 0;
+
 TCHAR frase[TAM];
-int numBalls = 0;
+int mouseX = 100, mouseY = 100;
 
 	//game
 pgame gameInfo,gameUpdate;
@@ -92,6 +92,11 @@ HDC hdcBrick;
 HBITMAP hHardBrick = NULL;
 BITMAP bmHardBrick;
 HDC hdcHardBrick;
+
+//Bonus
+HBITMAP hBonus = NULL;
+BITMAP bmBonus;
+HDC hdcBonus;
 
 //other
 HBITMAP hBit = NULL;
@@ -150,8 +155,8 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		WS_OVERLAPPED, // Estilo da janela (WS_OVERLAPPED= normal)
 		5, // Posição x pixels (default=à direita da última)
 		5, // Posição y pixels (default=abaixo da última)
-		800, // Largura da janela (em pixels)
-		600, // Altura da janela (em pixels)
+		GAME_SIZE_X, // Largura da janela (em pixels)
+		GAME_SIZE_Y, // Altura da janela (em pixels)
 		(HWND)HWND_DESKTOP, // handle da janela pai (se se criar uma a partir de
 		// outra) ou HWND_DESKTOP se a janela for a primeira,
 		// criada a partir do "desktop"
@@ -203,11 +208,21 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	TCHAR tmp[TAM];
 	TCHAR tmp2[30];
 	int res;
+	msg gameMsg;
+	BOOLEAN checkActiveObjects = FALSE;
 	switch (messg) {
 	case WM_LBUTTONDOWN:
-
+		if (localGameStatus == 1) {
+			mouseX = LOWORD(lParam);
+			mouseY = HIWORD(lParam);
+			mouseX -= (gameInfo->nUsers[client_id].size.sizex / 2);
+			gameMsg.codigoMsg = 200;
+			gameMsg.from = client_id;
+			gameMsg.to = 254;
+			_itot_s(mouseX, gameMsg.messageInfo, TAM, 10);//translates num to str
+			sendMessage(gameMsg);
+		}
 		break;
-
 	case WM_CREATE:
 		maxX = GetSystemMetrics(SM_CXSCREEN);
 		maxY = GetSystemMetrics(SM_CYSCREEN);
@@ -250,6 +265,12 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		GetObject(hHardBrick, sizeof(bmHardBrick), &bmHardBrick);
 		hdcHardBrick = CreateCompatibleDC(hDC);
 		SelectObject(hdcHardBrick, hHardBrick);
+		
+		//bonus
+		hBonus = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/bonus.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hBonus, sizeof(bmBonus), &bmBonus);
+		hdcBonus = CreateCompatibleDC(hDC);
+		SelectObject(hdcBonus, hBonus);
 
 		ReleaseDC(hWnd, hDC);
 		break;
@@ -267,10 +288,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		SetTextColor((HDC)memDC, RGB(255, 255, 255));
 		SetStretchBltMode(memDC, COLORONCOLOR);
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
-		StretchBlt(memDC, 0, 0, 800, 600, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
-	
+		StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
+
 		TextOut(memDC, 0, 300, userLogged, _tcslen(userLogged));
-		TextOut(memDC, 0, 350, frase, _tcslen(frase));
+		TextOut(memDC, 0, 320, frase, _tcslen(frase));
 
 		if (localGameStatus == 1 || localGameStatus == 2) {
 			//users
@@ -278,18 +299,28 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size.sizex, gameInfo->nUsers[i].size.sizey, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
 			}
 
-			//balls
-			for (int i = 0; i < gameInfo->numBalls; i++) {
-				StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, gameInfo->nBalls[i].size.sizex, gameInfo->nBalls[i].size.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
-			}
-			
 			//bricks
 			for (int i = 0; i < gameInfo->numBricks; i++) {
-				if(gameInfo->nBricks[i].type == 2)//hard brick
-					StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick, 0, 0, bmHardBrick.bmWidth, bmHardBrick.bmHeight, SRCPAINT);
-				else	
-					StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
+				if (gameInfo->nBricks[i].status > 0) {//active
+					if (gameInfo->nBricks[i].type == 2)//hard brick
+						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick, 0, 0, bmHardBrick.bmWidth, bmHardBrick.bmHeight, SRCPAINT);
+					else
+						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
+				}
+				else if (gameInfo->nBricks[i].brinde.status > 0) {
+					StretchBlt(memDC, gameInfo->nBricks[i].brinde.posx, gameInfo->nBricks[i].brinde.posy, gameInfo->nBricks[i].brinde.size.sizex, gameInfo->nBricks[i].brinde.size.sizey, hdcBonus, 0, 0, bmBonus.bmWidth, bmBonus.bmHeight, SRCPAINT);
+					checkActiveObjects = TRUE;
+				}
 			}
+
+			//balls
+			if(gameInfo->numBalls == 0 && gameInfo->nUsers[0].lifes > 0 && !checkActiveObjects)
+				StretchBlt(memDC, gameInfo->nUsers[0].posx + gameInfo->nUsers[0].size.sizex / 2, gameInfo->nUsers[0].posy - gameInfo->myconfig.ballSize.sizey, gameInfo->myconfig.ballSize.sizex, gameInfo->myconfig.ballSize.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
+			else
+				for (int i = 0; i < gameInfo->numBalls; i++) {
+					StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, gameInfo->nBalls[i].size.sizex, gameInfo->nBalls[i].size.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
+				}
+					
 		}
 	
 		hDC = BeginPaint(hWnd, &ps);
@@ -297,7 +328,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_COMMAND:
-
 		switch (LOWORD(wParam)) {
 		case ID_PLAY:					
 			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
@@ -315,25 +345,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				//MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_TOP10:
-				/*_tcscpy_s(tmp, TAM, TEXT("T"));
-				InvalidateRect(hWnd, NULL, FALSE);	
-				break;
-
-				//barreira
 				localGameStatus = 1;
-				gameInfo->numUsers = 1;
-				gameInfo->nUsers[0].posx = 100;
-				gameInfo->nUsers[0].posy = 100;
-				gameInfo->nUsers[0].size = 100;
-				gameInfo->numBalls++;
-				gameInfo->nBalls[0].posx = 300;
-				gameInfo->nBalls[0].posy = 300;
-				*/
-				//MessageBeep(MB_ICONSTOP);
-				//_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
-				//MessageBox(global_hWnd, tmp, TEXT("NumBricks = "), MB_OK);
-				//localGameStatus = 1;
-				//InvalidateRect(hWnd, NULL, FALSE);	
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -477,7 +489,7 @@ void createLocalConnection() {
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
-	gameReady = CreateEvent(NULL, FALSE, FALSE, LOCAL_UPDATE_GAME);
+	gameReady = CreateEvent(NULL, TRUE, FALSE, LOCAL_UPDATE_GAME);
 	if (messageEvent == NULL || updateBalls == NULL || updateBonus == NULL || hStdoutMutex == NULL || gameReady == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating resources..."), TEXT("Resources"), MB_OK);
 		PostQuitMessage(1);
@@ -737,7 +749,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 		}
 
 		SetEvent(gameReady);
-
+		ResetEvent(gameReady);
 		//WaitForSingleObject(hStdoutMutex,INFINITE);
 		//gotoxy(0, 10);
 		//_tprintf(TEXT("GameStatus = %d\n"),gameInfo->gameStatus);

@@ -20,46 +20,22 @@
 #define BALL_SPEED 25
 #define BALL_MAX_BALLS 5
 #define BALL_MAX_SPEED 5//time to sleep
-#define BALL_SIZE_X 15
-#define BALL_SIZE_Y 15
+#define BALL_SIZE 10
 //bricks
 #define BRICK_MAX_BRICKS 50
 #define BRICK_SIZE_X 50
 #define BRICK_SIZE_Y 10
 //bonus
+#define BONUS_SPEED 40
 #define BONUS_SCORE_ADD 150 
 #define BONUS_PROB_SPEED 0.5
 #define BONUS_PROB_EXTRALIFE 0.3
 #define BONUS_PROB_TRIPLE 0.2
 #define BONUS_SPEED_CHANGE 5
 #define BONUS_SPEED_DURATION 10//seconds
-#define BONUS_SIZE_X 10
-#define BONUS_SIZE_Y 10
-
-
-//#define MAX_USERS 5
-//#define DEFAULT_USER_LIFES 5
-
-//#define MAX_INIT_LIFES 3
-//#define DEFAULT_SIZE_USER_X 50
-//#define DEFAULT_SIZE_USER_Y 15
-//
-//
-////bals
-//#define MAX_SPEED 150
-//#define MAX_BALLS 5
-//#define MAX_SPEED_BONUS 50
-//#define PROB_SPEED_BONUS 0.5
-//#define BALL_DEFAULT_SPEED 20
-//#define MAX_DURATION 50000
-//#define BALL_DEFAULT_SIZE 15
-//
-////bricks
-//#define MAX_BRICKS 50
-//#define INIT_BRICKS 30
-//#define BRICK_DEFAULT_SIZE 50
-//
-//#define MAX_BONUS_AT_TIME 
+#define BONUS_SIZE_X 15
+#define BONUS_SIZE_Y 15
+#define BONUS_MAX_BONUS 5//max bonus at the same time
 
 #define USE_MSG_MUTEX TEXT("writeMsgMutex")
 #define MSG_SHARED_MEMORY_NAME TEXT("MSG_SHARED_MEMORY")
@@ -116,6 +92,7 @@ typedef struct bonus {
 	int type;	// 1 = speed_up | 2 = speed_down | 3 = extra_life | 4 = triple
 	int posx;
 	int posy;
+	int speed;
 	drawSize size;
 } bonus;
 
@@ -147,6 +124,7 @@ typedef struct config {
 	int brickMaxBricks;
 	drawSize brickSize;
 	//bonus
+	int bonusSpeed;
 	int bonusScoreAdd;
 	float bonusProbSpeed;//probabilidade do bonus ser speed 
 	float bonusProbExtraLife;//probabilidade do bonus ser vida extra
@@ -158,12 +136,10 @@ typedef struct config {
 
 typedef struct Player {
 	TCHAR name[MAX_NAME_LENGTH];
-	int id;//necessary?
+	int id;//necessary? so i can associate clientsInfo to nUSers?
 	int lifes;
-	DWORD score;
 	int posx, posy;
-	DWORD connection_mode;//not being used?
-	HANDLE hConnection;//not being used?
+	DWORD score;
 	drawSize size;
 }user;
 

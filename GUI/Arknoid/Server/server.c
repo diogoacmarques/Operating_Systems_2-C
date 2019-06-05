@@ -37,6 +37,7 @@ void resetUser(DWORD id);
 void resetBall(DWORD id);
 void resetBrick(DWORD id);
 void hitBrick(DWORD brick_id, DWORD ball_id);
+void createBonus(DWORD id);
 int moveUser(DWORD id, TCHAR side[TAM]);
 void securityPipes(SECURITY_ATTRIBUTES * sa);
 void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR pSD);
@@ -63,6 +64,7 @@ HANDLE messageEventServer;//event to update server of dll msg
 HANDLE hResolveMessageMutex;//handle to resolveMessage function
 DWORD server_id;
 HANDLE hTBola[BALL_MAX_BALLS];
+HANDLE hTBonus[BONUS_MAX_BONUS];
 
 int maxX = 0, maxY = 0;
 HDC memDC = NULL;
@@ -140,7 +142,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	*/
 
 	updateGame = CreateEvent(NULL, FALSE, FALSE, NULL);
-	updateLocalGame = CreateEvent(NULL, FALSE, FALSE, LOCAL_UPDATE_GAME);
+	updateLocalGame = CreateEvent(NULL, TRUE, FALSE, LOCAL_UPDATE_GAME);
 	messageEventServer = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
 	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);//updates ball of local
 	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);//updates bonus of local
@@ -198,7 +200,6 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 	// ============================================================================
 	return((int)lpMsg.wParam); // Retorna sempre o parâmetro wParam da estrutura lpMsg
 }
-
 
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	//draw
@@ -345,7 +346,9 @@ DWORD resolveMessage(msg inMsg) {
 	outMsg.codigoMsg = 0;
 	outMsg.from = 254;
 	outMsg.connection = inMsg.connection;
-	
+	outMsg.to = inMsg.from;
+	_tcscpy_s(outMsg.messageInfo, TAM, TEXT("---"));
+
 	////_tprintf(TEXT("[%d]NewMsg(%d):\%s\n-from:%d\n-to:%d\n"), quant, inMsg.codigoMsg, inMsg.messageInfo, inMsg.from, inMsg.to);
 	//init
 	if (inMsg.codigoMsg == -9999) {
@@ -391,7 +394,7 @@ DWORD resolveMessage(msg inMsg) {
 		else if (_tcscmp(inMsg.messageInfo, TEXT("nop")) == 0) {//for tests
 			outMsg.codigoMsg = -1;//not successful
 			outMsg.to = inMsg.from;
-			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("iDontLikeYou"));
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("youAreBanned"));
 			sendMessage(outMsg);
 			return 1;
 		}
@@ -400,7 +403,6 @@ DWORD resolveMessage(msg inMsg) {
 				//_tprintf(TEXT("This user is already logged in\n"));
 				flag = 0;
 				outMsg.codigoMsg = -1;//not successful
-				outMsg.to = inMsg.from;
 				////_tprintf(TEXT("Sent user not accepted created\n"));
 				sendMessage(outMsg);
 				break;
@@ -411,10 +413,14 @@ DWORD resolveMessage(msg inMsg) {
 			gameInfo->nUsers[gameInfo->numUsers].id = inMsg.from;
 			//_tprintf(TEXT("sending message with sucess to user_id:%d\n"), gameInfo->nUsers[gameInfo->numUsers].user_id);
 			outMsg.codigoMsg = 1;//sucesso
-			gameInfo->nUsers[gameInfo->numUsers].hConnection = clientsInfo[inMsg.from].hClientMsg;
 			gameInfo->numUsers++;
 			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("loginSucess"));
-			outMsg.to = inMsg.from;
+			sendMessage(outMsg);
+		}
+		else {
+			//already have an user like you
+			outMsg.codigoMsg = -1;
+			_tcscpy_s(outMsg.messageInfo, TAM, TEXT("alreadyHaveThisUser"));
 			sendMessage(outMsg);
 		}
 	}
@@ -465,15 +471,36 @@ DWORD resolveMessage(msg inMsg) {
 			createBalls(1);
 	}
 	else if (inMsg.codigoMsg == 200 && gameInfo->gameStatus == 1) {//user trying to move
-
+		int res;
 		if (_tcscmp(inMsg.messageInfo, TEXT("right")) != 0 && _tcscmp(inMsg.messageInfo, TEXT("left")) != 0) {
-			MessageBox(global_hWnd, TEXT("Received the wrong information!"), TEXT("Warning"), MB_OK);
-			return;
-		}
+			//MessageBox(global_hWnd, inMsg.messageInfo, TEXT("user would like to move to:"), MB_OK);
+			int moveToPos = _tstoi(inMsg.messageInfo);//tranlate
+			if(moveToPos > gameInfo->nUsers[inMsg.from].posx)
+				_tcscpy_s(inMsg.messageInfo, TAM, TEXT("right"));
+			else
+				_tcscpy_s(inMsg.messageInfo, TAM, TEXT("left"));
+			do {
+				if (_tcscmp(inMsg.messageInfo, TEXT("right")) == 0 && moveToPos <= gameInfo->nUsers[inMsg.from].posx){
+					//MessageBox(global_hWnd, TEXT("end of move"), TEXT("user move"), MB_OK);
+					break;
+				}
+				else if (_tcscmp(inMsg.messageInfo, TEXT("left")) == 0 && moveToPos >= gameInfo->nUsers[inMsg.from].posx) {
+					//MessageBox(global_hWnd, TEXT("end of move"), TEXT("user move"), MB_OK);
+					break;
+				}
 
-		int res = moveUser(inMsg.from, inMsg.messageInfo);
-		if (res)
-			return -1;
+				res = moveUser(inMsg.from, inMsg.messageInfo);
+				if (res) {//if cant
+					break;
+					//MessageBox(global_hWnd, TEXT("not sucess"), TEXT("user would like to move to:"), MB_OK);
+				}					
+			} while (1);
+		}else{
+			res = moveUser(inMsg.from, inMsg.messageInfo);
+			if (res)
+				return -1;
+		}
+		
 	}
 	else if (inMsg.codigoMsg == 123) {//for tests || returns the exact same msg
 		outMsg.to = inMsg.from;
@@ -482,6 +509,7 @@ DWORD resolveMessage(msg inMsg) {
 
 	InvalidateRect(global_hWnd, NULL, FALSE);
 	SetEvent(updateLocalGame);
+	ResetEvent(updateLocalGame);
 	SetEvent(updateGame);
 	return -1;
 }
@@ -713,8 +741,8 @@ DWORD startVars() {
 	gameInfo->myconfig.file;
 	//game
 	gameInfo->myconfig.gameNumLevels = GAME_LEVELS;
-	gameInfo->myconfig.gameSize.sizex = GAME_SIZE_X;
-	gameInfo->myconfig.gameSize.sizey = GAME_SIZE_Y;
+	gameInfo->myconfig.gameSize.sizex = GAME_SIZE_X - 15;//this values are weird
+	gameInfo->myconfig.gameSize.sizey = GAME_SIZE_Y  - 60;
 	//user
 	gameInfo->myconfig.userMaxUsers = USER_MAX_USERS;
 	gameInfo->myconfig.userNumLifes = USER_LIFES;
@@ -724,13 +752,14 @@ DWORD startVars() {
 	gameInfo->myconfig.ballInitialSpeed = BALL_SPEED;
 	gameInfo->myconfig.ballMaxBalls = BALL_MAX_BALLS;
 	gameInfo->myconfig.ballMaxSpeed = BALL_MAX_SPEED;
-	gameInfo->myconfig.ballSize.sizex = BALL_SIZE_X;
-	gameInfo->myconfig.ballSize.sizey = BALL_SIZE_Y;
+	gameInfo->myconfig.ballSize.sizex = BALL_SIZE;
+	gameInfo->myconfig.ballSize.sizey = BALL_SIZE;
 	//bricks
 	gameInfo->myconfig.brickMaxBricks = BRICK_MAX_BRICKS;
 	gameInfo->myconfig.brickSize.sizex = BRICK_SIZE_X;
 	gameInfo->myconfig.brickSize.sizey = BRICK_SIZE_Y;
 	//bonus
+	gameInfo->myconfig.bonusSpeed = BONUS_SPEED;
 	gameInfo->myconfig.bonusScoreAdd = BONUS_SCORE_ADD;
 	gameInfo->myconfig.bonusProbSpeed = BONUS_PROB_SPEED;
 	gameInfo->myconfig.bonusProbExtraLife = BONUS_PROB_EXTRALIFE;
@@ -759,6 +788,9 @@ DWORD startVars() {
 	for (i = 0; i < BRICK_MAX_BRICKS; i++) {
 		resetBrick(i);
 	}
+	//bonus
+	for(i = 0;i<BONUS_MAX_BONUS;i++)
+		hTBonus[i] = NULL;
 
 	_tcscpy_s(gameState, TAM, TEXT("Server Initiated"));
 	InvalidateRect(global_hWnd, NULL, TRUE);
@@ -779,9 +811,6 @@ DWORD startVars() {
 }
 
 void resetUser(DWORD id) {
-	////_tprintf(TEXT("Reseting user %d\n"), id);
-	gameInfo->nUsers[id].connection_mode = -1;
-	gameInfo->nUsers[id].hConnection = NULL;
 	gameInfo->nUsers[id].lifes = -1;
 	_stprintf_s(gameInfo->nUsers[id].name, MAX_NAME_LENGTH, TEXT("empty"));
 	gameInfo->nUsers[id].posx = -1;
@@ -793,7 +822,6 @@ void resetUser(DWORD id) {
 }
 
 void resetBall(DWORD id) {
-	////_tprintf(TEXT("Reseting ball %d\n"), id);
 	gameInfo->nBalls[id].id = -1;
 	gameInfo->nBalls[id].posx = -1;
 	gameInfo->nBalls[id].posy = -1;
@@ -805,7 +833,7 @@ void resetBall(DWORD id) {
 }
 
 void resetBrick(DWORD id) {
-	////_tprintf(TEXT("Reseting brick %d\n"), id);
+	gameInfo->nBricks[id].brinde.speed = -1;
 	gameInfo->nBricks[id].brinde.posx = -1;
 	gameInfo->nBricks[id].brinde.posy = -1;
 	gameInfo->nBricks[id].brinde.size.sizex = -1;
@@ -858,13 +886,10 @@ void createBalls(DWORD num) {
 }
 
 void createBonus(DWORD id) {
-	//create num balls
-	/*DWORD threadId;
-	////_tprintf(TEXT("Creating Bonus with id:%d\n"), id);
-	for (int i = 0; i < MAX_BONUS_AT_TIME; i++) {
+	for (int i = 0; i < BONUS_MAX_BONUS; i++) {
 		if (hTBonus[i] == INVALID_HANDLE_VALUE || hTBonus[i] == NULL) {//se handle is available
 			////_tprintf(TEXT("Found a free handle\n"));
-			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)id, 0, &threadId);
+			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)id, 0, NULL);
 			if (hTBonus[i] == NULL) {
 				//_tprintf(TEXT("Erro ao criar bola numero:%d!\n"), i);
 				return -1;
@@ -875,7 +900,7 @@ void createBonus(DWORD id) {
 		}
 	}
 
-	return;*/
+	return;
 }
 
 DWORD WINAPI BolaThread(LPVOID param) {
@@ -892,7 +917,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	gameInfo->nBalls[id].size.sizex = gameInfo->myconfig.ballSize.sizex;
 	gameInfo->nBalls[id].size.sizey = gameInfo->myconfig.ballSize.sizey;
 	DWORD posx = gameInfo->nUsers[0].posx + (gameInfo->nUsers[0].size.sizex / 2);
-	DWORD posy = gameInfo->nUsers[0].posy - gameInfo->nUsers[0].size.sizey;
+	DWORD posy = gameInfo->nUsers[0].posy - gameInfo->nBalls[id].size.sizey;
 	DWORD ballScore = 0;
 	boolean flag, goingUp = 1, goingRight = (rand() % 2);
 
@@ -936,12 +961,13 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		}
 
 		if (goingRight) {
-			if (posx < (gameInfo->myconfig.gameSize.sizex - gameInfo->nBalls[id].size.sizex * 2)) {
+			if (posx + gameInfo->nBalls[id].size.sizex < gameInfo->myconfig.gameSize.sizex ) {
 				posx++;
 			}
 			else {
 				posx--;
 				goingRight = 0;
+				//MessageBox(global_hWnd, TEXT("hit wall right"), TEXT("debug"), MB_OK);
 			}
 		}
 		else {
@@ -964,13 +990,14 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			}
 		}
 		else {
-			if (posy < gameInfo->myconfig.gameSize.sizex - 1) {// se nao atinge o limite do mapa
+			if (posy + gameInfo->nBalls[id].size.sizey < gameInfo->myconfig.gameSize.sizey) {
 
 				for (int i = 0; i < gameInfo->numUsers; i++) {//checks for player
 					////_tprintf(TEXT("BALL(%d,%d)\nUSER(%d-%d,%d)\n\n"),posx,posy, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size, gameInfo->nUsers[i].posy);
-					if (posy == gameInfo->nUsers[i].posy - (gameInfo->nUsers[i].size.sizey) && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex))) {//atinge a barreira
+					if (posy + gameInfo->nBalls[id].size.sizey == gameInfo->nUsers[i].posy && (posx >= gameInfo->nUsers[i].posx && posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex))) {//atinge a barreira
 						flag = 1;
 						//_tprintf(TEXT("HIT player[%d]!!\n"), i);
+						//MessageBox(global_hWnd, TEXT("hit player"), TEXT("debug"), MB_OK);
 						break;
 					}
 				}
@@ -983,15 +1010,16 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			}
 			else {//se atinge o fim do mapa
 				//reset ball
+				//MessageBox(global_hWnd, TEXT("end of ball"), TEXT("debug"), MB_OK);
 				gameInfo->nBalls[id].status = 0;//end of ball
 				gameInfo->numBalls--;
 			}
 		}
 
-		//if (localNumBricks <= 0) {
-		//	gameInfo->nBalls[id].status = 0;//end of ball
-		//	gameInfo->numBalls--;
-		//}
+		if (localNumBricks <= 0) {
+			gameInfo->nBalls[id].status = 0;//end of ball
+			gameInfo->numBalls--;
+		}
 
 		gameInfo->nBalls[id].posx = posx;
 		gameInfo->nBalls[id].posy = posy;
@@ -999,35 +1027,21 @@ DWORD WINAPI BolaThread(LPVOID param) {
 		if (gameInfo->nBalls[id].status != 0)//if is to end
 			gameInfo->nBalls[id].status = 1;
 
-
-		//TCHAR str[TAM];
-		//TCHAR tmp[TAM];
-		//TCHAR tmp2[TAM];
-		//_itot_s(gameInfo->myconfig.gameSize.sizex, tmp, TAM, 10);//translates num to str
-		//_itot_s(gameInfo->myconfig.gameSize.sizey, tmp2, TAM, 10);//translates num to str
-		//_tcscpy_s(str, TAM, TEXT("lmites = "));
-		//_tcscat_s(str, TAM, tmp);//ads
-		//_tcscat_s(str, TAM, TEXT(","));
-		//_tcscat_s(str, TAM, tmp2);//ads
-		//MessageBox(global_hWnd, str, TEXT("DEGUB"), MB_OK);
 		SetEvent(updateLocalGame);
+		ResetEvent(updateLocalGame);
 		SetEvent(updateGame);
-
+		//MessageBox(global_hWnd, TEXT("ball init pos + 1"), TEXT("debug"), MB_OK);
 		for (int i = 0; i < gameInfo->numUsers; i++) {
 			gameInfo->nUsers[i].score += (GetTickCount() - ballScore) / 100;
 		}
 
-
 		//Sleep(gameInfo->nBalls[id].speed);
 		li.QuadPart = -(gameInfo->nBalls[id].speed) * _MSECOND; // negative = relative time | 100-nanosecond units
 		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
-		{
-			//_tprintf(TEXT("SetWaitableTimer failed (%d)\n"), GetLastError());
-		}
+			MessageBox(global_hWnd, TEXT("Could not SetWaitbleTimer"), TEXT("warning"), MB_OK);
 
-		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0) {
-			//_tprintf(TEXT("WaitForSingleObject waitableTimer failed (%d)\n"), GetLastError());
-		}
+		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
+			MessageBox(global_hWnd, TEXT("Could not wait for timer on ball thread"), TEXT("warning"), MB_OK);
 
 	} while (gameInfo->nBalls[id].status);
 
@@ -1042,60 +1056,55 @@ DWORD WINAPI BolaThread(LPVOID param) {
 
 DWORD WINAPI bonusDrop(LPVOID param) {
 	DWORD id = ((DWORD)param);
-	//_tprintf(TEXT("bonus created!\n"));
+
+	LARGE_INTEGER li;
+	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
+					
+	gameInfo->nBricks[id].brinde.size.sizex = gameInfo->myconfig.bonusSize.sizex;
+	gameInfo->nBricks[id].brinde.size.sizey = gameInfo->myconfig.bonusSize.sizey;
+	gameInfo->nBricks[id].brinde.speed = gameInfo->myconfig.bonusSpeed;
+	gameInfo->nBricks[id].brinde.posx = (gameInfo->nBricks[id].posx + (gameInfo->nBricks[id].size.sizex / 2)) - gameInfo->nBricks[id].brinde.size.sizex / 2;
+	gameInfo->nBricks[id].brinde.posy = gameInfo->nBricks[id].posy + gameInfo->nBricks[id].size.sizey;
 	gameInfo->nBricks[id].brinde.status = 1;
-	gameInfo->nBricks[id].brinde.type = 1;
-
-	////_tprintf(TEXT("Sending message that bonus with id:%d was created!\n"),id);
-	msg tmpMsg;
-	TCHAR tmp[TAM];
-	tmpMsg.codigoMsg = 103;
-	_itot_s(id, tmp, TAM, 10);
-	_tcscpy_s(tmpMsg.messageInfo, TAM, tmp);
-	tmpMsg.from = server_id;
-	tmpMsg.to = 255;
-	sendMessage(tmpMsg);
-
-
+	
 	do {
-		Sleep(1000);
 		for (int i = 0; i < gameInfo->numUsers; i++) {
-			if ((gameInfo->nUsers[i].posy - 1) == gameInfo->nBricks[id].brinde.posy) {
-				//_tprintf(TEXT("cheking user [%s]!\n"), gameInfo->nUsers[i].name);
-				if (gameInfo->nBricks[id].brinde.posx >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex)) {
+			if ((gameInfo->nUsers[i].posy) == gameInfo->nBricks[id].brinde.posy + gameInfo->nBricks[id].brinde.size.sizey) {
+				//MessageBox(global_hWnd, TEXT("cheking for user now"), TEXT("debug"), MB_OK);
+				if (gameInfo->nBricks[id].brinde.posx + gameInfo->nBricks[id].brinde.size.sizex >= gameInfo->nUsers[i].posx && gameInfo->nBricks[id].brinde.posx <= (gameInfo->nUsers[i].posx + gameInfo->nUsers[i].size.sizex)) {
 					gameInfo->nBricks[id].brinde.status = 0;
-					SetEvent(updateBonus);//update local
-					ResetEvent(updateBonus);
-					//SetEvent(updateGame);//update pipe
 					SetEvent(updateLocalGame);
+					ResetEvent(updateLocalGame);
 					SetEvent(updateGame);
-					//_tprintf(TEXT("%s caught the bonus[%d]!\n"), gameInfo->nUsers[i].name, id);
-					//addBonus(id, i);
+					//MessageBox(global_hWnd, TEXT("user caught the bonus"), TEXT("debug"), MB_OK);
 					return 1;
 				}
-
 			}
 		}
-
 		gameInfo->nBricks[id].brinde.posy++;
-		SetEvent(updateBonus);//update local
-		ResetEvent(updateBonus);
+		SetEvent(updateLocalGame);
+		ResetEvent(updateLocalGame);
 		SetEvent(updateGame);//update pipe
-	} while (gameInfo->nBricks[id].brinde.posy < gameInfo->myconfig.gameSize.sizey - 1);
 
+		li.QuadPart = -(gameInfo->nBricks[id].brinde.speed) * _MSECOND; // negative = relative time | 100-nanosecond units
+		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
+			MessageBox(global_hWnd, TEXT("Could not SetWaitbleTimer"), TEXT("warning"), MB_OK);
 
-	//_tprintf(TEXT("End of bonus[%d]!\n"), id);
+		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
+			MessageBox(global_hWnd, TEXT("Could not wait for timer on ball thread"), TEXT("warning"), MB_OK);
+
+	} while (gameInfo->nBricks[id].brinde.posy + gameInfo->nBricks[id].brinde.size.sizey < gameInfo->myconfig.gameSize.sizey - 1);
+
+	//MessageBox(global_hWnd, TEXT("user did not caught the bonus"), TEXT("debug"), MB_OK);
 	gameInfo->nBricks[id].brinde.status = 0;
-	SetEvent(updateBonus);//update local
-	ResetEvent(updateBonus);
-	//SetEvent(updateGame);//update pipe
+	SetEvent(updateLocalGame);
+	ResetEvent(updateLocalGame);
+	SetEvent(updateGame);
 
 	return 0;
 }
 
 void hitBrick(DWORD brick_id, DWORD ball_id) {
-	return;
-	////_tprintf(TEXT("This initalBrick[%d] -> Status:%d\n\n"), gameInfo->nBricks[brick_id].id, gameInfo->nBricks[brick_id].status);
 	gameInfo->nBricks[brick_id].status--;
 	if (gameInfo->nBricks[brick_id].status == 0) {
 		localNumBricks--;
@@ -1103,7 +1112,6 @@ void hitBrick(DWORD brick_id, DWORD ball_id) {
 			gameInfo->nUsers[i].score += gameInfo->myconfig.bonusScoreAdd;
 
 		if (gameInfo->nBricks[brick_id].type == 3) {//magic
-			//creates thread that drops brinds
 			createBonus(brick_id);
 		}
 	}
@@ -1304,6 +1312,7 @@ void startGame(){
 
 	gameInfo->gameStatus = 1;
 	SetEvent(updateLocalGame);//sends game
+	ResetEvent(updateLocalGame);
 	SetEvent(updateGame);//sends game
 	Sleep(250);
 	tmpMsg.codigoMsg = 100;//new game
@@ -1349,14 +1358,6 @@ void assignBrick(DWORD num) {
 		gameInfo->nBricks[i].posx = oposx;
 		gameInfo->nBricks[i].posy = oposy;
 
-		//bonus
-		if (gameInfo->nBricks[i].type == 3) {//create bonus
-			gameInfo->nBricks[i].brinde.posx = oposx;
-			gameInfo->nBricks[i].brinde.posy = oposy;
-			gameInfo->nBricks[i].brinde.status = 0;//not active
-			gameInfo->nBricks[i].brinde.size.sizex = gameInfo->myconfig.bonusSize.sizex;
-			gameInfo->nBricks[i].brinde.size.sizey = gameInfo->myconfig.bonusSize.sizey;
-		}
 		oposx += gameInfo->nBricks[i].size.sizex + spaceToBrick;
 
 	}
@@ -1368,11 +1369,11 @@ void assignBrick(DWORD num) {
 
 void userInit(DWORD id) {
 	if (id)
-		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id].size.sizex + 10;
+		gameInfo->nUsers[id].posx = gameInfo->nUsers[id - 1].posx + gameInfo->nUsers[id - 1].size.sizex + 20;
 	else
-		gameInfo->nUsers[id].posx = 10;
+		gameInfo->nUsers[id].posx = 20;
 
-	gameInfo->nUsers[id].posy = gameInfo->myconfig.gameSize.sizey - 100;
+	gameInfo->nUsers[id].posy = gameInfo->myconfig.gameSize.sizey - gameInfo->myconfig.userSize.sizey - 20;
 	gameInfo->nUsers[id].lifes = gameInfo->myconfig.userNumLifes;
 	gameInfo->nUsers[id].size.sizex = gameInfo->myconfig.userSize.sizex;
 	gameInfo->nUsers[id].size.sizey = gameInfo->myconfig.userSize.sizey;
