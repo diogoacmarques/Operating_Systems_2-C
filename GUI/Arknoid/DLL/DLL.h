@@ -26,7 +26,7 @@
 #define BRICK_SIZE_X 50
 #define BRICK_SIZE_Y 10
 //bonus
-#define BONUS_SPEED 40
+#define BONUS_SPEED 1
 #define BONUS_SCORE_ADD 150 
 #define BONUS_PROB_SPEED 0.5f
 #define BONUS_PROB_EXTRALIFE 0.3f
