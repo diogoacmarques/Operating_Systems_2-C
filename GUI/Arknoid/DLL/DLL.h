@@ -17,7 +17,7 @@
 #define USER_SIZE_X 100
 #define USER_SIZE_Y 15
 //ball
-#define BALL_SPEED 25
+#define BALL_SPEED 15//25
 #define BALL_MAX_BALLS 5
 #define BALL_MAX_SPEED 5//time to sleep
 #define BALL_SIZE 10
@@ -26,12 +26,12 @@
 #define BRICK_SIZE_X 50
 #define BRICK_SIZE_Y 10
 //bonus
-#define BONUS_SPEED 1
+#define BONUS_DROP_SPEED 17
 #define BONUS_SCORE_ADD 150 
 #define BONUS_PROB_SPEED 0.5f
 #define BONUS_PROB_EXTRALIFE 0.3f
 #define BONUS_PROB_TRIPLE 0.2f
-#define BONUS_SPEED_CHANGE 5
+#define BONUS_SPEED_CHANGE 2
 #define BONUS_SPEED_DURATION 10//seconds
 #define BONUS_SIZE_X 15
 #define BONUS_SIZE_Y 15
@@ -124,7 +124,7 @@ typedef struct config {
 	int brickMaxBricks;
 	drawSize brickSize;
 	//bonus
-	int bonusSpeed;
+	int bonusDropSpeed;
 	int bonusScoreAdd;
 	float bonusProbSpeed;//probabilidade do bonus ser speed 
 	float bonusProbExtraLife;//probabilidade do bonus ser vida extra
@@ -156,10 +156,7 @@ typedef struct {
 }game, *pgame;
 #define BUFSIZE_GAME sizeof(game)
 
-HANDLE updateBalls, updateBonus;
 HANDLE messageEventClient[USER_MAX_USERS];
-
-HANDLE messageBroadcastDll;
 
 //Definir uma constante para facilitar a leitura do protótipo da função
 //Este .h deve ser incluído no projeto que o vai usar (modo implícito)

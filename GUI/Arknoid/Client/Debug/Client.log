@@ -1,3 +1,3 @@
 ﻿  client.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(109): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\client\client.c(108): warning C4028: formal parameter 3 different from declaration
   Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe

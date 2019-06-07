@@ -2,6 +2,7 @@
 #include <tchar.h>
 #include <windowsx.h>
 #include <strsafe.h>
+#include <time.h>
 #include <aclapi.h>
 #include "resource.h"
 #include "DLL.h"
@@ -38,7 +39,7 @@ void resetBall(DWORD id);
 void resetBrick(DWORD id);
 void hitBrick(DWORD brick_id, DWORD ball_id);
 void attributeBonus(DWORD client_id, DWORD brick_id);
-void createBonus(DWORD id);
+void createBonus(DWORD brick_id);
 int moveUser(DWORD id, TCHAR side[TAM]);
 void updateEveryone();
 int registry(user userData);
@@ -78,7 +79,7 @@ HBRUSH hBrush = NULL;
 pgame currentGame;//has game Information
 pgame gameClient;//game to be sent
 
-int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {
+int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 	
 	HWND hWnd; // hWnd é o handler da janela, gerado mais abaixo por CreateWindow()
 	MSG lpMsg; // MSG é uma estrutura definida no Windows para as mensagens
@@ -107,6 +108,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 
 	wcApp.hbrBackground = CreateSolidBrush(RGB(98, 66, 244));
 
+
 	if (!RegisterClassEx(&wcApp))
 		return(0);
 
@@ -126,37 +128,31 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		// passado num dos parâmetros de WinMain()
 		0); // Não há parâmetros adicionais para a janela
 
+	HANDLE checkExistingServer;
+	//checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
+	checkExistingServer = OpenEvent(EVENT_ALL_ACCESS, TRUE, CHECK_SERVER_EVENT);
+	if (!checkExistingServer == NULL) {//there is no server created
+		MessageBox(hWnd, TEXT("There is a server running at this moment."), TEXT("WARNING"), MB_OK);
+		return -1;
+	}
+
 	ShowWindow(hWnd, nCmdShow);
 	global_hWnd = hWnd;
 	UpdateWindow(hWnd); // Refrescar a janela (Windows envia à janela uma
 
 	//-------------------------------------------------program-------------------------------------
 	DWORD res;
-	srand((int)time(NULL));
 
-	/*HANDLE checkExistingServer;
 	checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
-	checkExistingServer = OpenEvent(NULL,NULL, CHECK_SERVER_EVENT);
-	if (checkExistingServer == NULL) {//there is no server created
-		checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
-	}
-	else {
-		MessageBox(hWnd, TEXT("There is a server running at this moment."), TEXT("WARNING"), MB_OK);
-		PostQuitMessage(0);
-	}
-	*/
-	
 	writeGameMutex = CreateMutex(NULL, FALSE, NULL);
 	updateRemoteGame = CreateEvent(NULL, TRUE, FALSE, NULL);
 	updateLocalGame = CreateEvent(NULL, TRUE, FALSE, LOCAL_UPDATE_GAME);
 	messageEventServer = CreateEvent(NULL, FALSE, FALSE, MESSAGE_EVENT_NAME);
-	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);//updates ball of local
-	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);//updates bonus of local
 	hResolveMessageMutex = CreateMutex(NULL, FALSE, NULL);
-	if (updateRemoteGame == NULL || messageEventServer == NULL || updateBalls == NULL 
-		|| updateBonus == NULL || hResolveMessageMutex == NULL || updateLocalGame == NULL || writeGameMutex == NULL) {
+	if (updateRemoteGame == NULL || messageEventServer == NULL || checkExistingServer == NULL
+		|| hResolveMessageMutex == NULL || updateLocalGame == NULL || writeGameMutex == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating resources..."), TEXT("Resources"), MB_OK);
-		PostQuitMessage(1);
+		
 	}
 
 	currentGame = (pgame)malloc(sizeof(game));//game that server changes
@@ -263,6 +259,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	case WM_DESTROY: // Destruir a janela e terminar o programa
 		PostQuitMessage(0);
+		free(currentGame);
+		closeSharedMemoryMsg();
+		closeSharedMemoryGame();
 		break;
 	default:
 		return DefWindowProc(hWnd, messg, wParam, lParam);
@@ -379,6 +378,7 @@ DWORD resolveMessage(msg inMsg) {
 		}
 		else if (num >= 0) {//success
 			outMsg.codigoMsg = 9999;
+			updateEveryone();//sends info after connecting
 		}
 		outMsg.to = num;
 		_itot_s(num, tmp, TAM, 10);//translates num to str
@@ -550,7 +550,7 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 		if (!fConnected && GetLastError() == ERROR_PIPE_CONNECTED)
 			fConnected = 1;
 
-		MessageBox(global_hWnd, TEXT("Got a Msg Client"), TEXT("Client"), MB_OK);
+		//MessageBox(global_hWnd, TEXT("Got a Msg Client"), TEXT("Client"), MB_OK);
 
 		if (fConnected) {
 			hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeClientMsg, (LPVOID)hPipeInit, 0, NULL);
@@ -598,7 +598,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 		fConnected = ConnectNamedPipe(hPipeInit, NULL);
 		if (!fConnected && GetLastError() == ERROR_PIPE_CONNECTED)
 			fConnected = 1;
-		
+	
 		//MessageBox(global_hWnd, TEXT("client for game"), TEXT("game"), MB_OK);
 
 		if (fConnected) {
@@ -607,6 +607,10 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 		else {
 			CloseHandle(hPipeInit);
 		}
+
+		Sleep(1000);//waits for client to be ready
+		SetEvent(updateRemoteGame);//sends info after connecting
+		ResetEvent(updateRemoteGame);
 	} while (1);
 
 	return 0;
@@ -684,6 +688,7 @@ DWORD WINAPI updateGamePipe(LPVOID param) {
 					NULL
 				);
 			}
+		
 	} while (1);
 	return 1;
 }
@@ -731,7 +736,7 @@ DWORD startVars() {
 	currentGame->myconfig.brickSize.sizex = BRICK_SIZE_X;
 	currentGame->myconfig.brickSize.sizey = BRICK_SIZE_Y;
 	//bonus
-	currentGame->myconfig.bonusSpeed = BONUS_SPEED;
+	currentGame->myconfig.bonusDropSpeed = BONUS_DROP_SPEED;
 	currentGame->myconfig.bonusScoreAdd = BONUS_SCORE_ADD;
 	currentGame->myconfig.bonusProbSpeed = BONUS_PROB_SPEED;
 	currentGame->myconfig.bonusProbExtraLife = BONUS_PROB_EXTRALIFE;
@@ -877,20 +882,23 @@ void createBalls(DWORD num) {
 	return;
 }
 
-void createBonus(DWORD id) {
+void createBonus(DWORD brick_id) {
+	drawSize tmpStruct;//not actually for size (using it to pass 2 int variables)
 	for (int i = 0; i < BONUS_MAX_BONUS; i++) {
 		if (hTBonus[i] == INVALID_HANDLE_VALUE || hTBonus[i] == NULL) {//se handle is available
-			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)id, 0, NULL);
+			tmpStruct.sizex = i;//thread id
+			tmpStruct.sizey = brick_id;//brick id
+			hTBonus[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)bonusDrop, (LPVOID)&tmpStruct, 0, NULL);
+			Sleep(5);//just enough so that the thread can save values;
 			if (hTBonus[i] == NULL) {
 				MessageBox(global_hWnd, TEXT("Error creating bonusDrop thread"), TEXT("Error"), MB_ICONERROR | MB_OK);
-				return;
-			}
-			else {
 				break;
 			}
+			else
+				break;
+			
 		}
 	}
-
 	return;
 }
 
@@ -913,7 +921,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	DWORD posy = currentGame->nUsers[0].posy - currentGame->nBalls[id].size.sizey;
 	DWORD ballScore = 0;
 	boolean flag, goingUp = 1, goingRight = (rand() % 2);
-
 	do {
 		ballScore = GetTickCount();
 		flag = 0;
@@ -927,6 +934,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 					//MessageBox(global_hWnd, TEXT("hit up"), TEXT("debug"), MB_OK);
 					goingUp = 0;
 					hitBrick(i, id);
+					continue;
 				}
 			}
 			//down
@@ -935,20 +943,18 @@ DWORD WINAPI BolaThread(LPVOID param) {
 					//MessageBox(global_hWnd, TEXT("hit down"), TEXT("debug"), MB_OK);
 					goingUp = 1;
 					hitBrick(i, id);
+					continue;
 				}
 			}
 
 			//left
-			if (!goingRight && posx == currentGame->nBricks[i].posx + currentGame->nBricks[i].size.sizex && posy < currentGame->nBricks[i].posy + currentGame->nBricks[i].size.sizey && posy > currentGame->nBricks[i].posy) {
-				//MessageBox(global_hWnd, TEXT("hit left"), TEXT("debug"), MB_OK);
-				goingRight = 1;
+			if (posx + currentGame->nBalls[id].size.sizex >= currentGame->nBricks[i].posx //direta da bola vs esquerda do tijolo
+				&& posx <= currentGame->nBricks[i].posx//esquerda da bola vs direita do tijolo
+				&& posy < currentGame->nBricks[i].posy + currentGame->nBricks[i].size.sizey //cimo da bola vs baixo do tijolo
+				&& posy + currentGame->nBalls[id].size.sizey > currentGame->nBricks[i].posy) {//baixo da bola vs cima do tijolo
+				goingRight = !goingRight;
 				hitBrick(i, id);
-			}
-			//right
-			else if (goingRight && posx + currentGame->nBalls[id].size.sizey == currentGame->nBricks[i].posx && posy < currentGame->nBricks[i].posy + currentGame->nBricks[i].size.sizey && posy > currentGame->nBricks[i].posy) {
-				//MessageBox(global_hWnd, TEXT("hit right"), TEXT("debug"), MB_OK);
-				goingRight = 0;
-				hitBrick(i, id);
+				continue;
 			}
 		}
 
@@ -1055,53 +1061,57 @@ DWORD WINAPI BolaThread(LPVOID param) {
 }
 
 DWORD WINAPI bonusDrop(LPVOID param) {
-	DWORD id = ((DWORD)param);
+	drawSize* tmpStruct = (drawSize*)param;
+	DWORD bonusThreadId = tmpStruct->sizex;
+	DWORD brick_id = tmpStruct->sizey;
 
 	LARGE_INTEGER li;
 	HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
 	WaitForSingleObject(writeGameMutex, INFINITE);
-	currentGame->nBricks[id].brinde.size.sizex = currentGame->myconfig.bonusSize.sizex;
-	currentGame->nBricks[id].brinde.size.sizey = currentGame->myconfig.bonusSize.sizey;
-	currentGame->nBricks[id].brinde.speed = currentGame->myconfig.bonusSpeed;
-	currentGame->nBricks[id].brinde.posx = (currentGame->nBricks[id].posx + (currentGame->nBricks[id].size.sizex / 2)) - currentGame->nBricks[id].brinde.size.sizex / 2;
-	currentGame->nBricks[id].brinde.posy = currentGame->nBricks[id].posy + currentGame->nBricks[id].size.sizey;
-	currentGame->nBricks[id].brinde.status = 1;
+	currentGame->nBricks[brick_id].brinde.size.sizex = currentGame->myconfig.bonusSize.sizex;
+	currentGame->nBricks[brick_id].brinde.size.sizey = currentGame->myconfig.bonusSize.sizey;
+	currentGame->nBricks[brick_id].brinde.speed = currentGame->myconfig.bonusDropSpeed;
+	currentGame->nBricks[brick_id].brinde.posx = (currentGame->nBricks[brick_id].posx + (currentGame->nBricks[brick_id].size.sizex / 2)) - currentGame->nBricks[brick_id].brinde.size.sizex / 2;
+	currentGame->nBricks[brick_id].brinde.posy = currentGame->nBricks[brick_id].posy + currentGame->nBricks[brick_id].size.sizey;
+	currentGame->nBricks[brick_id].brinde.status = 1;
 	ReleaseMutex(writeGameMutex);
 	
 	do {
 		for (int i = 0; i < currentGame->numUsers; i++) {
-			if ((currentGame->nUsers[i].posy) == currentGame->nBricks[id].brinde.posy + currentGame->nBricks[id].brinde.size.sizey) {
-				if (currentGame->nBricks[id].brinde.posx + currentGame->nBricks[id].brinde.size.sizex >= currentGame->nUsers[i].posx && currentGame->nBricks[id].brinde.posx <= (currentGame->nUsers[i].posx + currentGame->nUsers[i].size.sizex)) {
+			if ((currentGame->nUsers[i].posy) == currentGame->nBricks[brick_id].brinde.posy + currentGame->nBricks[brick_id].brinde.size.sizey) {
+				if (currentGame->nBricks[brick_id].brinde.posx + currentGame->nBricks[brick_id].brinde.size.sizex >= currentGame->nUsers[i].posx && currentGame->nBricks[brick_id].brinde.posx <= (currentGame->nUsers[i].posx + currentGame->nUsers[i].size.sizex)) {
 					WaitForSingleObject(writeGameMutex, INFINITE);
-					currentGame->nBricks[id].brinde.status = 0;
+					currentGame->nBricks[brick_id].brinde.status = 0;
 					ReleaseMutex(writeGameMutex);
-					attributeBonus(i,id);
+					attributeBonus(i,brick_id);
 					updateEveryone();
+					CloseHandle(hTBonus[bonusThreadId]);
+					hTBonus[bonusThreadId] = NULL;
 					//MessageBox(global_hWnd, TEXT("user caught the bonus"), TEXT("debug"), MB_OK);
 					return 1;
 				}
 			}
 		}
 		WaitForSingleObject(writeGameMutex, INFINITE);
-		currentGame->nBricks[id].brinde.posy++;
+		currentGame->nBricks[brick_id].brinde.posy++;
 		ReleaseMutex(writeGameMutex);
 		updateEveryone();
 
-		li.QuadPart = -(currentGame->nBricks[id].brinde.speed) * _MSECOND; // negative = relative time | 100-nanosecond units
+		li.QuadPart = -(currentGame->nBricks[brick_id].brinde.speed) * _MSECOND; // negative = relative time | 100-nanosecond units
 		if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, 0))
 			MessageBox(global_hWnd, TEXT("Could not SetWaitbleTimer"), TEXT("warning"), MB_OK);
 
 		if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
 			MessageBox(global_hWnd, TEXT("Could not wait for timer on ball thread"), TEXT("warning"), MB_OK);
 
-	} while (currentGame->nBricks[id].brinde.posy + currentGame->nBricks[id].brinde.size.sizey < currentGame->myconfig.gameSize.sizey - 1);
+	} while (currentGame->nBricks[brick_id].brinde.posy + currentGame->nBricks[brick_id].brinde.size.sizey < currentGame->myconfig.gameSize.sizey - 1);
 
-	//MessageBox(global_hWnd, TEXT("user did not caught the bonus"), TEXT("debug"), MB_OK);
 	WaitForSingleObject(writeGameMutex, INFINITE);
-	currentGame->nBricks[id].brinde.status = 0;
+	currentGame->nBricks[brick_id].brinde.status = 0;
 	ReleaseMutex(writeGameMutex);
+	CloseHandle(hTBonus[bonusThreadId]);
+	hTBonus[bonusThreadId] = NULL;
 	updateEveryone();
-
 	return 0;
 }
 
@@ -1288,11 +1298,11 @@ void startGame(){
 	WaitForSingleObject(writeGameMutex, INFINITE);
 	currentGame->gameStatus = 1;
 	ReleaseMutex(writeGameMutex);
-	updateEveryone();
-	Sleep(250);
 	tmpMsg.codigoMsg = 100;//new game
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255; //broadcast
+	//Sleep(1000);
+	updateEveryone();
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("gameStart"));
 	sendMessage(tmpMsg);
 
@@ -1314,7 +1324,7 @@ void assignBrick(DWORD num) {
 		currentGame->nBricks[i].size.sizey = currentGame->myconfig.brickSize.sizey;
 
 		//type
-		currentGame->nBricks[i].type = 3;//1 + rand() % 3;
+		currentGame->nBricks[i].type = 1 + rand() % 3;
 		if (currentGame->nBricks[i].type == 1) {//normal
 			currentGame->nBricks[i].status = 1;
 		}
@@ -1323,7 +1333,7 @@ void assignBrick(DWORD num) {
 		}
 		else if (currentGame->nBricks[i].type == 3) {//magic
 			currentGame->nBricks[i].status = 1;
-			currentGame->nBricks[i].brinde.type = 1;// + rand() % 4;
+			currentGame->nBricks[i].brinde.type = 1 + rand() % 3;//same change for everyone
 		}
 
 		//pos
@@ -1335,7 +1345,6 @@ void assignBrick(DWORD num) {
 		currentGame->nBricks[i].posy = oposy;
 
 		oposx += currentGame->nBricks[i].size.sizex + spaceToBrick;
-
 	}
 	currentGame->numBricks = num;
 	ReleaseMutex(writeGameMutex);
@@ -1515,7 +1524,9 @@ void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR 
 }
 
 void updateEveryone() {
+	WaitForSingleObject(writeGameMutex, INFINITE);
 	*gameClient = *currentGame;
+	ReleaseMutex(writeGameMutex);
 
 	SetEvent(updateRemoteGame);
 	ResetEvent(updateRemoteGame);
@@ -1529,19 +1540,18 @@ void updateEveryone() {
 void attributeBonus(DWORD client_id, DWORD brick_id) {
 	WaitForSingleObject(writeGameMutex, INFINITE);
 	if (currentGame->nBricks[brick_id].brinde.type == 1) {//speed up
-		for (int i = 0; i < currentGame->numBalls; i++)
-			currentGame->nBalls[i].speed--;
-	}else if (currentGame->nBricks[brick_id].brinde.type == 2) {//speed down
-		if (currentGame->myconfig.ballInitialSpeed > BALL_MAX_SPEED)
-			currentGame->myconfig.ballInitialSpeed -= currentGame->myconfig.bonusSpeed;
-		for (int i = 0; i < currentGame->numBalls; i++)
-			currentGame->nBalls[i].speed -= currentGame->myconfig.ballInitialSpeed;	
-	}
-	else if (currentGame->nBricks[brick_id].brinde.type == 3) {//extra life
+		if (currentGame->myconfig.ballInitialSpeed - currentGame->myconfig.bonusSpeedChange >= BALL_MAX_SPEED) {
+			currentGame->myconfig.ballInitialSpeed -= currentGame->myconfig.bonusSpeedChange;
+
+			for (int i = 0; i < currentGame->numBalls; i++)
+				currentGame->nBalls[i].speed = currentGame->myconfig.ballInitialSpeed;
+		}
+
+	}else if (currentGame->nBricks[brick_id].brinde.type == 2) {//extra life
 		currentGame->nUsers[client_id].lifes++;//only the one that caught it
 	}
-	else if (currentGame->nBricks[brick_id].brinde.type == 4) {//triple
-		//createBall(2);//+ 2 balls
+	else if (currentGame->nBricks[brick_id].brinde.type == 3) {//triple
+		createBalls(3);
 	}
 	ReleaseMutex(writeGameMutex);
 	return;

@@ -1,6 +1,2 @@
-﻿  stdafx.cpp
-  DLL.cpp
-  dllmain.cpp
-  Generating Code...
-     Creating library C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.lib and object C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.exp
+﻿  DLL.cpp
   DLL.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\DLL.dll

@@ -22,8 +22,8 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 void resolveKey(WPARAM wParam);
 
-void createLocalConnection();
-void createRemoteConnection();
+int createLocalConnection();
+int createRemoteConnection();
 
 void LoginUser(TCHAR user[MAX_NAME_LENGTH]);
 void logoutUser();
@@ -37,6 +37,7 @@ void Cleanup(PSID pEveryoneSID, PSID pAdminSID, PACL pACL, PSECURITY_DESCRIPTOR 
 TCHAR szProgName[] = TEXT("Client");
 int connection_mode = -1;//0 = local / 1 = remote
 HWND global_hWnd = NULL;
+TCHAR top10[TAM];
 
 //Variaveis
 	//print
@@ -45,10 +46,10 @@ TCHAR frase[TAM];
 int mouseX = 100, mouseY = 100;
 
 	//game
-pgame gameInfo,gameUpdate;
+pgame gameInfo;
 TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
-DWORD localGameStatus = 0;
+DWORD localGameStatus = -1;
 
 	//handles
 HANDLE gameReady;
@@ -63,7 +64,6 @@ HANDLE hPipeGame;
 HANDLE hTUserInput;
 
 TCHAR userLogged[MAX_NAME_LENGTH];
-
 
 //double buffer
 HDC memDC = NULL;
@@ -105,8 +105,7 @@ HBRUSH hBrush = NULL;
 HBITMAP hBmp = NULL;
 BITMAP bmp;
 
-
-int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, int nCmdShow) {	
+int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 
 	HWND hWnd; // hWnd é o handler da janela, gerado mais abaixo por CreateWindow()
 	MSG lpMsg; // MSG é uma estrutura definida no Windows para as mensagens
@@ -165,19 +164,24 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPCTSTR lpCmdLine, in
 		(HINSTANCE)hInst, // handle da instância do programa actual ("hInst" é
 		// passado num dos parâmetros de WinMain()
 		0); // Não há parâmetros adicionais para a janela
-	// ============================================================================
-	// 4. Mostrar a janela
-	// ============================================================================
+
+
 
 	if (connection_mode == -1) {
 		DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_CONNECTION), NULL, resolveConection);
 		if (connection_mode == -1)
 			return 0;
 	}
+	int res;
 	if (!connection_mode)
-		createLocalConnection();
+		res = createLocalConnection();
 	else
-		createRemoteConnection();
+		res = createRemoteConnection();
+
+	if (res == -1)
+		return -1;
+
+	_tcscpy_s(top10, TAM, TEXT("loading"));
 
 	HANDLE hGameReady = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)waitGameReady, NULL, 0, NULL);
 	if (hGameReady == NULL) {
@@ -207,7 +211,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	PAINTSTRUCT ps;
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
-	TCHAR tmp2[30];
+	TCHAR tmp2[TAM];
+	TCHAR info[TAM];
 	int res;
 	msg gameMsg;
 	BOOLEAN checkActiveObjects = FALSE;
@@ -291,8 +296,41 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
 		StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
 
-		TextOut(memDC, 0, 300, userLogged, _tcslen(userLogged));
-		TextOut(memDC, 0, 320, frase, _tcslen(frase));
+		TextOut(memDC, 0, 20, userLogged, _tcslen(userLogged));
+		TextOut(memDC, 0, 100, frase, _tcslen(frase));
+	
+		if (localGameStatus == 0) {
+			if (_tcscmp(gameInfo->top, TEXT("loading")) != 0 && _tcscmp(gameInfo->top, TEXT("")) != 0) {//no top 10 yet
+				_tcscpy_s(info, TAM, TEXT("TOP 10:"));
+				TextOut(memDC, 0, 150, info, _tcslen(info));
+				res = 0;
+				_tcscpy_s(str, TAM, gameInfo->top);
+				for (int i = 0; i < 10; i++) {
+					for (int j = 0; j < TAM; j++) {
+						if (str[res] == '|') {
+							tmp[j] = '\0';
+							res++;
+							break;
+						}
+						tmp[j] = str[res++];
+					}
+					TextOut(memDC, 0, 165 + i * 15, tmp, _tcslen(tmp));
+				}
+			}
+		}
+		else if (localGameStatus == 1) {
+			//lifes
+			_tcscpy_s(info, TAM, TEXT("Lifes:"));
+			_itot_s(gameInfo->nUsers[client_id].lifes, tmp, TAM, 10);//translates num to str
+			_tcscat_s(info, TAM, tmp);
+			TextOut(memDC, 0, 400, info, _tcslen(info));
+
+			//speed
+			_tcscpy_s(info, TAM, TEXT("Speed:"));
+			_itot_s(gameInfo->myconfig.ballInitialSpeed, tmp, TAM, 10);//translates num to str
+			_tcscat_s(info, TAM, tmp);
+			TextOut(memDC, 0, 420, info, _tcslen(info));
+		}
 
 		if (localGameStatus == 1 || localGameStatus == 2) {
 			//users
@@ -330,6 +368,11 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
+		case ID_HOME:
+			//enduser
+			localGameStatus = 0;
+			InvalidateRect(global_hWnd, NULL, FALSE);
+			break;
 		case ID_PLAY:					
 			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
 			if (res == IDCANCEL || res == IDABORT)
@@ -344,22 +387,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			break;
 			case ID_WATCH:
 				MessageBeep(MB_ICONQUESTION);
-				break;
-			case ID_TOP10:
-				res = 0;
-				_tcscpy_s(str, TAM, gameInfo->top);
-				for (int i = 0; i < 10; i++) {
-					for (int j = 0; j < TAM; j++) {
-						if (str[res] == '|') {
-							tmp[j] = '\0';
-							res++;
-							break;
-						}
-							
-						tmp[j] = str[res++];
-					}
-					MessageBox(hWnd, tmp, TEXT("Info:"), MB_OK);
-				}
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -377,7 +404,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 
 				_tcscat_s(tmp, TAM, TEXT(" || BTW GameStatus = "));
-				_itot_s(gameInfo->gameStatus, tmp2, 30, 10);//translates num to str
+				_itot_s(gameInfo->gameStatus, tmp2, TAM, 10);//translates num to str
 				_tcscat_s(tmp, TAM, tmp2);//ads
 
 				MessageBox(hWnd,tmp, TEXT("Type of connection"), MB_OK);
@@ -398,6 +425,19 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			
 		break;
 	case WM_DESTROY: // Destruir a janela e terminar o programa
+		if (connection_mode) {
+			free(gameInfo);
+			//ends  msg pipe thread
+			TerminateThread(hTMsgConnection, 1);
+			CloseHandle(hTMsgConnection);
+			//ends game pipe thread
+			TerminateThread(hPipeGame, 1);
+			CloseHandle(hPipeGame);
+		}
+		else {
+			closeSharedMemoryMsg();
+			closeSharedMemoryGame();
+		}
 		PostQuitMessage(0);
 		break;
 	default:
@@ -490,7 +530,15 @@ void resolveKey(WPARAM wParam) {
 	}
 }
 
-void createLocalConnection() {
+int createLocalConnection() {
+	HANDLE checkExistingServer;
+	//checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
+	checkExistingServer = OpenEvent(EVENT_ALL_ACCESS, TRUE, CHECK_SERVER_EVENT);
+	if (checkExistingServer == NULL) {//there is no server created
+		MessageBox(global_hWnd, TEXT("There is not a server running at this moment."), TEXT("WARNING"), MB_ICONWARNING | MB_OK);
+		return -1;
+	}
+
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	_tcscpy_s(str, TAM, LOCAL_CONNECTION_NAME);
@@ -498,13 +546,11 @@ void createLocalConnection() {
 	_tcscat_s(str, TAM, tmp);
 
 	messageEvent = CreateEvent(NULL, FALSE, FALSE, str);
-	updateBalls = CreateEvent(NULL, TRUE, FALSE, BALL_EVENT_NAME);
-	updateBonus = CreateEvent(NULL, FALSE, FALSE, BONUS_EVENT_NAME);
 	hStdoutMutex = CreateMutex(NULL, FALSE, NULL);
 	gameReady = CreateEvent(NULL, TRUE, FALSE, LOCAL_UPDATE_GAME);
-	if (messageEvent == NULL || updateBalls == NULL || updateBonus == NULL || hStdoutMutex == NULL || gameReady == NULL) {
+	if (messageEvent == NULL || hStdoutMutex == NULL || gameReady == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating resources..."), TEXT("Resources"), MB_OK);
-		PostQuitMessage(1);
+		return -1;
 	}
 
 	//Message
@@ -515,7 +561,7 @@ void createLocalConnection() {
 	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)localConnection, NULL, 0, NULL);
 	if (hTMsgConnection == NULL) {
 		MessageBox(global_hWnd, TEXT("Error creating local connction thread..."), TEXT("Resources"), MB_OK);
-		PostQuitMessage(1);
+		return -1;
 
 	}
 
@@ -526,7 +572,7 @@ void createLocalConnection() {
 	_tcscpy_s(tmpMsg.messageInfo, TAM, str);
 	sendMessage(tmpMsg); // lets server know of new client
 
-	return;
+	return 0;
 }
 
 DWORD WINAPI localConnection(LPVOID param) {
@@ -538,18 +584,25 @@ DWORD WINAPI localConnection(LPVOID param) {
 		WaitForSingleObject(messageEvent, INFINITE);
 		newMsg = receiveMessageDLL();
 		resp = resolveMessage(newMsg);
-		InvalidateRect(global_hWnd, NULL, FALSE);	
+		//InvalidateRect(global_hWnd, NULL, FALSE);	
 	} while (1);
 
 	return 0;
 }
 
-void createRemoteConnection() {
+int createRemoteConnection() {
 	BOOL fSuccess = FALSE;
 	DWORD dwMode;
 
 	SECURITY_ATTRIBUTES sa;
 	securityPipes(&sa);
+
+	gameInfo = (pgame)malloc(sizeof(game));
+	if (gameInfo == NULL) {
+		return -1;
+	}
+
+	_tcscpy_s(gameInfo->top, TAM, TEXT("loading"));
 
 	while (1) {
 
@@ -572,13 +625,13 @@ void createRemoteConnection() {
 
 		if (GetLastError() != ERROR_PIPE_BUSY) {
 			//print(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
-			return;
+			return -1;
 		}
 
 
 		if (!WaitNamedPipe(INIT_PIPE_MSG_NAME, 10000)) {
 			//print(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
-			return;
+			return -1;
 		}
 
 	}
@@ -593,17 +646,22 @@ void createRemoteConnection() {
 
 	if (!fSuccess) {
 		//print(TEXT("SetNamedPipeHandleState falhou. Erro = %d\n"), GetLastError());
-		return;
+		return -1;
 	}
 
 	//print(TEXT("initianting pipeConnection thread\n"));
 	hTMsgConnection = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)msgPipe, NULL, 0, NULL);
 	if (hTMsgConnection == NULL) {
 		//print(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
-		return;
+		return -1;
 	}
 
-	
+	gameReady = CreateEvent(NULL, TRUE, FALSE, LOCAL_UPDATE_GAME);
+	if (gameReady == NULL) {
+		//print(TEXT("Erro na criãção da thread para remotePipe. Erro = %d\n"), GetLastError());
+		return -1;
+	}
+
 	Sleep(250);
 	//MessageBox(global_hWnd, TEXT("Can i send message?"), TEXT("can i?"), MB_OK);
 	//print(TEXT("sending message ...\n"));
@@ -614,7 +672,7 @@ void createRemoteConnection() {
 	tmpMsg.to = 254;
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("remoteClient"));
 	sendMessage(tmpMsg); // lets server know of new client
-	return;
+	return 0;
 }
 
 DWORD WINAPI msgPipe(LPVOID param) {
@@ -704,7 +762,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 			_tprintf(TEXT("Deu erro e nao foi de busy. Erro = %d\n"), GetLastError());
 			return -1;
 		}
-
+		
 
 		if (!WaitNamedPipe(INIT_PIPE_GAME_NAME, 10000)) {
 			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
@@ -712,12 +770,6 @@ DWORD WINAPI gamePipe(LPVOID param) {
 		}
 
 	}
-
-	gameInfo = (pgame)malloc(sizeof(game));
-	if (gameInfo == NULL) {
-		return -1;
-	}
-
 
 	ReadReady = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (ReadReady == NULL) {
@@ -817,6 +869,7 @@ DWORD resolveMessage(msg inMsg) {
 
 	if (inMsg.codigoMsg == 9999) {//first connection
 		_tprintf(TEXT("New client allowed\n"));
+		localGameStatus = 0;
 		client_id = _tstoi(inMsg.messageInfo);
 		if (connection_mode) {//if is via pipes then opens up receivegamepipe
 			hPipeGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)gamePipe, NULL, 0, NULL);
@@ -867,7 +920,6 @@ DWORD resolveMessage(msg inMsg) {
 	else if (inMsg.codigoMsg == 100) {//start game
 		_tcscpy_s(frase, TAM, TEXT("game started by the server"));
 		localGameStatus = 1;
-		//usersMove(inMsg.messageInfo);
 	}
 	else if (inMsg.codigoMsg == 101) {//new ball
 		//DWORD tmp = _tstoi(inMsg.messageInfo);
@@ -952,7 +1004,7 @@ void print(msg printMsg) {
 void WINAPI waitGameReady(LPVOID param) {
 	while (1) {
 		WaitForSingleObject(gameReady, INFINITE);//waits for game to be ready to use
-		//gameInfo = gameUpdate;
+		_tcscpy_s(top10, TAM, gameInfo->top);
 		InvalidateRect(global_hWnd, NULL, FALSE);	
 	}
 	return;
