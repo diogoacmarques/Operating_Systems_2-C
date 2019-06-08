@@ -18,7 +18,8 @@ void WINAPI waitGameReady(LPVOID param);
 //functions
 void print(msg printMsg);
 LRESULT CALLBACK resolveInput(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK resolveLoginDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK resolveIPDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 void resolveKey(WPARAM wParam);
 
@@ -41,7 +42,9 @@ TCHAR top10[TAM];
 
 //Variaveis
 	//print
-
+TCHAR msgPipeName[TAM];
+TCHAR gamePipeName[TAM];
+TCHAR ipAddress[TAM];
 TCHAR frase[TAM];
 TCHAR inTxt[TAM];
 TCHAR outTxt[TAM];
@@ -154,8 +157,6 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 		(HMENU)NULL, 
 		(HINSTANCE)hInst,
 		0); 
-
-
 
 	if (connection_mode == -1) {
 		DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_CONNECTION), NULL, resolveConection);
@@ -404,7 +405,7 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		case ID_PLAY:	
 			if (userState != -1)
 				return;
-			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
+			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveLoginDialog);
 			if (res == IDCANCEL || res == IDABORT)
 				break;
 			if (_tcscmp(login, TEXT("")) != 0) {
@@ -480,7 +481,7 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	return(0);
 }
 
-LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK resolveLoginDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 
 	switch (messg) {
 	case WM_COMMAND:
@@ -491,6 +492,25 @@ LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 		}
 		else if (LOWORD(wParam) == IDCANCEL) {
 			_stprintf_s(login, 100, TEXT(""));
+			EndDialog(hWnd, 0);
+			return TRUE;
+		}
+
+	}
+
+	return FALSE;
+}
+
+LRESULT CALLBACK resolveIPDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+	switch (messg) {
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK) {
+			GetDlgItemText(hWnd, IDC_EDIT_IP, ipAddress, TAM);
+			EndDialog(hWnd, 0);
+			return TRUE;
+		}
+		else if (LOWORD(wParam) == IDCANCEL) {
+			_stprintf_s(login, TAM, TEXT(""));
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
@@ -615,6 +635,22 @@ DWORD WINAPI localConnection(LPVOID param) {
 }
 
 int createRemoteConnection() {
+	int res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_IP), global_hWnd, resolveIPDialog);
+	if (res == IDCANCEL || res == IDABORT)
+		return -1;
+
+	_tcscpy_s(msgPipeName, TAM, TEXT("\\\\"));
+	_tcscpy_s(gamePipeName, TAM, TEXT("\\\\"));
+
+	_tcscat_s(msgPipeName, TAM, ipAddress);//adds
+	_tcscat_s(gamePipeName, TAM, ipAddress);//adds
+	
+	_tcscat_s(msgPipeName, TAM, INIT_PIPE_MSG_NAME_ADD);//adds
+	_tcscat_s(gamePipeName, TAM, INIT_PIPE_GAME_NAME_ADD);//adds
+
+	MessageBox(global_hWnd, msgPipeName, TEXT("Message pipe"), MB_OK);
+	MessageBox(global_hWnd, gamePipeName, TEXT("Game pipe"), MB_OK);
+
 	BOOL fSuccess = FALSE;
 	DWORD dwMode;
 
@@ -631,7 +667,7 @@ int createRemoteConnection() {
 	while (1) {
 
 		hPipeMsg = CreateFile(
-			INIT_PIPE_MSG_NAME,
+			msgPipeName,
 			GENERIC_READ | GENERIC_WRITE,
 			0 | FILE_SHARE_READ | FILE_SHARE_WRITE,
 			NULL,
@@ -653,7 +689,7 @@ int createRemoteConnection() {
 		}
 
 
-		if (!WaitNamedPipe(INIT_PIPE_MSG_NAME, 10000)) {
+		if (!WaitNamedPipe(msgPipeName, 10000)) {
 			//print(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
 			return -1;
 		}
@@ -766,7 +802,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 	while (1) {
 		_tprintf(TEXT("Create file for game\n"));
 		gamePipe = CreateFile(
-			INIT_PIPE_GAME_NAME,
+			gamePipeName,
 			GENERIC_READ,
 			0,
 			NULL,
@@ -788,7 +824,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 		}
 		
 
-		if (!WaitNamedPipe(INIT_PIPE_GAME_NAME, 10000)) {
+		if (!WaitNamedPipe(gamePipeName, 10000)) {
 			_tprintf(TEXT("Waited 10 seconds and cant find a pipe, I give up...\n"));
 			return -1;
 		}

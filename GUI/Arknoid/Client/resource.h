@@ -8,9 +8,12 @@
 #define IDC_INIT                        102
 #define IDD_DIALOG_LOGIN                104
 #define IDD_DIALOG_CONNECTION           106
+#define IDD_DIALOG1                     108
+#define IDD_DIALOG_IP                   108
 #define IDC_EDIT_LOGIN                  1001
 #define IDC_BUTTON_LOCAL                1003
 #define IDC_BUTTON_REMOTE               1004
+#define IDC_EDIT_IP                     1005
 #define ID_PLAY                         40001
 #define ID_WATCH                        40002
 #define ID_TOP10                        40003
@@ -29,9 +32,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        108
+#define _APS_NEXT_RESOURCE_VALUE        110
 #define _APS_NEXT_COMMAND_VALUE         40014
-#define _APS_NEXT_CONTROL_VALUE         1005
+#define _APS_NEXT_CONTROL_VALUE         1006
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

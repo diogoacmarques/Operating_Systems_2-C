@@ -57,6 +57,8 @@ TCHAR inTxt[TAM];
 TCHAR outTxt[TAM];
 TCHAR gameState[TAM];
 int ballWaitTime = 0;
+TCHAR msgPipeName[TAM];
+TCHAR gamePipeName[TAM];
 
 //client related
 comuciationHandle clientsInfo[USER_MAX_USERS];
@@ -177,6 +179,19 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 		return -1;
 	}
 	//pipes for initial connection
+
+	_tcscpy_s(msgPipeName, TAM, TEXT("\\\\"));
+	_tcscpy_s(gamePipeName, TAM, TEXT("\\\\"));
+
+	_tcscat_s(msgPipeName, TAM, TEXT("."));//adds
+	_tcscat_s(gamePipeName, TAM, TEXT("."));//adds
+
+	_tcscat_s(msgPipeName, TAM, INIT_PIPE_MSG_NAME_ADD);//adds
+	_tcscat_s(gamePipeName, TAM, INIT_PIPE_GAME_NAME_ADD);//adds
+
+	MessageBox(global_hWnd, msgPipeName, TEXT("Message pipe"), MB_OK);
+	MessageBox(global_hWnd, gamePipeName, TEXT("Game pipe"), MB_OK);
+
 		//msg
 	HANDLE hMsgPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipeMsg, NULL, 0, NULL);
 	if (hMsgPipe == NULL) {
@@ -516,7 +531,7 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 	securityPipes(&sa);
 
 	do {
-		hPipeInit = CreateNamedPipe(INIT_PIPE_MSG_NAME,
+		hPipeInit = CreateNamedPipe(msgPipeName,
 			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_MESSAGE | // tipo de pipe = message
 			PIPE_READMODE_MESSAGE | // com modo message-read e
@@ -567,7 +582,7 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 
 	do {
 
-		hPipeInit = CreateNamedPipe(INIT_PIPE_GAME_NAME,
+		hPipeInit = CreateNamedPipe(gamePipeName,
 			PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // bloqueante (não usar PIPE_NOWAIT nem mesmo em Asyncr)
 			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
@@ -775,7 +790,6 @@ DWORD startVars() {
 
 
 	/*
-	
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
 	TCHAR tmp2[TAM];

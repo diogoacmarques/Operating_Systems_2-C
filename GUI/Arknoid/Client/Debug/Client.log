@@ -1,6 +1,6 @@
 ﻿  client.c
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(118): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(406): warning C4033: 'resolveInput' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(420): warning C4033: 'resolveInput' must return a value
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(481): warning C4715: 'resolveInput': not all control paths return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(121): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(407): warning C4033: 'resolveInput' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(421): warning C4033: 'resolveInput' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\client\client.c(482): warning C4715: 'resolveInput': not all control paths return a value
   Client.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Client.exe
