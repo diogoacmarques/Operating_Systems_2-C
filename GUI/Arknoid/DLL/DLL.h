@@ -8,7 +8,7 @@
 #define _MSECOND 10000
 
 //game
-#define GAME_LEVELS 5
+#define GAME_LEVELS 4
 #define GAME_SIZE_X 800
 #define GAME_SIZE_Y 600
 //user
@@ -17,7 +17,7 @@
 #define USER_SIZE_X 100
 #define USER_SIZE_Y 15
 //ball
-#define BALL_SPEED 15//25
+#define BALL_SPEED 5//15//25
 #define BALL_MAX_BALLS 5
 #define BALL_MAX_SPEED 5//time to sleep
 #define BALL_SIZE 10
@@ -33,8 +33,8 @@
 #define BONUS_PROB_TRIPLE 0.2f
 #define BONUS_SPEED_CHANGE 2
 #define BONUS_SPEED_DURATION 10//seconds
-#define BONUS_SIZE_X 15
-#define BONUS_SIZE_Y 15
+#define BONUS_SIZE_X 20
+#define BONUS_SIZE_Y 20
 #define BONUS_MAX_BONUS 5//max bonus at the same time
 
 #define USE_MSG_MUTEX TEXT("writeMsgMutex")

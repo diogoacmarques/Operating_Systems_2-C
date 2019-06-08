@@ -9,6 +9,7 @@
 
 //threads
 DWORD WINAPI localConnection(LPVOID param);
+
 DWORD WINAPI msgPipe(LPVOID param);
 DWORD WINAPI gamePipe(LPVOID param);
 
@@ -16,8 +17,7 @@ void WINAPI waitGameReady(LPVOID param);
 
 //functions
 void print(msg printMsg);
-
-LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK resolveInput(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK resolveMenu(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 void resolveKey(WPARAM wParam);
@@ -43,13 +43,15 @@ TCHAR top10[TAM];
 	//print
 
 TCHAR frase[TAM];
+TCHAR inTxt[TAM];
+TCHAR outTxt[TAM];
 int mouseX = 100, mouseY = 100;
 
 	//game
 pgame gameInfo;
 TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
-DWORD localGameStatus = -1;
+DWORD userState = -1;//-1 lobby | 0 = playing | 1 = watching
 
 	//handles
 HANDLE gameReady;
@@ -69,10 +71,15 @@ TCHAR userLogged[MAX_NAME_LENGTH];
 HDC memDC = NULL;
 int maxX = 0, maxY = 0;
 
-//background
+//lobby background
 HBITMAP hBackground = NULL;
 BITMAP bmBackground;
 HDC hdcBackground;
+
+//level background
+HBITMAP hLevelBackground = NULL;
+BITMAP bmLevelBackground;
+HDC hdcLevelBackground;
 
 //Barreira
 HBITMAP hPlayerBarreira = NULL;
@@ -105,65 +112,48 @@ HBRUSH hBrush = NULL;
 HBITMAP hBmp = NULL;
 BITMAP bmp;
 
+
+int counter = 0;
+
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 
-	HWND hWnd; // hWnd é o handler da janela, gerado mais abaixo por CreateWindow()
-	MSG lpMsg; // MSG é uma estrutura definida no Windows para as mensagens
-	WNDCLASSEX wcApp; // WNDCLASSEX é uma estrutura cujos membros servem para
-   // definir as características da classe da janela
-   // ============================================================================
-   // 1. Definição das características da janela "wcApp"
-   // (Valores dos elementos da estrutura "wcApp" do tipo WNDCLASSEX)
-   // ============================================================================
-	wcApp.cbSize = sizeof(WNDCLASSEX); // Tamanho da estrutura WNDCLASSEX
-	wcApp.hInstance = hInst; // Instância da janela actualmente exibida
-   // ("hInst" é parâmetro de WinMain e vem inicializada daí)
-	wcApp.lpszClassName = szProgName; // Nome da janela (neste caso = nome do programa)
-	wcApp.lpfnWndProc = TrataEventos; // Endereço da função de processamento da janela
-   // ("TrataEventos" foi declarada no início e
-   // encontra-se mais abaixo)
-	wcApp.style = CS_HREDRAW | CS_VREDRAW;// Estilo da janela: Fazer o redraw se for
-   // modificada horizontal ou verticalmente
-	wcApp.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LOGGO));// "hIcon" = handler do ícon normal
-   //"NULL" = Icon definido no Windows
-   // "IDI_AP..." Ícone "aplicação"
+	HWND hWnd;
+	MSG lpMsg;
+	WNDCLASSEX wcApp; 
 
-	wcApp.hIconSm = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LOGGO));// "hIconSm" = handler do ícon pequeno
+	wcApp.cbSize = sizeof(WNDCLASSEX); 
+	wcApp.hInstance = hInst; 
+	wcApp.lpszClassName = szProgName; 
+	wcApp.lpfnWndProc = resolveInput;
 
-	//"NULL" = Icon definido no Windows
-	// "IDI_INF..." Ícon de informação
-	wcApp.hCursor = LoadCursor(hInst, MAKEINTRESOURCE(IDC_INIT)); // "hCursor" = handler do cursor (rato)
-   // "NULL" = Forma definida no Windows
-   // "IDC_ARROW" Aspecto "seta"
-	wcApp.lpszMenuName = MAKEINTRESOURCE(IDM_MENU); // Classe do menu que a janela pode ter
-   // (NULL = não tem menu)
-	wcApp.cbClsExtra = 0; // Livre, para uso particular
-	wcApp.cbWndExtra = 0; // Livre, para uso particular
+	wcApp.style = CS_HREDRAW | CS_VREDRAW;
+	wcApp.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LOGGO));
+
+	wcApp.hIconSm = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LOGGO));
+
+	wcApp.hCursor = LoadCursor(hInst, MAKEINTRESOURCE(IDC_INIT));
+
+	wcApp.lpszMenuName = MAKEINTRESOURCE(IDM_MENU);
+	wcApp.cbClsExtra = 0; 
+	wcApp.cbWndExtra = 0;
 
 	wcApp.hbrBackground = CreateSolidBrush(RGB(244, 206, 66));
 
 	if (!RegisterClassEx(&wcApp))
 		return(0);
-	// ============================================================================
-	// 3. Criar a janela
-	// ============================================================================
 
 	hWnd = CreateWindow(
-		szProgName, // Nome da janela (programa) definido acima
-		TEXT("SO2 - Ficha 6 - Ex1_V2"),// Texto que figura na barra do título
-		//WS_OVERLAPPEDWINDOW, // Estilo da janela (WS_OVERLAPPED= normal)
-		WS_OVERLAPPED, // Estilo da janela (WS_OVERLAPPED= normal)
-		5, // Posição x pixels (default=à direita da última)
-		5, // Posição y pixels (default=abaixo da última)
-		GAME_SIZE_X, // Largura da janela (em pixels)
-		GAME_SIZE_Y, // Altura da janela (em pixels)
-		(HWND)HWND_DESKTOP, // handle da janela pai (se se criar uma a partir de
-		// outra) ou HWND_DESKTOP se a janela for a primeira,
-		// criada a partir do "desktop"
-		(HMENU)NULL, // handle do menu da janela (se tiver menu)
-		(HINSTANCE)hInst, // handle da instância do programa actual ("hInst" é
-		// passado num dos parâmetros de WinMain()
-		0); // Não há parâmetros adicionais para a janela
+		szProgName, 
+		TEXT("SO2 - Ficha 6 - Ex1_V2"),
+		WS_OVERLAPPED, 
+		5,
+		5, 
+		GAME_SIZE_X, 
+		GAME_SIZE_Y, 
+		(HWND)HWND_DESKTOP, 
+		(HMENU)NULL, 
+		(HINSTANCE)hInst,
+		0); 
 
 
 
@@ -189,24 +179,21 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 		return 1;
 	}
 
-	ShowWindow(hWnd, nCmdShow); // "hWnd"= handler da janela, devolvido por
-	// "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
-	// normal/modal); é passado como parâmetro de WinMain()
+	ShowWindow(hWnd, nCmdShow);
+
 	global_hWnd = hWnd;
-	UpdateWindow(hWnd); // Refrescar a janela (Windows envia à janela uma
+	UpdateWindow(hWnd);
 
 	while (GetMessage(&lpMsg, NULL, 0, 0)) {
-		TranslateMessage(&lpMsg); // Pré-processamento da mensagem (p.e. obter código
-	   // ASCII da tecla premida)
-		DispatchMessage(&lpMsg); // Enviar a mensagem traduzida de volta ao Windows, que
-	   // aguarda até que a possa reenviar à função de
-	   // tratamento da janela, CALLBACK TrataEventos (abaixo)
+		TranslateMessage(&lpMsg);
+		DispatchMessage(&lpMsg); 
+
 	}
 
-	return((int)lpMsg.wParam); // Retorna sempre o parâmetro wParam da estrutura lpMsg
+	return((int)lpMsg.wParam);
 }
 
-LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	HDC hDC;
 	PAINTSTRUCT ps;
 	TCHAR str[TAM];
@@ -218,14 +205,14 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	BOOLEAN checkActiveObjects = FALSE;
 	switch (messg) {
 	case WM_LBUTTONDOWN:
-		if (localGameStatus == 1) {
+		if (userState == 0) {
 			mouseX = LOWORD(lParam);
 			mouseY = HIWORD(lParam);
 			mouseX -= (gameInfo->nUsers[client_id].size.sizex / 2);
 			gameMsg.codigoMsg = 200;
 			gameMsg.from = client_id;
 			gameMsg.to = 254;
-			_itot_s(mouseX, gameMsg.messageInfo, TAM, 10);//translates num to str
+			_itot_s(mouseX, gameMsg.messageInfo, TAM, 10);
 			sendMessage(gameMsg);
 		}
 		break;
@@ -242,11 +229,17 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		hDC = GetDC(hWnd);
 
-		//background
+		//lobby background
 		hBackground = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/lobbyBackground.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		GetObject(hBackground, sizeof(bmBackground), &bmBackground);
 		hdcBackground = CreateCompatibleDC(hDC);
 		SelectObject(hdcBackground, hBackground);
+		
+		//level background
+		hLevelBackground = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/level.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hLevelBackground, sizeof(bmLevelBackground), &bmLevelBackground);
+		hdcLevelBackground = CreateCompatibleDC(hDC);
+		SelectObject(hdcLevelBackground, hLevelBackground);
 
 		//player
 		hPlayerBarreira = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -294,45 +287,11 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		SetTextColor((HDC)memDC, RGB(255, 255, 255));
 		SetStretchBltMode(memDC, COLORONCOLOR);
 		PatBlt(memDC, 0, 0, maxX, maxY, PATCOPY); // fill background
-		StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
-
-		TextOut(memDC, 0, 20, userLogged, _tcslen(userLogged));
-		TextOut(memDC, 0, 100, frase, _tcslen(frase));
+		//StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
 	
-		if (localGameStatus == 0) {
-			if (_tcscmp(gameInfo->top, TEXT("loading")) != 0 && _tcscmp(gameInfo->top, TEXT("")) != 0) {//no top 10 yet
-				_tcscpy_s(info, TAM, TEXT("TOP 10:"));
-				TextOut(memDC, 0, 150, info, _tcslen(info));
-				res = 0;
-				_tcscpy_s(str, TAM, gameInfo->top);
-				for (int i = 0; i < 10; i++) {
-					for (int j = 0; j < TAM; j++) {
-						if (str[res] == '|') {
-							tmp[j] = '\0';
-							res++;
-							break;
-						}
-						tmp[j] = str[res++];
-					}
-					TextOut(memDC, 0, 165 + i * 15, tmp, _tcslen(tmp));
-				}
-			}
-		}
-		else if (localGameStatus == 1) {
-			//lifes
-			_tcscpy_s(info, TAM, TEXT("Lifes:"));
-			_itot_s(gameInfo->nUsers[client_id].lifes, tmp, TAM, 10);//translates num to str
-			_tcscat_s(info, TAM, tmp);
-			TextOut(memDC, 0, 400, info, _tcslen(info));
-
-			//speed
-			_tcscpy_s(info, TAM, TEXT("Speed:"));
-			_itot_s(gameInfo->myconfig.ballInitialSpeed, tmp, TAM, 10);//translates num to str
-			_tcscat_s(info, TAM, tmp);
-			TextOut(memDC, 0, 420, info, _tcslen(info));
-		}
-
-		if (localGameStatus == 1 || localGameStatus == 2) {
+		if((userState == 0 || userState == 1) && gameInfo->gameStatus > 0){
+			StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcLevelBackground, 0, 0, bmLevelBackground.bmWidth, bmLevelBackground.bmHeight, SRCCOPY);
+			//game
 			//users
 			for (int i = 0; i < gameInfo->numUsers; i++) {
 				StretchBlt(memDC, gameInfo->nUsers[i].posx, gameInfo->nUsers[i].posy, gameInfo->nUsers[i].size.sizex, gameInfo->nUsers[i].size.sizey, hdcPlayerBarreira, 0, 0, bmPlayerBarreira.bmWidth, bmPlayerBarreira.bmHeight, SRCPAINT);
@@ -353,14 +312,74 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			}
 
 			//balls
-			if(gameInfo->numBalls == 0 && gameInfo->nUsers[0].lifes > 0 && !checkActiveObjects)
+			if (gameInfo->numBalls == 0 && gameInfo->nUsers[0].lifes > 0 && !checkActiveObjects)
 				StretchBlt(memDC, gameInfo->nUsers[0].posx + gameInfo->nUsers[0].size.sizex / 2, gameInfo->nUsers[0].posy - gameInfo->myconfig.ballSize.sizey, gameInfo->myconfig.ballSize.sizex, gameInfo->myconfig.ballSize.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
 			else
 				for (int i = 0; i < gameInfo->numBalls; i++) {
 					StretchBlt(memDC, gameInfo->nBalls[i].posx, gameInfo->nBalls[i].posy, gameInfo->nBalls[i].size.sizex, gameInfo->nBalls[i].size.sizey, hdcBall, 0, 0, bmBall.bmWidth, bmBall.bmHeight, SRCPAINT);
 				}
-					
+
+			if (userState == 0) {
+				//lifes
+				_tcscpy_s(info, TAM, TEXT("Lifes:"));
+				_itot_s(gameInfo->nUsers[client_id].lifes, tmp, TAM, 10);//translates num to str
+				_tcscat_s(info, TAM, tmp);
+				TextOut(memDC, 0, 400, info, _tcslen(info));
+
+				//speed
+				_tcscpy_s(info, TAM, TEXT("Speed:"));
+				_itot_s(gameInfo->myconfig.ballInitialSpeed, tmp, TAM, 10);//translates num to str
+				_tcscat_s(info, TAM, tmp);
+				TextOut(memDC, 0, 420, info, _tcslen(info));
+			}
+			else if(userState == 1)
+				TextOut(memDC, gameInfo->myconfig.gameSize.sizex - 90, gameInfo->myconfig.gameSize.sizey - 15, TEXT("SPECTATING"), _tcslen(TEXT("SPECTATING")));
+
 		}
+		else {
+			StretchBlt(memDC, 0, 0, GAME_SIZE_X, GAME_SIZE_Y, hdcBackground, 0, 0, bmBackground.bmWidth, bmBackground.bmHeight, SRCCOPY);
+			//top 10
+			if (_tcscmp(gameInfo->top, TEXT("loading")) != 0 && _tcscmp(gameInfo->top, TEXT("")) != 0) {//no top 10 yet
+			_tcscpy_s(info, TAM, TEXT(""));
+				res = 0;
+				_tcscpy_s(str, TAM, gameInfo->top);
+				for (int i = 0; i < 10; i++) {
+					for (int j = 0; j < TAM; j++) {
+						if (str[res] == '|') {
+							tmp[j] = '\0';
+							res++;
+							break;
+						}
+						tmp[j] = str[res++];
+					}
+					TextOut(memDC, 10, 215 + i * 20, tmp, _tcslen(tmp));
+				}
+			}
+		}
+			
+				
+		TextOut(memDC, 0, 20, userLogged, _tcslen(userLogged));
+
+		_tcscpy_s(str, TAM, TEXT("Info["));
+		_itot_s(counter++, tmp, TAM, 10);//translates num to str
+		_tcscat_s(str, TAM, tmp);//ads
+		_tcscat_s(str, TAM, TEXT("]->localGameStatus = "));//ads
+		_itot_s(userState, tmp, TAM, 10);//translates num to str
+		_tcscat_s(str, TAM, tmp);//ads
+		_tcscat_s(str, TAM, TEXT("| GameStatus = "));
+		_itot_s(gameInfo->gameStatus, tmp, TAM, 10);//translates num to str
+		_tcscat_s(str, TAM, tmp);//ads
+		_tcscat_s(str, TAM, TEXT("| numUsers = "));
+		_itot_s(gameInfo->numUsers, tmp, TAM, 10);//translates num to str
+		_tcscat_s(str, TAM, tmp);//ads
+		_tcscat_s(str, TAM, TEXT("| numBricks = "));
+		_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
+		_tcscat_s(str, TAM, tmp);//ads
+		TextOut(memDC, 0, 100, str, _tcslen(str));
+
+
+		TextOut(memDC, 0, 130, inTxt, _tcslen(inTxt));
+		TextOut(memDC, 0, 145, outTxt, _tcslen(outTxt));
 	
 		hDC = BeginPaint(hWnd, &ps);
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
@@ -369,11 +388,22 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case ID_HOME:
-			//enduser
-			localGameStatus = 0;
-			InvalidateRect(global_hWnd, NULL, FALSE);
+			if (userState != -1){
+				gameMsg.codigoMsg = 2;
+				gameMsg.connection = connection_mode;
+				gameMsg.from = client_id;
+				gameMsg.to = 254;
+				_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("endUser"));
+				sendMessage(gameMsg);
+			}
+			
 			break;
-		case ID_PLAY:					
+		case ID_EXIT:
+			DestroyWindow(hWnd);
+			break;
+		case ID_PLAY:	
+			if (userState != -1)
+				return;
 			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveMenu);
 			if (res == IDCANCEL || res == IDABORT)
 				break;
@@ -386,6 +416,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				
 			break;
 			case ID_WATCH:
+				if (userState != -1)
+					return;
+				userState = 1;
 				MessageBeep(MB_ICONQUESTION);
 				break;
 			case ID_ABOUT_TYPE:
@@ -488,7 +521,7 @@ LRESULT CALLBACK resolveConection(HWND hWnd, UINT messg, WPARAM wParam, LPARAM l
 }
 
 void resolveKey(WPARAM wParam) {
-	if (localGameStatus == 0)
+	if (userState != 0)
 		return;
 
 	msg gameMsg;
@@ -499,27 +532,18 @@ void resolveKey(WPARAM wParam) {
 	switch (LOWORD(wParam)) {
 	case VK_LEFT:
 	case 0x41://a key
-		if (localGameStatus == 2)//watching
-			return;
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("left"));
 		break;
 	case VK_RIGHT:
 	case 0x44://d key
-		if (localGameStatus == 2)//watching
-			return;
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("right"));
 		break;
 	case VK_SPACE:
-		if (localGameStatus == 2)//watching
-			return;
 		gameMsg.codigoMsg = 101;
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("ball"));
 		break;
 
 	case VK_ESCAPE:
-		if (localGameStatus == 2)//watching
-			return;
-
 		_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("exit"));
 		gameMsg.codigoMsg = 2;
 		break;
@@ -603,7 +627,7 @@ int createRemoteConnection() {
 	}
 
 	_tcscpy_s(gameInfo->top, TAM, TEXT("loading"));
-
+	gameInfo->gameStatus = -1;
 	while (1) {
 
 		hPipeMsg = CreateFile(
@@ -869,7 +893,6 @@ DWORD resolveMessage(msg inMsg) {
 
 	if (inMsg.codigoMsg == 9999) {//first connection
 		_tprintf(TEXT("New client allowed\n"));
-		localGameStatus = 0;
 		client_id = _tstoi(inMsg.messageInfo);
 		if (connection_mode) {//if is via pipes then opens up receivegamepipe
 			hPipeGame = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)gamePipe, NULL, 0, NULL);
@@ -899,6 +922,7 @@ DWORD resolveMessage(msg inMsg) {
 	if (inMsg.codigoMsg == 1) {//successful login
 		logged = 1;
 		MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
+		userState = 0;
 		_tcscpy_s(frase, TAM, TEXT("You are now in the game, waiting for server to start..."));
 		//InvalidateRect(global_hWnd, NULL, TRUE);
 	}
@@ -919,7 +943,6 @@ DWORD resolveMessage(msg inMsg) {
 	}
 	else if (inMsg.codigoMsg == 100) {//start game
 		_tcscpy_s(frase, TAM, TEXT("game started by the server"));
-		localGameStatus = 1;
 	}
 	else if (inMsg.codigoMsg == 101) {//new ball
 		//DWORD tmp = _tstoi(inMsg.messageInfo);
@@ -933,7 +956,7 @@ DWORD resolveMessage(msg inMsg) {
 		int tmp = _tstoi(inMsg.messageInfo);
 		//createBonus(tmp);
 	}
-	else if (inMsg.codigoMsg == -110 && localGameStatus == 0) {
+	else if (inMsg.codigoMsg == -110) {
 		//_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
 		//TCHAR resp;
 		
@@ -946,7 +969,7 @@ DWORD resolveMessage(msg inMsg) {
 		//usersMove(inMsg.messageInfo);
 	}
 	else if (inMsg.codigoMsg == -999) {
-		//endUser();
+		//reset local game
 	}
 	return -1;
 }
@@ -965,9 +988,9 @@ void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 
 void logoutUser() {
 	MessageBox(global_hWnd, TEXT("reseting user now"), TEXT("info"), MB_OK);
-	localGameStatus = -1;
-	client_id = -1;
+	userState = -1;
 	_tcscpy_s(userLogged, TAM, TEXT(""));
+	InvalidateRect(global_hWnd, NULL, FALSE);
 }
 
 void print(msg printMsg) {
@@ -994,18 +1017,24 @@ void print(msg printMsg) {
 	_itot_s(printMsg.to, tmp2, 30, 10);//translates num to str
 	_tcscat_s(tmp, TAM, tmp2);//ads
 
-
+	if (printMsg.from == 254)
+		_tcscpy_s(outTxt, TAM, tmp);
+	else
+		_tcscpy_s(inTxt, TAM, tmp);
 	//MessageBox(global_hWnd, tmp, TEXT("Server - sending message"), MB_OK);
-	_tcscpy_s(frase, TAM, tmp);
-	//InvalidateRect(global_hWnd, NULL, TRUE);
+	InvalidateRect(global_hWnd, NULL, FALSE);
 	return;
 }
 
 void WINAPI waitGameReady(LPVOID param) {
 	while (1) {
 		WaitForSingleObject(gameReady, INFINITE);//waits for game to be ready to use
-		_tcscpy_s(top10, TAM, gameInfo->top);
-		InvalidateRect(global_hWnd, NULL, FALSE);	
+		if (userState == -1)
+			Sleep(1500);
+		else {
+			_tcscpy_s(top10, TAM, gameInfo->top);
+			InvalidateRect(global_hWnd, NULL, FALSE);
+		}
 	}
 	return;
 }

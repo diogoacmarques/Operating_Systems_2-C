@@ -1,19 +1,23 @@
 ﻿  server.c
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(82): warning C4028: formal parameter 3 different from declaration
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(134): warning C4047: '==': 'int' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(146): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(146): warning C4024: 'CreateEventW': different types for formal and actual parameter 3
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(933): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(933): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(942): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(942): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(952): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(953): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(954): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(954): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(963): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(992): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(995): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(995): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\2º_ano\so2\tp\so2\gui\arknoid\server\server.c(1320): warning C4018: '<': signed/unsigned mismatch
-  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\2º_ano\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(87): warning C4028: formal parameter 3 different from declaration
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(139): warning C4047: '==': 'int' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(151): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(151): warning C4024: 'CreateEventW': different types for formal and actual parameter 3
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(938): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(938): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(947): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(947): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(957): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(957): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(971): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(972): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(992): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1021): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1024): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1024): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1053): warning C4033: 'BolaThread' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1450): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1721): warning C4033: 'movingBricks' must return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1106): warning C4715: 'BolaThread': not all control paths return a value
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1771): warning C4715: 'movingBricks': not all control paths return a value
+  Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe
