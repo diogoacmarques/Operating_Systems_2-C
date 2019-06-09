@@ -35,6 +35,7 @@ void startGame();
 void endGame();
 void createLevel(DWORD levelNum);
 void userInit(DWORD id);
+int readFromFile();
 void createBalls(DWORD num);
 void resetUser(DWORD id);
 void resetBall(DWORD id);
@@ -43,6 +44,7 @@ void hitBrick(DWORD brick_id, DWORD ball_id);
 void attributeBonus(DWORD client_id, DWORD brick_id);
 void createBonus(DWORD brick_id);
 int moveUser(DWORD id, TCHAR side[TAM]);
+BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value);
 void updateEveryone();
 int registry(user userData);
 void securityPipes(SECURITY_ATTRIBUTES * sa);
@@ -57,7 +59,6 @@ TCHAR inTxt[TAM];
 TCHAR outTxt[TAM];
 TCHAR gameState[TAM];
 int ballWaitTime = 0;
-TCHAR msgPipeName[TAM];
 TCHAR gamePipeName[TAM];
 
 //client related
@@ -179,19 +180,6 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 		return -1;
 	}
 	//pipes for initial connection
-
-	_tcscpy_s(msgPipeName, TAM, TEXT("\\\\"));
-	_tcscpy_s(gamePipeName, TAM, TEXT("\\\\"));
-
-	_tcscat_s(msgPipeName, TAM, TEXT("."));//adds
-	_tcscat_s(gamePipeName, TAM, TEXT("."));//adds
-
-	_tcscat_s(msgPipeName, TAM, INIT_PIPE_MSG_NAME_ADD);//adds
-	_tcscat_s(gamePipeName, TAM, INIT_PIPE_GAME_NAME_ADD);//adds
-
-	MessageBox(global_hWnd, msgPipeName, TEXT("Message pipe"), MB_OK);
-	MessageBox(global_hWnd, gamePipeName, TEXT("Game pipe"), MB_OK);
-
 		//msg
 	HANDLE hMsgPipe = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)connectPipeMsg, NULL, 0, NULL);
 	if (hMsgPipe == NULL) {
@@ -527,6 +515,15 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
 	HANDLE hThread;
 
+	TCHAR msgPipeName[TAM];
+
+
+	_tcscpy_s(msgPipeName, TAM, TEXT("\\\\"));
+	_tcscat_s(msgPipeName, TAM, TEXT("."));//adds
+	_tcscat_s(msgPipeName, TAM, INIT_PIPE_MSG_NAME_ADD);//adds
+
+	MessageBox(global_hWnd, msgPipeName, TEXT("Message pipe"), MB_OK);
+
 	SECURITY_ATTRIBUTES sa;
 	securityPipes(&sa);
 
@@ -576,6 +573,13 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 DWORD WINAPI connectPipeGame(LPVOID param) {
 	BOOLEAN fConnected = 0;
 	HANDLE hPipeInit = INVALID_HANDLE_VALUE;
+	TCHAR gamePipeName[TAM];
+
+	_tcscpy_s(gamePipeName, TAM, TEXT("\\\\"));
+	_tcscat_s(gamePipeName, TAM, TEXT("."));//adds
+	_tcscat_s(gamePipeName, TAM, INIT_PIPE_GAME_NAME_ADD);//adds
+	MessageBox(global_hWnd, gamePipeName, TEXT("Game pipe"), MB_OK);
+
 
 	SECURITY_ATTRIBUTES sa;
 	securityPipes(&sa);
@@ -717,7 +721,8 @@ DWORD startVars() {
 	WaitForSingleObject(writeGameMutex, INFINITE);
 	currentGame->gameStatus = -1;
 	//default config
-	currentGame->myconfig.file;
+	//_tcscpy_s(currentGame->myconfig.file, TAM, TEXT("none"));//file input
+	_tcscpy_s(currentGame->myconfig.file, TAM, TEXT("config.txt"));//file input
 	//game
 	currentGame->myconfig.gameNumLevels = GAME_LEVELS;
 	currentGame->myconfig.gameSize.sizex = GAME_SIZE_X - 15;//this values are weird
@@ -738,17 +743,16 @@ DWORD startVars() {
 	currentGame->myconfig.brickSize.sizex = BRICK_SIZE_X;
 	currentGame->myconfig.brickSize.sizey = BRICK_SIZE_Y;
 	//bonus
+	currentGame->myconfig.bonusMaxBonus = BONUS_MAX_BONUS;
 	currentGame->myconfig.bonusDropSpeed = BONUS_DROP_SPEED;
 	currentGame->myconfig.bonusScoreAdd = BONUS_SCORE_ADD;
 	currentGame->myconfig.bonusProbSpeed = BONUS_PROB_SPEED;
 	currentGame->myconfig.bonusProbExtraLife = BONUS_PROB_EXTRALIFE;
 	currentGame->myconfig.bonusProbTriple = BONUS_PROB_TRIPLE;
 	currentGame->myconfig.bonusSpeedChange = BONUS_SPEED_CHANGE;
-	currentGame->myconfig.bonusSpeedDuration = BONUS_SPEED_DURATION;
 	currentGame->myconfig.bonusSize.sizex = BONUS_SIZE_X;
 	currentGame->myconfig.bonusSize.sizey = BONUS_SIZE_Y;
 	ReleaseMutex(writeGameMutex);
-	_tcscpy_s(currentGame->myconfig.file, TAM, TEXT("none"));//file input
 	//end of default config
 
 	//Users
@@ -855,7 +859,7 @@ void createBalls(DWORD num) {
 	DWORD count = 0;
 	DWORD threadId;
 	int i;
-	for (i = 0; i < BALL_MAX_BALLS; i++) {
+	for (i = 0; i < currentGame->myconfig.ballMaxBalls; i++) {
 		if (hTBola[i] == INVALID_HANDLE_VALUE) {//se handle is available
 			hTBola[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BolaThread, (LPVOID)i, 0, &threadId);
 			if (hTBola[i] == INVALID_HANDLE_VALUE) {
@@ -1325,19 +1329,17 @@ DWORD createHandle(msg newMsg) {
 }
 
 void createGame() {
-	//TCHAR resp;
-	////_tprintf(TEXT("Would you like to change defaut values for the game?(Y/N):"));
-	//fflush(stdin);
-	//resp = _gettch();
-	//if (resp == 'y' || resp == 'Y') {
-		/*int res = readFromFile();
+	int res;
+	res = MessageBox(global_hWnd, TEXT("Would you like to change default values?"), TEXT("Change Values"), MB_ICONQUESTION |MB_YESNO);
+	if (res == IDYES) {
+		int res = readFromFile();
 		if (res) {
-			//_tprintf(TEXT("Error changing default values"));
+			MessageBox(global_hWnd, TEXT("Error changing default values?"), TEXT("Change Values"), MB_ICONERROR | MB_OK);
 		}
 		else {
-			//_tprintf(TEXT("Default values changed wiht success!"));
-		}*/
-	//}
+			MessageBox(global_hWnd, TEXT("Default Values changed with success"), TEXT("Change Values"), MB_ICONINFORMATION | MB_OK);
+		}
+	}
 	WaitForSingleObject(writeGameMutex, INFINITE);
 	currentGame->gameStatus = 0;//users can now join
 	currentGame->numUsers = 0;
@@ -1345,6 +1347,153 @@ void createGame() {
 	ReleaseMutex(writeGameMutex);
 	_tcscpy_s(gameState, TAM, TEXT("Game Created"));
 	InvalidateRect(global_hWnd, NULL, TRUE);
+}
+
+int readFromFile() {
+	if (_tcscmp(currentGame->myconfig.file, TEXT("none")) == 0)
+		return 1;
+
+	int j;
+	int returnValue = 0;
+	BOOLEAN flag;
+	//file config
+	FILE *fp;
+	errno_t err;
+	err = _tfopen_s(&fp, currentGame->myconfig.file, "r");
+	if (err) {
+		MessageBox(global_hWnd, TEXT("Error opening file!"), TEXT("FILE"), MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	if (!err) {//if no error
+		_tprintf(TEXT("reading...\n"));
+		TCHAR line[TAM];
+		TCHAR setting[TAM];
+		TCHAR value[TAM];
+		DWORD num;
+		//fseek(fp, 0L, SEEK_SET);
+
+		while (_ftscanf_s(fp, TEXT("%s"), line, _countof(line)) != EOF) {
+			flag = 0;
+			j = 0;
+			if (line[0] != '/'){//comment
+				for (int i = 0; i < TAM; i++) {
+					if (line[i] == ':') {
+						setting[i] = '\0';//end of setting
+						flag = 1;
+						continue;
+					}
+
+					if (!flag) {
+						setting[i] = line[i];
+					}
+					else {
+						value[j] = line[i];
+						j++;
+						if (line[i] == "\0")
+							break;
+					}
+				}
+				num = _tstoi(value);//tranlate
+				flag = insertSetting(setting, num);
+				if (flag) {
+					MessageBox(global_hWnd, TEXT("Error changing this setting!"), setting, MB_ICONERROR | MB_OK);
+					returnValue = 1;
+				}
+			}
+		}
+
+	}
+	if (!err)
+		fclose(fp);
+
+	return returnValue;
+}
+
+BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value) {
+	
+	if (_tcscmp(setting, TEXT("GAME_LEVELS")) == 0) {
+		if (value <= GAME_LEVELS) {
+			currentGame->myconfig.gameNumLevels = value;
+			return 0;
+		}
+	}
+	else if (_tcscmp(setting, TEXT("USER_MAX_USERS")) == 0) {
+		if (value <= USER_MAX_USERS) {
+			currentGame->myconfig.userMaxUsers = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("USER_LIFES")) == 0) {
+		currentGame->myconfig.userNumLifes = value;
+		return 0;	
+	}else if (_tcscmp(setting, TEXT("USER_SIZE_X")) == 0) {
+		currentGame->myconfig.userSize.sizex = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("USER_SIZE_Y")) == 0) {
+			currentGame->myconfig.userSize.sizey = value;
+			return 0;
+	}else if (_tcscmp(setting, TEXT("BALL_SPEED")) == 0) {
+		if (value >= 5) {
+			currentGame->myconfig.ballInitialSpeed = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BALL_MAX_BALLS")) == 0) {
+		if (value <= BALL_MAX_BALLS) {
+			currentGame->myconfig.ballMaxBalls = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BALL_MAX_SPEED")) == 0) {
+		if (value >= BALL_MAX_SPEED) {
+			currentGame->myconfig.ballMaxSpeed = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BALL_SIZE")) == 0) {
+		if (value >= BALL_SIZE) {
+			currentGame->myconfig.ballSize.sizex = value;
+			currentGame->myconfig.ballSize.sizey = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BRICK_MAX_BRICKS")) == 0) {
+		if (value <= BRICK_MAX_BRICKS) {
+			currentGame->myconfig.brickMaxBricks = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BRICK_SIZE_X")) == 0) {
+		currentGame->myconfig.brickSize.sizex = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BRICK_SIZE_Y")) == 0) {
+		currentGame->myconfig.brickSize.sizey = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_DROP_SPEED")) == 0) {
+		currentGame->myconfig.bonusDropSpeed = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_MAX_BONUS")) == 0) {
+		if (value <= BONUS_MAX_BONUS) {
+			currentGame->myconfig.bonusMaxBonus = value;
+			return 0;
+		}
+	}else if (_tcscmp(setting, TEXT("BONUS_SCORE_ADD")) == 0) {
+		currentGame->myconfig.bonusScoreAdd = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_PROB_SPEED")) == 0) {
+		currentGame->myconfig.bonusProbSpeed = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_PROB_EXTRALIFE")) == 0) {
+		currentGame->myconfig.bonusProbExtraLife = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_PROB_TRIPLE")) == 0) {
+		currentGame->myconfig.bonusProbTriple = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_SPEED_CHANGE")) == 0) {
+		currentGame->myconfig.bonusSpeedChange = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_SIZE_X")) == 0) {
+		currentGame->myconfig.bonusSize.sizex = value;
+		return 0;
+	}else if (_tcscmp(setting, TEXT("BONUS_SIZE_Y")) == 0) {
+		currentGame->myconfig.bonusSize.sizey = value;
+		return 0;
+	}
+	return 1;
 }
 
 void startGame(){
@@ -1357,7 +1506,7 @@ void startGame(){
 	}
 
 	WaitForSingleObject(writeGameMutex, INFINITE);
-	currentGame->gameStatus = 4;
+	currentGame->gameStatus = 1;
 	ReleaseMutex(writeGameMutex);
 	createLevel(currentGame->gameStatus);
 	tmpMsg.codigoMsg = 100;//new game
@@ -1416,11 +1565,19 @@ void createLevel(DWORD levelNum) {
 	//MessageBox(global_hWnd, TEXT("will create the level now"), TEXT("debug"), MB_OK);
 	srand((int)time(NULL));
 	int num = 0;
+	int i;
 	int spaceToLim = 10;
 	int spaceToBrick = 1;
 	float randNum;
 	HANDLE hMoveBricksThread;
+	
+	//check if prob add to 1
 	WaitForSingleObject(writeGameMutex, INFINITE);//this allows for the thread(movingBricks) only start when everything is done
+	if ((currentGame->myconfig.bonusProbExtraLife + currentGame->myconfig.bonusProbSpeed + currentGame->myconfig.bonusProbTriple) != 1) {
+		currentGame->myconfig.bonusProbExtraLife = BONUS_PROB_EXTRALIFE;
+		currentGame->myconfig.bonusProbSpeed = BONUS_PROB_SPEED;
+		currentGame->myconfig.bonusProbTriple = BONUS_PROB_TRIPLE;
+	}
 	if (levelNum == 1)
 		num = 15;
 	else if (levelNum == 2)
@@ -1448,13 +1605,15 @@ void createLevel(DWORD levelNum) {
 
 	int oposx = spaceToLim, oposy = 10;
 
-	for (int i = 0; i < num; i++) {
+	for (i = 0; i < num; i++) {
+		if (i > currentGame->myconfig.brickMaxBricks)
+			break;
 		currentGame->nBricks[i].id = i;
 		currentGame->nBricks[i].size.sizex = currentGame->myconfig.brickSize.sizex;
 		currentGame->nBricks[i].size.sizey = currentGame->myconfig.brickSize.sizey;
 
 		//type
-		currentGame->nBricks[i].type = 1;//1 + rand() % 3;
+		currentGame->nBricks[i].type = 1 + rand() % 3;
 		if (currentGame->nBricks[i].type == 1) {//normal
 			currentGame->nBricks[i].status = 1;
 		}
@@ -1498,10 +1657,10 @@ void createLevel(DWORD levelNum) {
 			}
 		
 	}
-	currentGame->numBricks = num;
+	currentGame->numBricks = i;
 	ReleaseMutex(writeGameMutex);
 
-	localNumBricks = num;
+	localNumBricks = i;
 	updateEveryone();
 	return;
 }

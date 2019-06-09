@@ -52,7 +52,6 @@ int mouseX = 100, mouseY = 100;
 
 	//game
 pgame gameInfo;
-TCHAR login[MAX_NAME_LENGTH];
 DWORD client_id = -1;//identification of program so the server knows where to send info
 DWORD userState = -1;//-1 lobby | 0 = playing | 1 = watching
 
@@ -99,10 +98,20 @@ HBITMAP hBrick = NULL;
 BITMAP bmBrick;
 HDC hdcBrick;
 
-//Hard Brick
-HBITMAP hHardBrick = NULL;
-BITMAP bmHardBrick;
-HDC hdcHardBrick;
+//Hard Brick1
+HBITMAP hHardBrick1 = NULL;
+BITMAP bmHardBrick1;
+HDC hdcHardBrick1;
+
+//Hard Brick2
+HBITMAP hHardBrick2 = NULL;
+BITMAP bmHardBrick2;
+HDC hdcHardBrick2;
+
+//Hard Brick3
+HBITMAP hHardBrick3 = NULL;
+BITMAP bmHardBrick3;
+HDC hdcHardBrick3;
 
 //Bonus
 HBITMAP hBonus = NULL;
@@ -244,6 +253,7 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		//player
 		hPlayerBarreira = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/barreiratmp.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		//hPlayerBarreira = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/userteste.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		GetObject(hPlayerBarreira, sizeof(bmPlayerBarreira), &bmPlayerBarreira);
 		hdcPlayerBarreira = CreateCompatibleDC(hDC);
 		SelectObject(hdcPlayerBarreira, hPlayerBarreira);
@@ -260,11 +270,23 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		hdcBrick = CreateCompatibleDC(hDC);
 		SelectObject(hdcBrick, hBrick);
 		
-		//hard brick
-		hHardBrick = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/hard_brick.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		GetObject(hHardBrick, sizeof(bmHardBrick), &bmHardBrick);
-		hdcHardBrick = CreateCompatibleDC(hDC);
-		SelectObject(hdcHardBrick, hHardBrick);
+		//hard brick1
+		hHardBrick1 = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/brick1.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hHardBrick1, sizeof(bmHardBrick1), &bmHardBrick1);
+		hdcHardBrick1 = CreateCompatibleDC(hDC);
+		SelectObject(hdcHardBrick1, hHardBrick1);
+
+		//hard brick2
+		hHardBrick2 = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/brick2.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hHardBrick2, sizeof(bmHardBrick2), &bmHardBrick2);
+		hdcHardBrick2 = CreateCompatibleDC(hDC);
+		SelectObject(hdcHardBrick2, hHardBrick2);
+
+		//hard brick3
+		hHardBrick3 = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/brick3.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(hHardBrick3, sizeof(bmHardBrick3), &bmHardBrick3);
+		hdcHardBrick3 = CreateCompatibleDC(hDC);
+		SelectObject(hdcHardBrick3, hHardBrick3);
 		
 		//bonus
 		hBonus = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/bonus.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -301,10 +323,16 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			//bricks
 			for (int i = 0; i < gameInfo->numBricks; i++) {
 				if (gameInfo->nBricks[i].status > 0) {//active
-					if (gameInfo->nBricks[i].type == 2)//hard brick
-						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick, 0, 0, bmHardBrick.bmWidth, bmHardBrick.bmHeight, SRCPAINT);
-					else
+					if (gameInfo->nBricks[i].status == 1)
 						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcBrick, 0, 0, bmBrick.bmWidth, bmBrick.bmHeight, SRCPAINT);
+					else if(gameInfo->nBricks[i].status == 2)
+						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick1, 0, 0, bmHardBrick1.bmWidth, bmHardBrick1.bmHeight, SRCPAINT);
+					else if(gameInfo->nBricks[i].status == 3)
+						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick2, 0, 0, bmHardBrick2.bmWidth, bmHardBrick2.bmHeight, SRCPAINT);
+					else if(gameInfo->nBricks[i].status == 4)
+						StretchBlt(memDC, gameInfo->nBricks[i].posx, gameInfo->nBricks[i].posy, gameInfo->nBricks[i].size.sizex, gameInfo->nBricks[i].size.sizey, hdcHardBrick3, 0, 0, bmHardBrick3.bmWidth, bmHardBrick3.bmHeight, SRCPAINT);
+
+					
 				}
 				else if (gameInfo->nBricks[i].brinde.status > 0) {
 					StretchBlt(memDC, gameInfo->nBricks[i].brinde.posx, gameInfo->nBricks[i].brinde.posy, gameInfo->nBricks[i].brinde.size.sizex, gameInfo->nBricks[i].brinde.size.sizey, hdcBonus, 0, 0, bmBonus.bmWidth, bmBonus.bmHeight, SRCPAINT);
@@ -376,11 +404,11 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		_tcscat_s(str, TAM, TEXT("| numBricks = "));
 		_itot_s(gameInfo->numBricks, tmp, TAM, 10);//translates num to str
 		_tcscat_s(str, TAM, tmp);//ads
-		TextOut(memDC, 0, 100, str, _tcslen(str));
+		//TextOut(memDC, 0, 100, str, _tcslen(str));
 
 
-		TextOut(memDC, 0, 130, inTxt, _tcslen(inTxt));
-		TextOut(memDC, 0, 145, outTxt, _tcslen(outTxt));
+		//TextOut(memDC, 0, 130, inTxt, _tcslen(inTxt));
+		//TextOut(memDC, 0, 145, outTxt, _tcslen(outTxt));
 	
 		hDC = BeginPaint(hWnd, &ps);
 		BitBlt(hDC, 0, 0, maxX, maxY, memDC, 0, 0, SRCCOPY);
@@ -408,19 +436,23 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveLoginDialog);
 			if (res == IDCANCEL || res == IDABORT)
 				break;
-			if (_tcscmp(login, TEXT("")) != 0) {
+			if (_tcscmp(userLogged, TEXT("")) != 0) {
 				for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using ':' (messes up registry)
-					if (login[i] == ':' || login[i] == '|')
-						login[i] = '\0';
+					if (userLogged[i] == ':' || userLogged[i] == '|')
+						userLogged[i] = '\0';
 			}
-			LoginUser(login);
+			LoginUser(userLogged);
 				
 			break;
 			case ID_WATCH:
 				if (userState != -1)
 					return;
-				userState = 1;
-				MessageBeep(MB_ICONQUESTION);
+				if (gameInfo->gameStatus > 0) {
+					userState = 1;
+					MessageBeep(MB_ICONQUESTION);
+				}
+					
+				
 				break;
 			case ID_ABOUT_TYPE:
 				_tcscpy_s(tmp, TAM, TEXT("This is a "));
@@ -486,12 +518,12 @@ LRESULT CALLBACK resolveLoginDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM
 	switch (messg) {
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK) {
-			GetDlgItemText(hWnd, IDC_EDIT_LOGIN, login, 100);			
+			GetDlgItemText(hWnd, IDC_EDIT_LOGIN, userLogged, 100);
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
 		else if (LOWORD(wParam) == IDCANCEL) {
-			_stprintf_s(login, 100, TEXT(""));
+			_stprintf_s(userLogged, 100, TEXT(""));
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
@@ -510,7 +542,7 @@ LRESULT CALLBACK resolveIPDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lP
 			return TRUE;
 		}
 		else if (LOWORD(wParam) == IDCANCEL) {
-			_stprintf_s(login, TAM, TEXT(""));
+			_stprintf_s(userLogged, TAM, TEXT(""));
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
@@ -957,55 +989,23 @@ DWORD resolveMessage(msg inMsg) {
 
 	if (inMsg.codigoMsg == 1) {//successful login
 		logged = 1;
-		MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
+		//MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
 		userState = 0;
-		_tcscpy_s(frase, TAM, TEXT("You are now in the game, waiting for server to start..."));
-		//InvalidateRect(global_hWnd, NULL, TRUE);
+		MessageBox(global_hWnd, TEXT("You are now in the game, waiting for server to start..."),TEXT("Info"),MB_OK);
+
 	}
 	else if (inMsg.codigoMsg == -1) {
-		_tcscpy_s(frase, TAM, TEXT("Server denied login"));
-		_tcscpy_s(userLogged, TAM, TEXT(""));
-		//endUser();
+		MessageBox(global_hWnd, TEXT("Server denied Login with this name"), TEXT("Info"), MB_ICONWARNING | MB_OK);
+		logoutUser();
 		return -1;
 	}
 	else if (inMsg.codigoMsg == 2) {
 		logoutUser();
 	}
 	else if (inMsg.codigoMsg == -100) {
-		_tcscpy_s(userLogged, TAM, TEXT(""));
-		_tcscpy_s(frase, TAM, TEXT("Game hasnt been created by the server yet"));
-		//endUser();
+		logoutUser();
+		MessageBox(global_hWnd,TEXT("Server needs to create the game."),TEXT("Info"), MB_ICONWARNING | MB_OK);
 		return -1;
-	}
-	else if (inMsg.codigoMsg == 100) {//start game
-		_tcscpy_s(frase, TAM, TEXT("game started by the server"));
-	}
-	else if (inMsg.codigoMsg == 101) {//new ball
-		//DWORD tmp = _tstoi(inMsg.messageInfo);
-		//_tprintf(TEXT("creating %d balls thread para o utilizador!\n"),tmp);
-		//createBalls(tmp);
-	}
-	else if (inMsg.codigoMsg == 102) {//create bricks
-
-	}
-	else if (inMsg.codigoMsg == 103) {
-		int tmp = _tstoi(inMsg.messageInfo);
-		//createBonus(tmp);
-	}
-	else if (inMsg.codigoMsg == -110) {
-		//_tprintf(TEXT("A game is already in progress! Would you like to watch?(Y/N):"));
-		//TCHAR resp;
-		
-		//if (resp == 'n' || resp == 'N') {
-		//	return -1;
-		//}
-		//watchGame();
-	}
-	else if (inMsg.codigoMsg == 200) {
-		//usersMove(inMsg.messageInfo);
-	}
-	else if (inMsg.codigoMsg == -999) {
-		//reset local game
 	}
 	return -1;
 }
@@ -1017,13 +1017,12 @@ void LoginUser(TCHAR user[MAX_NAME_LENGTH]) {
 	newMsg.to = 254;//login e sempre para o servidor
 	newMsg.codigoMsg = 1;//login
 	_tcscpy_s(newMsg.messageInfo, MAX_NAME_LENGTH, user);
-	_tcscpy_s(userLogged, MAX_NAME_LENGTH, user);
 	sendMessage(newMsg);
 	return;
 }
 
 void logoutUser() {
-	MessageBox(global_hWnd, TEXT("reseting user now"), TEXT("info"), MB_OK);
+	//MessageBox(global_hWnd, TEXT("reseting user now"), TEXT("info"), MB_OK);
 	userState = -1;
 	_tcscpy_s(userLogged, TAM, TEXT(""));
 	InvalidateRect(global_hWnd, NULL, FALSE);
@@ -1065,12 +1064,8 @@ void print(msg printMsg) {
 void WINAPI waitGameReady(LPVOID param) {
 	while (1) {
 		WaitForSingleObject(gameReady, INFINITE);//waits for game to be ready to use
-		if (userState == -1)
-			Sleep(1500);
-		else {
-			_tcscpy_s(top10, TAM, gameInfo->top);
-			InvalidateRect(global_hWnd, NULL, FALSE);
-		}
+		_tcscpy_s(top10, TAM, gameInfo->top);
+		InvalidateRect(global_hWnd, NULL, FALSE);
 	}
 	return;
 }

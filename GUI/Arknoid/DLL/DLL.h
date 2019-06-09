@@ -17,8 +17,8 @@
 #define USER_SIZE_X 100
 #define USER_SIZE_Y 15
 //ball
-#define BALL_SPEED 5//15//25
-#define BALL_MAX_BALLS 5
+#define BALL_SPEED 15
+#define BALL_MAX_BALLS 10
 #define BALL_MAX_SPEED 5//time to sleep
 #define BALL_SIZE 10
 //bricks
@@ -32,10 +32,9 @@
 #define BONUS_PROB_EXTRALIFE 0.3f
 #define BONUS_PROB_TRIPLE 0.2f
 #define BONUS_SPEED_CHANGE 2
-#define BONUS_SPEED_DURATION 10//seconds
 #define BONUS_SIZE_X 20
 #define BONUS_SIZE_Y 20
-#define BONUS_MAX_BONUS 5//max bonus at the same time
+#define BONUS_MAX_BONUS 10
 
 #define USE_MSG_MUTEX TEXT("writeMsgMutex")
 #define MSG_SHARED_MEMORY_NAME TEXT("MSG_SHARED_MEMORY")
@@ -126,13 +125,13 @@ typedef struct config {
 	int brickMaxBricks;
 	drawSize brickSize;
 	//bonus
+	int bonusMaxBonus;
 	int bonusDropSpeed;
 	int bonusScoreAdd;
 	float bonusProbSpeed;//probabilidade do bonus ser speed 
 	float bonusProbExtraLife;//probabilidade do bonus ser vida extra
 	float bonusProbTriple;//probabilidade do bonus ser triple ball
 	int bonusSpeedChange;
-	int bonusSpeedDuration;
 	drawSize bonusSize;
 } config;
 
