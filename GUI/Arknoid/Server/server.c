@@ -44,7 +44,7 @@ void hitBrick(DWORD brick_id, DWORD ball_id);
 void attributeBonus(DWORD client_id, DWORD brick_id);
 void createBonus(DWORD brick_id);
 int moveUser(DWORD id, TCHAR side[TAM]);
-BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value);
+BOOLEAN insertSetting(TCHAR setting[TAM], float value);
 void updateEveryone();
 int registry(user userData);
 void securityPipes(SECURITY_ATTRIBUTES * sa);
@@ -59,7 +59,6 @@ TCHAR inTxt[TAM];
 TCHAR outTxt[TAM];
 TCHAR gameState[TAM];
 int ballWaitTime = 0;
-TCHAR gamePipeName[TAM];
 
 //client related
 comuciationHandle clientsInfo[USER_MAX_USERS];
@@ -216,6 +215,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	PAINTSTRUCT ps;
 	TCHAR str[TAM];
 	TCHAR tmp[TAM];
+	int res;
 	switch (messg) {
 	case WM_LBUTTONDOWN:
 		break;
@@ -266,8 +266,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		resolveMenu(hWnd, messg, wParam, lParam);
 		break;
 	case WM_CLOSE:
-		/*res = MessageBox(hWnd, TEXT("Are you sure you want to quit?"), TEXT("Quit MessageBox"), MB_ICONQUESTION | MB_YESNO);
-		if (res == IDYES)*/{
+		res = MessageBox(hWnd, TEXT("Are you sure you want to quit?"), TEXT("Quit MessageBox"), MB_ICONQUESTION | MB_YESNO);
+		if (res == IDYES){
 		closeSharedMemoryMsg();
 		closeSharedMemoryGame();
 		DestroyWindow(hWnd);
@@ -275,10 +275,10 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			
 		break;
 	case WM_DESTROY: // Destruir a janela e terminar o programa
-		PostQuitMessage(0);
 		free(currentGame);
 		closeSharedMemoryMsg();
 		closeSharedMemoryGame();
+		PostQuitMessage(0);
 		break;
 	default:
 		return DefWindowProc(hWnd, messg, wParam, lParam);
@@ -365,8 +365,6 @@ void print(msg printMsg) {
 	_itot_s(printMsg.to, tmp2, 30, 10);//translates num to str
 	_tcscat_s(tmp, TAM, tmp2);//ads
 
-
-	//MessageBox(global_hWnd, tmp, TEXT("Server - sending message"), MB_OK);
 	if (printMsg.to == 254)
 		_tcscpy_s(inTxt, TAM, tmp);
 	else
@@ -374,12 +372,9 @@ void print(msg printMsg) {
 	
 	InvalidateRect(global_hWnd, NULL, FALSE);
 	return;
-	//MessageBeep(MB_ICONSTOP);
-
 }
 
 DWORD resolveMessage(msg inMsg) {
-	//Sleep(2000);
 	DWORD num;
 	TCHAR tmp[TAM];
 	boolean flag;
@@ -499,9 +494,10 @@ DWORD resolveMessage(msg inMsg) {
 		}
 		
 	}
-	else if (inMsg.codigoMsg == 123) {//for tests || returns the exact same msg
-		outMsg.to = inMsg.from;
-		sendMessage(outMsg);
+	else if (inMsg.codigoMsg == -999) {
+		clientsInfo[inMsg.from].communication = -1;
+		clientsInfo[inMsg.from].hClientGame = NULL;
+		clientsInfo[inMsg.from].hClientMsg = NULL;
 	}
 
 	InvalidateRect(global_hWnd, NULL, FALSE);
@@ -530,13 +526,13 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 	do {
 		hPipeInit = CreateNamedPipe(msgPipeName,
 			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-			PIPE_TYPE_MESSAGE | // tipo de pipe = message
-			PIPE_READMODE_MESSAGE | // com modo message-read e
-			PIPE_WAIT, // bloqueante (não usar PIPE_NOWAIT nem mesmo em Asyncr)
-			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
-			BUFSIZE_MSG, // tam buffer output
-			BUFSIZE_MSG, // tam buffer input
-			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
+			PIPE_TYPE_MESSAGE |
+			PIPE_READMODE_MESSAGE |
+			PIPE_WAIT, 
+			PIPE_UNLIMITED_INSTANCES,
+			BUFSIZE_MSG,
+			BUFSIZE_MSG, 
+			2000,
 			&sa);
 
 		if (hPipeInit == INVALID_HANDLE_VALUE) {
@@ -548,8 +544,6 @@ DWORD WINAPI connectPipeMsg(LPVOID param) {
 		fConnected = ConnectNamedPipe(hPipeInit, NULL);//waits for client
 		if (!fConnected && GetLastError() == ERROR_PIPE_CONNECTED)
 			fConnected = 1;
-
-		//MessageBox(global_hWnd, TEXT("Got a Msg Client"), TEXT("Client"), MB_OK);
 
 		if (fConnected) {
 			hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)pipeClientMsg, (LPVOID)hPipeInit, 0, NULL);
@@ -588,11 +582,11 @@ DWORD WINAPI connectPipeGame(LPVOID param) {
 
 		hPipeInit = CreateNamedPipe(gamePipeName,
 			PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
-			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // bloqueante (não usar PIPE_NOWAIT nem mesmo em Asyncr)
-			PIPE_UNLIMITED_INSTANCES, // max. instancias (255)
-			BUFSIZE_GAME, // tam buffer output
-			BUFSIZE_GAME, // tam buffer input
-			2000, // time-out p/ cliente 5k milisegundos (0->default=50)
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+			PIPE_UNLIMITED_INSTANCES, 
+			BUFSIZE_GAME, 
+			BUFSIZE_GAME,
+			2000,
 			&sa);
 
 		if (hPipeInit == INVALID_HANDLE_VALUE) {
@@ -640,10 +634,10 @@ DWORD WINAPI pipeClientMsg(LPVOID param) {
 	OVERLAPPED OverlRd = { 0 };
 
 	ReadReady = CreateEvent(
-		NULL, // default security + non inheritable
-		TRUE, // Reset manual, por requisito do overlapped IO => uso de ResetEvent
-		FALSE, // estado inicial = not signaled
-		NULL); // não precisa de nome: uso interno ao processo
+		NULL,
+		TRUE,
+		FALSE,
+		NULL);
 	if (ReadReady == NULL) {
 		MessageBox(global_hWnd, TEXT("Could not create Event ReadReady"), TEXT("Error"), MB_ICONERROR | MB_OK);
 		return 1;
@@ -654,12 +648,12 @@ DWORD WINAPI pipeClientMsg(LPVOID param) {
 		ResetEvent(ReadReady);
 		OverlRd.hEvent = ReadReady;
 
-		fSuccess = ReadFile(//waiting for message
-			hPipe, // handle para o pipe (recebido no param)
-			&inMsg, // buffer para os dados a ler
-			sizeof(msg), // Tamanho msg a ler
-			&cbBytesRead, // número de bytes lidos
-			&OverlRd); // != NULL -> é overlapped I/O
+		fSuccess = ReadFile(
+			hPipe,
+			&inMsg, 
+			sizeof(msg),
+			&cbBytesRead,
+			&OverlRd);
 
 		WaitForSingleObject(ReadReady, INFINITE);
 		//MessageBox(global_hWnd, TEXT("Got a message via the pipes"), TEXT("PIPE"), MB_OK);
@@ -721,7 +715,6 @@ DWORD startVars() {
 	WaitForSingleObject(writeGameMutex, INFINITE);
 	currentGame->gameStatus = -1;
 	//default config
-	//_tcscpy_s(currentGame->myconfig.file, TAM, TEXT("none"));//file input
 	_tcscpy_s(currentGame->myconfig.file, TAM, TEXT("config.txt"));//file input
 	//game
 	currentGame->myconfig.gameNumLevels = GAME_LEVELS;
@@ -924,7 +917,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 	currentGame->nBalls[id].size.sizey = currentGame->myconfig.ballSize.sizey;
 	ReleaseMutex(writeGameMutex);
 
-	//waits random time so that all balls arent on top of each other
+	//waits time so that all balls arent on top of each other
 	if (currentGame->numBalls != 1) {
 		ballWaitTime += 100;
 		Sleep(ballWaitTime);
@@ -944,14 +937,12 @@ DWORD WINAPI BolaThread(LPVOID param) {
 				continue;
 
 
-			if (posy - 1 == currentGame->nBricks[i].posy) {//tests
+			/*if (posy - 1 == currentGame->nBricks[i].posy) {//tests
 				hitBrick(i, id);
 				goingUp = 0;
 				posy++;
 				continue;
-			}
-
-
+			}*/
 
 			//up
 			if (goingUp) {
@@ -980,11 +971,6 @@ DWORD WINAPI BolaThread(LPVOID param) {
 					continue;
 				}
 
-				//for some reason inside the brick
-				/*if (posx + currentGame->nBalls[id].size.sizex > currentGame->nBricks[i].posx && posx < currentGame->nBricks[i].posx + currentGame->nBricks[i].size.sizex &&
-					posy + currentGame->nBalls[id].size.sizey > currentGame->nBricks[i].posy && posy < currentGame->nBricks[i].posy + currentGame->nBricks[i].size.sizey)
-					goingRight;*/
-
 			}
 			//left
 			else{
@@ -996,15 +982,16 @@ DWORD WINAPI BolaThread(LPVOID param) {
 				}
 			}
 
-			/*if (posx + currentGame->nBalls[id].size.sizex > currentGame->nBricks[i].posx //direta da bola vs esquerda do tijolo
+			//if for some reason is inside a brick
+			if (posx + currentGame->nBalls[id].size.sizex > currentGame->nBricks[i].posx //direta da bola vs esquerda do tijolo
 				&& posx < currentGame->nBricks[i].posx + currentGame->nBricks[i].size.sizex//esquerda da bola vs direita do tijolo
 				&& posy < currentGame->nBricks[i].posy + currentGame->nBricks[i].size.sizey //cimo da bola vs baixo do tijolo
 				&& posy + currentGame->nBalls[id].size.sizey > currentGame->nBricks[i].posy) {//baixo da bola vs cima do tijolo
 				goingRight = !goingRight;
 				goingUp = !goingUp;
 				hitBrick(i, id);
-				MessageBox(global_hWnd, TEXT("inside a brick"), TEXT("INFO"), MB_OK);
-			}*/
+				//MessageBox(global_hWnd, TEXT("inside a brick"), TEXT("INFO"), MB_OK);
+			}
 		}
 
 		//ball movement
@@ -1070,7 +1057,7 @@ DWORD WINAPI BolaThread(LPVOID param) {
 			ReleaseMutex(writeGameMutex);
 		}
 		else if (localNumBricks == -1)
-			return;
+			return 0;
 		WaitForSingleObject(writeGameMutex, INFINITE);
 		currentGame->nBalls[id].posx = posx;
 		currentGame->nBalls[id].posy = posy;
@@ -1369,8 +1356,7 @@ int readFromFile() {
 		TCHAR line[TAM];
 		TCHAR setting[TAM];
 		TCHAR value[TAM];
-		DWORD num;
-		//fseek(fp, 0L, SEEK_SET);
+		float num;
 
 		while (_ftscanf_s(fp, TEXT("%s"), line, _countof(line)) != EOF) {
 			flag = 0;
@@ -1409,7 +1395,7 @@ int readFromFile() {
 	return returnValue;
 }
 
-BOOLEAN insertSetting(TCHAR setting[TAM], DWORD value) {
+BOOLEAN insertSetting(TCHAR setting[TAM], float value) {
 	
 	if (_tcscmp(setting, TEXT("GAME_LEVELS")) == 0) {
 		if (value <= GAME_LEVELS) {
@@ -1512,7 +1498,6 @@ void startGame(){
 	tmpMsg.codigoMsg = 100;//new game
 	tmpMsg.from = server_id;
 	tmpMsg.to = 255; //broadcast
-	//Sleep(1000);
 	updateEveryone();
 	_tcscpy_s(tmpMsg.messageInfo, TAM, TEXT("gameStart"));
 	sendMessage(tmpMsg);
@@ -1524,6 +1509,8 @@ void startGame(){
 
 void endGame() {
 	msg outMsg;
+	user userData;
+	userData.score = -1;
 	int top = -1; 
 	//reseting game
 	localNumBricks = -1;
@@ -1535,6 +1522,7 @@ void endGame() {
 		if(top)
 			MessageBox(global_hWnd, TEXT("New Top 10"), TEXT("Info"), MB_OK);
 	}
+	currentGame->numUsers = 0;
 
 	for (int i = 0; i < BRICK_MAX_BRICKS; i++) {
 		resetBrick(i);
@@ -1552,6 +1540,8 @@ void endGame() {
 	outMsg.from = server_id;
 	sendMessage(outMsg);
 
+	registry(userData);
+
 	updateEveryone();
 
 	MessageBox(global_hWnd, TEXT("Game Reseted"), TEXT("Info"), MB_ICONINFORMATION | MB_OK);
@@ -1562,7 +1552,6 @@ void endGame() {
 
 void createLevel(DWORD levelNum) {
 	//create level
-	//MessageBox(global_hWnd, TEXT("will create the level now"), TEXT("debug"), MB_OK);
 	srand((int)time(NULL));
 	int num = 0;
 	int i;
@@ -1715,6 +1704,8 @@ int registry(user userData) {
 	}
 	else if (regOutput == REG_OPENED_EXISTING_KEY) {//if there are scores
 		WaitForSingleObject(writeGameMutex, INFINITE);
+		if (userData.score == -1)
+			_tcscpy_s(currentGame->top, TAM, TEXT(""));
 		ReleaseMutex(writeGameMutex);
 		for (int i = 0; i < 10; i++) {
 			tam = MAX_NAME_LENGTH;
@@ -1893,7 +1884,7 @@ DWORD WINAPI movingBricks(LPVOID param) {
 			}
 			else if (level == 4) {
 				if (currentGame->nBricks[brick_id].status <= 0)
-					return;
+					return -1;
 			}
 			for (int i = 0; i < 10; i++) {
 				if (goRight) {

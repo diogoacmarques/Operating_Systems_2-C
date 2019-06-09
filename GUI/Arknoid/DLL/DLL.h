@@ -58,7 +58,7 @@
 #define INIT_PIPE_GAME_NAME_ADD  TEXT("\\pipe\\initPipeArknoidGame")
 
 //event to check if a server is running
-#define CHECK_SERVER_EVENT TEXT("../arknoidServer")//this event only exists to check if a server is running
+#define CHECK_SERVER_EVENT TEXT("arknoidServer")//this event only exists to check if a server is running
 
 
 typedef struct handles {
@@ -137,7 +137,7 @@ typedef struct config {
 
 typedef struct Player {
 	TCHAR name[MAX_NAME_LENGTH];
-	int id;//necessary? so i can associate clientsInfo to nUSers?
+	int id;
 	int lifes;
 	int posx, posy;
 	DWORD score;

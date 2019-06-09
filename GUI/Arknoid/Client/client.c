@@ -52,7 +52,7 @@ int mouseX = 100, mouseY = 100;
 
 	//game
 pgame gameInfo;
-DWORD client_id = -1;//identification of program so the server knows where to send info
+DWORD client_id = -1;//id of the this client in the server
 DWORD userState = -1;//-1 lobby | 0 = playing | 1 = watching
 
 	//handles
@@ -64,14 +64,13 @@ HANDLE hPipeMsg;
 HANDLE hPipeGame;
 //end of variables
 
-//HANDLES
-HANDLE hTUserInput;
-
 TCHAR userLogged[MAX_NAME_LENGTH];
 
 //double buffer
 HDC memDC = NULL;
 int maxX = 0, maxY = 0;
+
+HBITMAP hBit = NULL;
 
 //lobby background
 HBITMAP hBackground = NULL;
@@ -118,13 +117,6 @@ HBITMAP hBonus = NULL;
 BITMAP bmBonus;
 HDC hdcBonus;
 
-//other
-HBITMAP hBit = NULL;
-HBRUSH hBrush = NULL;
-HBITMAP hBmp = NULL;
-BITMAP bmp;
-
-
 int counter = 0;
 
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
@@ -156,7 +148,7 @@ int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 
 	hWnd = CreateWindow(
 		szProgName, 
-		TEXT("SO2 - Ficha 6 - Ex1_V2"),
+		TEXT("SO2 - TP"),
 		WS_OVERLAPPED, 
 		5,
 		5, 
@@ -296,11 +288,6 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		ReleaseDC(hWnd, hDC);
 		break;
-		//hBmp = (HBITMAP)LoadImage(NULL, TEXT("../assets/imgs/background.bmp"),
-			//IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-		//GetObject(hBmp, sizeof(bmp), &bmp);
-		break;
 
 	case WM_KEYDOWN:
 		resolveKey(wParam);
@@ -360,6 +347,14 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				_itot_s(gameInfo->myconfig.ballInitialSpeed, tmp, TAM, 10);//translates num to str
 				_tcscat_s(info, TAM, tmp);
 				TextOut(memDC, 0, 420, info, _tcslen(info));
+				
+				//score
+				_tcscpy_s(info, TAM, TEXT("Score:"));
+				_itot_s(gameInfo->nUsers[client_id].score, tmp, TAM, 10);//translates num to str
+				_tcscat_s(info, TAM, tmp);
+				TextOut(memDC, 0, 440, info, _tcslen(info));
+
+
 			}
 			else if(userState == 1)
 				TextOut(memDC, gameInfo->myconfig.gameSize.sizex - 90, gameInfo->myconfig.gameSize.sizey - 15, TEXT("SPECTATING"), _tcslen(TEXT("SPECTATING")));
@@ -428,25 +423,30 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			
 			break;
 		case ID_EXIT:
+			gameMsg.codigoMsg = -999;
+			gameMsg.connection = connection_mode;
+			gameMsg.from = client_id;
+			gameMsg.to = 254;
+			_tcscpy_s(gameMsg.messageInfo, TAM, TEXT("endClient"));
+			sendMessage(gameMsg);
 			DestroyWindow(hWnd);
 			break;
 		case ID_PLAY:	
 			if (userState != -1)
-				return;
-			res = DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveLoginDialog);
-			if (res == IDCANCEL || res == IDABORT)
-				break;
+				return -1;
+			DialogBox(NULL, MAKEINTRESOURCE(IDD_DIALOG_LOGIN), hWnd, resolveLoginDialog);
 			if (_tcscmp(userLogged, TEXT("")) != 0) {
 				for (int i = 0; i < MAX_NAME_LENGTH; i++)//preventes users from using ':' (messes up registry)
 					if (userLogged[i] == ':' || userLogged[i] == '|')
 						userLogged[i] = '\0';
+				LoginUser(userLogged);
 			}
-			LoginUser(userLogged);
+			
 				
 			break;
 			case ID_WATCH:
 				if (userState != -1)
-					return;
+					return -1;
 				if (gameInfo->gameStatus > 0) {
 					userState = 1;
 					MessageBeep(MB_ICONQUESTION);
@@ -462,29 +462,28 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				else if(connection_mode == 1)
 					_tcscat_s(tmp, TAM, TEXT("remote "));
 				else
-					_tcscat_s(tmp, TAM, TEXT("Hacked? "));
+					_tcscat_s(tmp, TAM, TEXT("hacked? "));
 
 				_tcscat_s(tmp, TAM, TEXT("conection || My client id = "));
 				_itot_s(client_id, tmp2, 30, 10);//translates num to str
 				_tcscat_s(tmp, TAM, tmp2);//ads
 
 
-				_tcscat_s(tmp, TAM, TEXT(" || BTW GameStatus = "));
+				_tcscat_s(tmp, TAM, TEXT(" || GameStatus = "));
 				_itot_s(gameInfo->gameStatus, tmp2, TAM, 10);//translates num to str
 				_tcscat_s(tmp, TAM, tmp2);//ads
 
 				MessageBox(hWnd,tmp, TEXT("Type of connection"), MB_OK);
 				break;
 			case ID_ABOUT_VERSION:
-				MessageBox(hWnd, TEXT("Version 0.1! - Made by Diogo Marques"), TEXT("About Arknoid"), MB_OK);
+				MessageBox(hWnd, TEXT("Version 1.0! - Made by Diogo Marques"), TEXT("About The Game"), MB_OK);
 				break;
 		}
 		break;
 	case WM_CLOSE:
-		/*res = MessageBox(hWnd, TEXT("Are you sure you want to quit?"), TEXT("Quit MessageBox"), MB_ICONQUESTION | MB_YESNO);
-		if (res == IDYES)*/{
-
-
+		res = MessageBox(hWnd, TEXT("Are you sure you want to quit?"), TEXT("Quit MessageBox"), MB_ICONQUESTION | MB_YESNO);
+		if (res == IDYES){
+			
 		DestroyWindow(hWnd);
 
 	}
@@ -518,18 +517,17 @@ LRESULT CALLBACK resolveLoginDialog(HWND hWnd, UINT messg, WPARAM wParam, LPARAM
 	switch (messg) {
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK) {
-			GetDlgItemText(hWnd, IDC_EDIT_LOGIN, userLogged, 100);
+			GetDlgItemText(hWnd, IDC_EDIT_LOGIN, userLogged, TAM);
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
 		else if (LOWORD(wParam) == IDCANCEL) {
-			_stprintf_s(userLogged, 100, TEXT(""));
+			_stprintf_s(userLogged, TAM, TEXT(""));
 			EndDialog(hWnd, 0);
 			return TRUE;
 		}
 
 	}
-
 	return FALSE;
 }
 
@@ -608,7 +606,6 @@ void resolveKey(WPARAM wParam) {
 
 int createLocalConnection() {
 	HANDLE checkExistingServer;
-	//checkExistingServer = CreateEvent(NULL, FALSE, NULL, CHECK_SERVER_EVENT);
 	checkExistingServer = OpenEvent(EVENT_ALL_ACCESS, TRUE, CHECK_SERVER_EVENT);
 	if (checkExistingServer == NULL) {//there is no server created
 		MessageBox(global_hWnd, TEXT("There is not a server running at this moment."), TEXT("WARNING"), MB_ICONWARNING | MB_OK);
@@ -799,7 +796,6 @@ DWORD WINAPI msgPipe(LPVOID param) {
 		);
 
 		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
-		//_tprintf(TEXT("Read Done...\n"));
 
 		//MessageBox(global_hWnd, TEXT("Got a message!!!!"), TEXT("Got messsage"), MB_OK);
 
@@ -807,13 +803,6 @@ DWORD WINAPI msgPipe(LPVOID param) {
 		if (bytesRead < sizeof(msg)) {
 			_tprintf(TEXT("Read File failed... | Erro = %d\n"), GetLastError());
 		}
-
-		//_tprintf(TEXT("I got a message from pipe:\n"));
-		//_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
-		//WaitForSingleObject(hStdoutMutex, INFINITE);
-		//gotoxy(0, 13);
-		//_tprintf(TEXT("MSG->COD(%d)-'%s'"), inMsg.codigoMsg,inMsg.messageInfo);
-		//ReleaseMutex(hStdoutMutex);
 
 		resp = resolveMessage(inMsg);
 	}
@@ -823,8 +812,7 @@ DWORD WINAPI msgPipe(LPVOID param) {
 DWORD WINAPI gamePipe(LPVOID param) {
 
 	HANDLE gamePipe;
-	//BOOLEAN res;
-	DWORD bytesRead;// dwMode;
+	DWORD bytesRead;
 	HANDLE ReadReady;
 	BOOLEAN fSuccess = FALSE;
 	OVERLAPPED OverlRd = { 0 };
@@ -872,7 +860,6 @@ DWORD WINAPI gamePipe(LPVOID param) {
 	int quant = 0;
 
 	while (1) {
-		//_tprintf(TEXT("Waiting to receive game..\n"));
 		ZeroMemory(&OverlRd, sizeof(OverlRd));
 		OverlRd.hEvent = ReadReady;
 		ResetEvent(ReadReady);
@@ -885,7 +872,7 @@ DWORD WINAPI gamePipe(LPVOID param) {
 			&OverlRd
 		);
 
-		WaitForSingleObject(ReadReady, INFINITE);//sssswait for read to be complete
+		WaitForSingleObject(ReadReady, INFINITE);//wait for read to be complete
 		//_tprintf(TEXT("Read Done...\n"));
 
 		GetOverlappedResult(gamePipe, &OverlRd, &bytesRead, FALSE);
@@ -895,12 +882,6 @@ DWORD WINAPI gamePipe(LPVOID param) {
 
 		SetEvent(gameReady);
 		ResetEvent(gameReady);
-		//WaitForSingleObject(hStdoutMutex,INFINITE);
-		//gotoxy(0, 10);
-		//_tprintf(TEXT("GameStatus = %d\n"),gameInfo->gameStatus);
-		//_tprintf(TEXT("[%d]Udated\n->Bricks:%d\n->Player_0:(%d,%d)"),quant++,gameInfo->numBricks,gameInfo->nUsers[0].posx, gameInfo->nUsers[0].posy);
-		//ReleaseMutex(hStdoutMutex);
-
 	}
 
 	CloseHandle(gamePipe);
@@ -975,20 +956,14 @@ DWORD resolveMessage(msg inMsg) {
 		DestroyWindow(global_hWnd);//not destroying...
 	}
 
-	BOOLEAN logged = 0;
 	if (inMsg.from != 254) {
 		_tprintf(TEXT("Should receive from 254 but received instead from %d...\n"), inMsg.from);
 		_tprintf(TEXT("Codigo:%d\nto:%d\nfrom:%d\ncontent:%s\n"), inMsg.codigoMsg, inMsg.to, inMsg.from, inMsg.messageInfo);
 		Sleep(3000);
 		return 0;
 	}
-	//WaitForSingleObject(hStdoutMutex, INFINITE);
-	//gotoxy(0, 0);
-	//_tprintf(TEXT("BROADCAST\n-to:%d    \n-from:%d     \n"), inMsg.to, inMsg.from);
-	//ReleaseMutex(hStdoutMutex);
 
 	if (inMsg.codigoMsg == 1) {//successful login
-		logged = 1;
 		//MessageBox(global_hWnd, TEXT("SUCESSO NO LOGIN"), TEXT("info"), MB_OK);
 		userState = 0;
 		MessageBox(global_hWnd, TEXT("You are now in the game, waiting for server to start..."),TEXT("Info"),MB_OK);
