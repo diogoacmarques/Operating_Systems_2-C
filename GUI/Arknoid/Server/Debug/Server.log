@@ -3,43 +3,43 @@ c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(89): 
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(141): warning C4047: '==': 'int' differs in levels of indirection from 'void *'
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(153): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(153): warning C4024: 'CreateEventW': different types for formal and actual parameter 3
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(949): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(949): warning C4018: '>=': signed/unsigned mismatch
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(958): warning C4018: '<=': signed/unsigned mismatch
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(958): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(967): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(967): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(968): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(968): warning C4018: '<=': signed/unsigned mismatch
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(977): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(977): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(991): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(992): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1000): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1001): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1002): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1002): warning C4018: '>': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1012): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1041): warning C4018: '<': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1044): warning C4018: '>=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1044): warning C4018: '<=': signed/unsigned mismatch
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1362): warning C4133: 'function': incompatible types - from 'char [2]' to 'const wchar_t *'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1392): warning C4047: '==': 'int' differs in levels of indirection from 'char [2]'
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1396): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1416): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(978): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(987): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(988): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(989): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(989): warning C4018: '>': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(999): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1028): warning C4018: '<': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1031): warning C4018: '>=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1031): warning C4018: '<=': signed/unsigned mismatch
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1349): warning C4133: 'function': incompatible types - from 'char [2]' to 'const wchar_t *'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1378): warning C4047: '==': 'int' differs in levels of indirection from 'char [2]'
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1382): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1402): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1408): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1412): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1415): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1418): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1422): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1426): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1429): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1427): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1432): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1436): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1441): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1446): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1451): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1452): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1437): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1438): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1443): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1447): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1450): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1453): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1457): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
 c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1461): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1464): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1467): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1471): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1475): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1487): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1490): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1493): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1630): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1473): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1476): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1479): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+c:\users\diogo marques\desktop\isec\so2\tp\so2\gui\arknoid\server\server.c(1614): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
   Server.vcxproj -> C:\Users\Diogo Marques\Desktop\isec\SO2\TP\SO2\GUI\Arknoid\Debug\Server.exe

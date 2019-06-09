@@ -336,6 +336,8 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				}
 
 			if (userState == 0) {
+
+
 				//lifes
 				_tcscpy_s(info, TAM, TEXT("Lifes:"));
 				_itot_s(gameInfo->nUsers[client_id].lifes, tmp, TAM, 10);//translates num to str
@@ -381,9 +383,9 @@ LRESULT CALLBACK resolveInput(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			}
 		}
 			
-				
-		TextOut(memDC, 0, 20, userLogged, _tcslen(userLogged));
+		TextOut(memDC, 0, 380, userLogged, _tcslen(userLogged));
 
+		
 		_tcscpy_s(str, TAM, TEXT("Info["));
 		_itot_s(counter++, tmp, TAM, 10);//translates num to str
 		_tcscat_s(str, TAM, tmp);//ads
